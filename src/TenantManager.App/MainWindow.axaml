@@ -110,5 +110,63 @@
                 </Grid>
             </DockPanel>
         </TabItem>
+
+        <TabItem Header="Contracts">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8">
+                    <Button Content="Refresh" Command="{Binding ContractList.LoadContractsCommand}" />
+                    <Button Content="New Contract" Command="{Binding ContractList.NewContractCommand}" />
+                    <Button Content="Edit" Command="{Binding ContractList.EditContractCommand}" />
+                    <Button Content="Open File" Command="{Binding ContractList.OpenFileCommand}" />
+                    <Button Content="Delete" Command="{Binding ContractList.DeleteContractCommand}" />
+                </StackPanel>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" IsVisible="{Binding ContractList.IsEditing}" Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="8">
+                        <StackPanel Spacing="8">
+                            <ComboBox ItemsSource="{Binding ContractList.AvailableTenants}"
+                                      SelectedItem="{Binding ContractList.EditSelectedTenant}"
+                                      DisplayMemberBinding="{Binding FullName}" />
+                            <TextBox PlaceholderText="File Path" Text="{Binding ContractList.EditFilePath}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <StackPanel>
+                                    <TextBlock Text="Start Date" />
+                                    <DatePicker SelectedDate="{Binding ContractList.EditStartDate}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="End Date (optional)" />
+                                    <DatePicker SelectedDate="{Binding ContractList.EditEndDate}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <TextBox PlaceholderText="Notes (optional)" Text="{Binding ContractList.EditNotes}" AcceptsReturn="True" Height="60" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Save" Command="{Binding ContractList.SaveContractCommand}" />
+                                <Button Content="Cancel" Command="{Binding ContractList.CancelEditCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding ContractList.Contracts}" SelectedItem="{Binding ContractList.SelectedItem}" Margin="8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
+                                    <TextBlock Text="{Binding TenantName}" Width="120" />
+                                    <TextBlock Text="{Binding Contract.FilePath}" Width="200" />
+                                    <TextBlock Text="{Binding FileStatus}" Width="60" />
+                                    <TextBlock Text="{Binding FileExists}" Width="50" />
+                                    <TextBlock Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" Width="90" />
+                                    <TextBlock Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" Width="90" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </DockPanel>
+        </TabItem>
     </TabControl>
 </Window>
