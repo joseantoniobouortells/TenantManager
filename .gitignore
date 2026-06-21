@@ -1,0 +1,25 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+*.tmp
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## Visual Studio
+.vs/
+
+## VS Code
+.vscode/
+
+## macOS
+.DS_Store
+
+## NuGet
+packages/
+*.nupkg
