@@ -56,8 +56,8 @@ src/
     Domain/        # Domain entities (Room, Tenant, RentalContract, MonthlyPayment)
     Data/          # EF Core DbContext and SQLite configuration
     Services/      # Application services (future)
-    ViewModels/    # Avalonia view models (future)
-    Views/         # Avalonia views (future)
+    ViewModels/    # Avalonia view models
+    Views/         # Avalonia views (auto-generated)
 docs/
   specs/           # Specification and Gherkin scenarios
 ```
