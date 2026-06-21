@@ -11,6 +11,7 @@ public class Tenant
     public DateTime MoveInDate { get; set; }
     public DateTime? MoveOutDate { get; set; }
     public decimal DepositAmount { get; set; }
+    public bool IsActive { get; set; } = true;
     public string? Notes { get; set; }
 
     public int? RoomId { get; set; }
