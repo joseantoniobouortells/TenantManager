@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:domain="using:TenantManager.App.Domain"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="550"
         x:Class="TenantManager.App.MainWindow"
         x:CompileBindings="False"
@@ -158,9 +159,66 @@
                                     <TextBlock Text="{Binding TenantName}" Width="120" />
                                     <TextBlock Text="{Binding Contract.FilePath}" Width="200" />
                                     <TextBlock Text="{Binding FileStatus}" Width="60" />
-                                    <TextBlock Text="{Binding FileExists}" Width="50" />
                                     <TextBlock Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" Width="90" />
                                     <TextBlock Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" Width="90" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </DockPanel>
+        </TabItem>
+
+        <TabItem Header="Payments">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8">
+                    <Button Content="Refresh" Command="{Binding PaymentList.LoadPaymentsCommand}" />
+                    <Button Content="New Payment" Command="{Binding PaymentList.NewPaymentCommand}" />
+                    <Button Content="Edit" Command="{Binding PaymentList.EditPaymentCommand}" />
+                </StackPanel>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" IsVisible="{Binding PaymentList.IsEditing}" Padding="8" BorderBrush="Gray" BorderThickness="1" Margin="8">
+                        <StackPanel Spacing="8">
+                            <ComboBox ItemsSource="{Binding PaymentList.AvailableTenants}"
+                                      SelectedItem="{Binding PaymentList.EditSelectedTenant}"
+                                      DisplayMemberBinding="{Binding FullName}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <NumericUpDown PlaceholderText="Year" Value="{Binding PaymentList.EditYear}" Minimum="2000" Maximum="2100" />
+                                <NumericUpDown PlaceholderText="Month" Value="{Binding PaymentList.EditMonth}" Minimum="1" Maximum="12" />
+                            </StackPanel>
+                            <NumericUpDown PlaceholderText="Expected Amount" Value="{Binding PaymentList.EditExpectedAmount}" Minimum="0" />
+                            <NumericUpDown PlaceholderText="Paid Amount" Value="{Binding PaymentList.EditPaidAmount}" Minimum="0" />
+                            <ComboBox ItemsSource="{Binding PaymentList.AvailableStatuses}"
+                                      SelectedItem="{Binding PaymentList.EditStatus}" />
+                            <StackPanel>
+                                <TextBlock Text="Paid Date (optional)" />
+                                <DatePicker SelectedDate="{Binding PaymentList.EditPaidDate}" />
+                            </StackPanel>
+                            <TextBox PlaceholderText="Notes (optional)" Text="{Binding PaymentList.EditNotes}" AcceptsReturn="True" Height="60" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Content="Save" Command="{Binding PaymentList.SavePaymentCommand}" />
+                                <Button Content="Cancel" Command="{Binding PaymentList.CancelEditCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox Grid.Row="1" ItemsSource="{Binding PaymentList.Payments}" SelectedItem="{Binding PaymentList.SelectedItem}" Margin="8">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
+                                    <TextBlock Text="{Binding TenantName}" Width="120" />
+                                    <TextBlock Text="{Binding Payment.Year}" Width="50" />
+                                    <TextBlock Text="{Binding Payment.Month}" Width="50" />
+                                    <TextBlock Text="{Binding Payment.ExpectedAmount, StringFormat='{}{0:F2}'}" Width="80" />
+                                    <TextBlock Text="{Binding Payment.PaidAmount, StringFormat='{}{0:F2}'}" Width="80" />
+                                    <TextBlock Text="{Binding Payment.Status}" Width="70" />
+                                    <TextBlock Text="{Binding Payment.PaidDate, StringFormat='{}{0:d}'}" Width="90" />
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
