@@ -1,147 +1,147 @@
 # Hard Spec - MVP Local Tenant Manager
 
-## Objetivo
+## Goal
 
-Crear una aplicación desktop multiplataforma para gestionar habitaciones alquiladas, inquilinos, contratos enlazados por ruta local y pagos mensuales.
+Create a cross-platform desktop application to manage rented rooms, tenants, contracts linked by local file paths, and monthly payments.
 
-## Contexto
+## Context
 
-El usuario alquila habitaciones en un piso y necesita una herramienta sencilla para centralizar la información operativa: ocupación, contratos y pagos.
+The user rents out rooms in an apartment and needs a simple tool to centralize operational information: occupancy, contracts, and payments.
 
-La aplicación será inicialmente de uso personal y local. No se plantea como SaaS en esta fase.
+The application is initially for personal, local use. It is not planned as a SaaS product at this stage.
 
-## Usuario objetivo
+## Target user
 
-Propietario particular que gestiona un piso alquilado por habitaciones.
+Individual property owner managing a single apartment rented by rooms.
 
-## Alcance
+## Scope
 
-Esta versión incluye:
+This version includes:
 
-- Gestión de habitaciones.
-- Gestión de inquilinos.
-- Asociación de inquilinos a habitaciones.
-- Gestión de contratos mediante rutas locales de fichero.
-- Validación de existencia del fichero de contrato.
-- Apertura del contrato con la aplicación predeterminada del sistema.
-- Gestión manual de pagos mensuales.
-- Vista resumen mínima con ocupación y pagos pendientes.
-- Base de datos local SQLite.
-- Aplicación desktop multiplataforma con Avalonia.
+- Room management.
+- Tenant management.
+- Tenant-to-room assignment.
+- Contract management via local file paths.
+- Contract file existence validation.
+- Contract opening with the system default application.
+- Manual monthly payment management.
+- Minimal dashboard view with occupancy and pending payments.
+- Local SQLite database.
+- Cross-platform desktop application with Avalonia.
 
-## Fuera de alcance
+## Out of scope
 
-Esta versión no incluye:
+This version does not include:
 
-- CRM de candidatos.
-- Gestión de varios pisos.
-- Usuarios o login.
-- Sincronización en la nube.
-- Backend separado.
-- API HTTP.
-- App móvil.
-- Portal del inquilino.
-- Firma digital.
-- Generación automática de contratos.
-- Pagos online.
-- Integración bancaria.
-- Almacenamiento de documentos como BLOB.
-- Facturación o fiscalidad.
-- Notificaciones automáticas.
+- CRM for candidate tenants.
+- Multi-property management.
+- Users or login.
+- Cloud synchronization.
+- Separate backend.
+- HTTP API.
+- Mobile app.
+- Tenant portal.
+- Digital signature.
+- Automatic contract generation.
+- Online payments.
+- Bank integration.
+- Document storage as BLOB.
+- Invoicing or tax features.
+- Automatic notifications.
 
-## Requisitos funcionales
+## Functional requirements
 
-- RF-001: El usuario puede crear, editar, listar y desactivar habitaciones.
-- RF-002: Una habitación tiene nombre, renta mensual, estado activo/inactivo y notas opcionales.
-- RF-003: El usuario puede crear, editar, listar y desactivar inquilinos.
-- RF-004: Un inquilino tiene nombre, teléfono opcional, email opcional, fecha de entrada, fecha de salida opcional, fianza y notas opcionales.
-- RF-005: Un inquilino activo puede estar asociado a una habitación.
-- RF-006: El usuario puede asociar uno o varios contratos a un inquilino.
-- RF-007: Cada contrato guarda una ruta local de fichero.
-- RF-008: La aplicación no guarda el contenido del contrato en la base de datos.
-- RF-009: La aplicación muestra si la ruta del contrato existe o está rota.
-- RF-010: El usuario puede abrir el contrato desde la aplicación usando la aplicación predeterminada del sistema.
-- RF-011: El usuario puede crear y editar pagos mensuales por inquilino.
-- RF-012: Un pago mensual tiene año, mes, importe esperado, importe pagado, estado, fecha de pago opcional y notas opcionales.
-- RF-013: No puede haber dos pagos para el mismo inquilino, año y mes.
-- RF-014: La aplicación muestra una vista resumen con habitaciones ocupadas y pagos pendientes del mes actual.
+- FR-001: The user can create, edit, list, and deactivate rooms.
+- FR-002: A room has a name, monthly rent, active/inactive status, and optional notes.
+- FR-003: The user can create, edit, list, and deactivate tenants.
+- FR-004: A tenant has a name, optional phone, optional email, move-in date, optional move-out date, deposit amount, and optional notes.
+- FR-005: An active tenant can be assigned to a room.
+- FR-006: The user can associate one or more contracts with a tenant.
+- FR-007: Each contract stores a local file path.
+- FR-008: The application does not store contract content in the database.
+- FR-009: The application shows whether the contract path exists or is broken.
+- FR-010: The user can open the contract from the application using the system default application.
+- FR-011: The user can create and edit monthly payments per tenant.
+- FR-012: A monthly payment has year, month, expected amount, paid amount, status, optional paid date, and optional notes.
+- FR-013: No two payments for the same tenant, year, and month are allowed.
+- FR-014: The application shows a summary view with occupied rooms and pending payments for the current month.
 
-## Requisitos técnicos
+## Technical requirements
 
-- RT-001: La aplicación será desktop multiplataforma.
-- RT-002: La aplicación usará .NET y C#.
-- RT-003: La interfaz se implementará con Avalonia.
-- RT-004: La persistencia usará SQLite.
-- RT-005: El acceso a datos usará Entity Framework Core.
-- RT-006: La base de datos se almacenará localmente.
-- RT-007: Los contratos se almacenarán como rutas de sistema de ficheros.
-- RT-008: La aplicación debe funcionar sin conexión.
-- RT-009: El proyecto debe poder mantenerse por una sola persona.
-- RT-010: El MVP debe evitar arquitectura innecesaria.
+- TR-001: The application will be a cross-platform desktop app.
+- TR-002: The application will use .NET and C#.
+- TR-003: The UI will be implemented with Avalonia.
+- TR-004: Persistence will use SQLite.
+- TR-005: Data access will use Entity Framework Core.
+- TR-006: The database will be stored locally.
+- TR-007: Contracts will be stored as file system paths.
+- TR-008: The application must work offline.
+- TR-009: The project must be maintainable by a single person.
+- TR-010: The MVP must avoid unnecessary architecture.
 
-## Restricciones
+## Constraints
 
-- No implementar funcionalidades fuera del alcance.
-- No añadir autenticación.
-- No añadir backend separado.
-- No añadir API HTTP.
-- No añadir sincronización cloud.
-- No añadir pagos online.
-- No guardar ficheros en SQLite.
-- No introducir arquitectura compleja.
-- No añadir dependencias sin justificación.
-- No implementar CRM en esta fase.
-- No implementar soporte multi-piso en esta fase.
+- Do not implement functionality outside scope.
+- Do not add authentication.
+- Do not add a separate backend.
+- Do not add an HTTP API.
+- Do not add cloud synchronization.
+- Do not add online payments.
+- Do not store files in SQLite.
+- Do not introduce complex architecture.
+- Do not add dependencies without justification.
+- Do not implement CRM at this stage.
+- Do not implement multi-property support at this stage.
 
-## Criterios de aceptación
+## Acceptance criteria
 
-- CA-001: Se puede crear una habitación.
-- CA-002: Se puede crear un inquilino asociado a una habitación.
-- CA-003: Se puede guardar una ruta de contrato asociada a un inquilino.
-- CA-004: La aplicación indica si el fichero del contrato existe.
-- CA-005: La aplicación permite abrir el contrato desde su ruta.
-- CA-006: Se puede crear un pago mensual para un inquilino.
-- CA-007: No se permite duplicar pago para el mismo inquilino, año y mes.
-- CA-008: Se pueden ver pagos pendientes del mes actual.
-- CA-009: Se pueden ver habitaciones ocupadas.
-- CA-010: Los datos persisten al cerrar y abrir la aplicación.
-- CA-011: La aplicación funciona sin conexión.
+- AC-001: A room can be created.
+- AC-002: A tenant can be created and assigned to a room.
+- AC-003: A contract path can be saved for a tenant.
+- AC-004: The application indicates whether the contract file exists.
+- AC-005: The application can open the contract from its path.
+- AC-006: A monthly payment can be created for a tenant.
+- AC-007: Duplicate payments for the same tenant, year, and month are rejected.
+- AC-008: Pending payments for the current month can be viewed.
+- AC-009: Occupied rooms can be viewed.
+- AC-010: Data persists when closing and reopening the application.
+- AC-011: The application works offline.
 
-## Tests esperados
+## Expected tests
 
-- Test de creación de habitación.
-- Test de creación de inquilino.
-- Test de asociación inquilino-habitación.
-- Test de creación de contrato con ruta.
-- Test de detección de ruta existente.
-- Test de detección de ruta rota.
-- Test de creación de pago mensual.
-- Test de prevención de pago duplicado.
-- Test de consulta de pagos pendientes del mes actual.
+- Test for room creation.
+- Test for tenant creation.
+- Test for tenant-to-room assignment.
+- Test for contract path creation.
+- Test for existing path detection.
+- Test for broken path detection.
+- Test for monthly payment creation.
+- Test for duplicate payment prevention.
+- Test for pending payment query for the current month.
 
-## Riesgos
+## Risks
 
-- Las rutas de contrato pueden romperse si los ficheros se mueven.
-- La aplicación puede crecer demasiado si se añade CRM antes de validar el núcleo.
-- Avalonia puede requerir ajustes específicos para apertura de ficheros en cada sistema operativo.
-- La gestión de datos personales requerirá más cuidado si el proyecto evoluciona a producto comercial.
-- El diseño visual puede consumir tiempo sin aportar validación real al MVP.
+- Contract paths may break if files are moved.
+- The application may grow too large if CRM is added before validating the core.
+- Avalonia may require OS-specific adjustments for file opening.
+- Personal data management will require more care if the project evolves into a commercial product.
+- Visual design may consume time without providing real MVP validation.
 
-## Decisiones tomadas
+## Decisions made
 
-- La primera versión usará un solo proyecto Avalonia con carpetas internas para Domain, Data, Services, ViewModels y Views.
-- El MVP será una aplicación desktop multiplataforma.
-- Se usará Avalonia.
-- Se usará .NET y C#.
-- Se usará SQLite.
-- Se usará Entity Framework Core.
-- Los contratos se enlazarán por ruta local.
-- Los contratos no se incrustarán en la base de datos.
-- El CRM queda fuera del primer MVP.
-- La aplicación será local y sin backend separado.
+- The first version will use a single Avalonia project with internal folders for Domain, Data, Services, ViewModels, and Views.
+- The MVP will be a cross-platform desktop application.
+- Avalonia will be used for the UI.
+- .NET and C# will be used.
+- SQLite will be used for persistence.
+- Entity Framework Core will be used for data access.
+- Contracts will be linked by local file path.
+- Contracts will not be embedded in the database.
+- CRM is excluded from the first MVP.
+- The application will be local with no separate backend.
 
-## Dudas abiertas
+## Open questions
 
-- Ubicación exacta de la base de datos local.
-- Si las rutas de contrato serán absolutas o relativas a una carpeta base configurable.
-- Si los tests se crearán desde la fase inicial o después de estabilizar dominio y persistencia.
+- Exact location of the local database.
+- Whether contract paths will be absolute or relative to a configurable base folder.
+- Whether tests will be created from the initial phase or after stabilizing domain and persistence.
