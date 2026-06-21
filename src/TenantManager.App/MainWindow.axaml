@@ -9,6 +9,58 @@
         Title="Tenant Manager">
 
     <TabControl>
+        <TabItem Header="Dashboard">
+            <DockPanel>
+                <Button DockPanel.Dock="Top" Content="Refresh" Command="{Binding Dashboard.RefreshCommand}" Margin="8" />
+
+                <ScrollViewer>
+                    <StackPanel Spacing="16" Margin="8">
+                        <Border Padding="12" BorderBrush="Gray" BorderThickness="1">
+                            <StackPanel Spacing="4">
+                                <TextBlock FontWeight="Bold" Text="Summary" />
+                                <TextBlock Text="{Binding Dashboard.TotalRooms, StringFormat='Total rooms: {0}'}" />
+                                <TextBlock Text="{Binding Dashboard.OccupiedRoomsCount, StringFormat='Occupied rooms: {0}'}" />
+                                <TextBlock Text="{Binding Dashboard.ActiveTenants, StringFormat='Active tenants: {0}'}" />
+                                <TextBlock Text="{Binding Dashboard.PendingPaymentsCount, StringFormat='Pending payments this month: {0}'}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="12" BorderBrush="Gray" BorderThickness="1">
+                            <StackPanel Spacing="4">
+                                <TextBlock FontWeight="Bold" Text="Occupied Rooms" />
+                                <ListBox ItemsSource="{Binding Dashboard.OccupiedRooms}" MaxHeight="200">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding RoomName}" Width="150" />
+                                                <TextBlock Text="{Binding TenantName}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Padding="12" BorderBrush="Gray" BorderThickness="1">
+                            <StackPanel Spacing="4">
+                                <TextBlock FontWeight="Bold" Text="Pending Payments (Current Month)" />
+                                <ListBox ItemsSource="{Binding Dashboard.PendingPayments}" MaxHeight="200">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <TextBlock Text="{Binding TenantName}" Width="150" />
+                                                <TextBlock Text="{Binding ExpectedAmount, StringFormat='{}{0:F2}'}" Width="80" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </TabItem>
+
         <TabItem Header="Rooms">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="8">
