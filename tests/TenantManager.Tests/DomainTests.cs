@@ -230,4 +230,56 @@ public class DomainTests : IDisposable
         Assert.NotNull(loaded);
         Assert.True(loaded.IsActive);
     }
+
+    [Fact]
+    public void CreateRoomRentPeriod_ShouldPersist()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500 };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        var period = new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 550,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 12, 31)
+        };
+        db.RoomRentPeriods.Add(period);
+        db.SaveChanges();
+
+        Assert.NotEqual(0, period.Id);
+    }
+
+    [Fact]
+    public void RoomRentPeriod_NegativeRent_ShouldThrow()
+    {
+        using var db = CreateContext();
+        var period = new RoomRentPeriod
+        {
+            RoomId = 1,
+            MonthlyRent = -10,
+            StartDate = new DateTime(2026, 1, 1)
+        };
+        db.RoomRentPeriods.Add(period);
+
+        Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+    }
+
+    [Fact]
+    public void RoomRentPeriod_EndDateBeforeStartDate_ShouldThrow()
+    {
+        using var db = CreateContext();
+        var period = new RoomRentPeriod
+        {
+            RoomId = 1,
+            MonthlyRent = 500,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2025, 12, 31)
+        };
+        db.RoomRentPeriods.Add(period);
+
+        Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+    }
 }

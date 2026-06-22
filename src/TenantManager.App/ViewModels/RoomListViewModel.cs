@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public class RoomListViewModel : ViewModelBase
     {
         _db = new AppDbContext();
         Rooms = new ObservableCollection<Room>();
+        RentPeriods = new ObservableCollection<RoomRentPeriod>();
 
         LoadRoomsCommand = new RelayCommand(_ => LoadRooms());
         NewRoomCommand = new RelayCommand(_ => StartNewRoom());
@@ -28,6 +30,12 @@ public class RoomListViewModel : ViewModelBase
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
         ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
+
+        NewRentPeriodCommand = new RelayCommand(_ => StartNewRentPeriod());
+        EditRentPeriodCommand = new RelayCommand(_ => EditRentPeriod());
+        SaveRentPeriodCommand = new RelayCommand(_ => SaveRentPeriod());
+        CancelRentPeriodCommand = new RelayCommand(_ => CancelRentPeriod());
+        DeleteRentPeriodCommand = new RelayCommand(_ => DeleteRentPeriod());
 
         LoadRooms();
     }
@@ -42,11 +50,27 @@ public class RoomListViewModel : ViewModelBase
     public RelayCommand DeactivateRoomCommand { get; }
     public RelayCommand ReactivateRoomCommand { get; }
 
+    public RelayCommand NewRentPeriodCommand { get; }
+    public RelayCommand EditRentPeriodCommand { get; }
+    public RelayCommand SaveRentPeriodCommand { get; }
+    public RelayCommand CancelRentPeriodCommand { get; }
+    public RelayCommand DeleteRentPeriodCommand { get; }
+
     public Room? SelectedRoom
     {
         get => _selectedRoom;
-        set => SetProperty(ref _selectedRoom, value);
+        set
+        {
+            if (SetProperty(ref _selectedRoom, value))
+            {
+                OnPropertyChanged(nameof(HasSelectedRoom));
+                LoadRentPeriods();
+                CancelRentPeriod();
+            }
+        }
     }
+
+    public bool HasSelectedRoom => SelectedRoom != null;
 
     public string EditName
     {
@@ -70,6 +94,51 @@ public class RoomListViewModel : ViewModelBase
     {
         get => _isEditing;
         set => SetProperty(ref _isEditing, value);
+    }
+
+    public ObservableCollection<RoomRentPeriod> RentPeriods { get; }
+
+    private RoomRentPeriod? _selectedRentPeriod;
+    public RoomRentPeriod? SelectedRentPeriod
+    {
+        get => _selectedRentPeriod;
+        set => SetProperty(ref _selectedRentPeriod, value);
+    }
+
+    private RoomRentPeriod? _editingRentPeriod;
+    private bool _isEditingRentPeriod;
+    public bool IsEditingRentPeriod
+    {
+        get => _isEditingRentPeriod;
+        set => SetProperty(ref _isEditingRentPeriod, value);
+    }
+
+    private decimal _rentPeriodEditMonthlyRent;
+    public decimal RentPeriodEditMonthlyRent
+    {
+        get => _rentPeriodEditMonthlyRent;
+        set => SetProperty(ref _rentPeriodEditMonthlyRent, value);
+    }
+
+    private DateTimeOffset _rentPeriodEditStartDate = DateTimeOffset.Now;
+    public DateTimeOffset RentPeriodEditStartDate
+    {
+        get => _rentPeriodEditStartDate;
+        set => SetProperty(ref _rentPeriodEditStartDate, value);
+    }
+
+    private DateTimeOffset? _rentPeriodEditEndDate;
+    public DateTimeOffset? RentPeriodEditEndDate
+    {
+        get => _rentPeriodEditEndDate;
+        set => SetProperty(ref _rentPeriodEditEndDate, value);
+    }
+
+    private string? _rentPeriodEditNotes;
+    public string? RentPeriodEditNotes
+    {
+        get => _rentPeriodEditNotes;
+        set => SetProperty(ref _rentPeriodEditNotes, value);
     }
 
     public void LoadRooms()
@@ -157,5 +226,98 @@ public class RoomListViewModel : ViewModelBase
         SelectedRoom.IsActive = true;
         _db.SaveChanges();
         LoadRooms();
+    }
+
+    private void LoadRentPeriods()
+    {
+        RentPeriods.Clear();
+        if (SelectedRoom != null)
+        {
+            var periods = _db.RoomRentPeriods
+                .Where(rp => rp.RoomId == SelectedRoom.Id)
+                .OrderByDescending(rp => rp.StartDate)
+                .ToList();
+
+            foreach (var period in periods)
+            {
+                RentPeriods.Add(period);
+            }
+        }
+    }
+
+    private void StartNewRentPeriod()
+    {
+        if (SelectedRoom == null) return;
+
+        _editingRentPeriod = null;
+        RentPeriodEditMonthlyRent = SelectedRoom.MonthlyRent;
+        RentPeriodEditStartDate = DateTimeOffset.Now;
+        RentPeriodEditEndDate = null;
+        RentPeriodEditNotes = null;
+        IsEditingRentPeriod = true;
+    }
+
+    private void EditRentPeriod()
+    {
+        if (SelectedRentPeriod == null) return;
+
+        _editingRentPeriod = SelectedRentPeriod;
+        RentPeriodEditMonthlyRent = _editingRentPeriod.MonthlyRent;
+        RentPeriodEditStartDate = _editingRentPeriod.StartDate;
+        RentPeriodEditEndDate = _editingRentPeriod.EndDate.HasValue ? new DateTimeOffset(_editingRentPeriod.EndDate.Value) : null;
+        RentPeriodEditNotes = _editingRentPeriod.Notes;
+        IsEditingRentPeriod = true;
+    }
+
+    private void SaveRentPeriod()
+    {
+        if (SelectedRoom == null) return;
+
+        if (_editingRentPeriod == null)
+        {
+            var newPeriod = new RoomRentPeriod
+            {
+                RoomId = SelectedRoom.Id,
+                MonthlyRent = RentPeriodEditMonthlyRent,
+                StartDate = RentPeriodEditStartDate.Date,
+                EndDate = RentPeriodEditEndDate?.Date,
+                Notes = RentPeriodEditNotes?.Trim()
+            };
+            _db.RoomRentPeriods.Add(newPeriod);
+        }
+        else
+        {
+            _editingRentPeriod.MonthlyRent = RentPeriodEditMonthlyRent;
+            _editingRentPeriod.StartDate = RentPeriodEditStartDate.Date;
+            _editingRentPeriod.EndDate = RentPeriodEditEndDate?.Date;
+            _editingRentPeriod.Notes = RentPeriodEditNotes?.Trim();
+        }
+
+        try
+        {
+            _db.SaveChanges();
+            LoadRentPeriods();
+            CancelRentPeriod();
+        }
+        catch (Exception ex)
+        {
+            // Simple failure handling for MVP
+            Console.WriteLine($"Error saving rent period: {ex.Message}");
+        }
+    }
+
+    private void CancelRentPeriod()
+    {
+        _editingRentPeriod = null;
+        IsEditingRentPeriod = false;
+    }
+
+    private void DeleteRentPeriod()
+    {
+        if (SelectedRentPeriod == null) return;
+
+        _db.RoomRentPeriods.Remove(SelectedRentPeriod);
+        _db.SaveChanges();
+        LoadRentPeriods();
     }
 }
