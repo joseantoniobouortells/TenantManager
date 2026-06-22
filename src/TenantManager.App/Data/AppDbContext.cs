@@ -54,6 +54,21 @@ public class AppDbContext : DbContext
                 throw new InvalidOperationException("MonthlyRent must be greater than or equal to 0.");
             if (entity.EndDate.HasValue && entity.EndDate.Value < entity.StartDate)
                 throw new InvalidOperationException("EndDate must be greater than or equal to StartDate.");
+
+            var overlaps = RoomRentPeriods
+                .Where(rp => rp.RoomId == entity.RoomId && rp.Id != entity.Id)
+                .AsEnumerable()
+                .Any(rp => PeriodsOverlap(rp.StartDate, rp.EndDate, entity.StartDate, entity.EndDate));
+
+            if (overlaps)
+                throw new InvalidOperationException("The rent period overlaps with an existing period for the same room.");
         }
+    }
+
+    private static bool PeriodsOverlap(DateTime startA, DateTime? endA, DateTime startB, DateTime? endB)
+    {
+        var endAEffective = endA ?? DateTime.MaxValue;
+        var endBEffective = endB ?? DateTime.MaxValue;
+        return startA <= endBEffective && startB <= endAEffective;
     }
 }

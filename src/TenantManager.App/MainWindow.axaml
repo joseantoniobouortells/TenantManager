@@ -120,6 +120,7 @@
                             </StackPanel>
                             <Border DockPanel.Dock="Top" IsVisible="{Binding RoomList.IsEditingRentPeriod}" Padding="8" BorderBrush="Gray" BorderThickness="0,1,0,1">
                                 <StackPanel Spacing="8">
+                                    <TextBlock Text="{Binding RoomList.ErrorMessage}" Foreground="Red" TextWrapping="Wrap" />
                                     <NumericUpDown PlaceholderText="Monthly Rent" Value="{Binding RoomList.RentPeriodEditMonthlyRent}" Minimum="0" />
                                     <StackPanel>
                                         <TextBlock Text="Start Date" />

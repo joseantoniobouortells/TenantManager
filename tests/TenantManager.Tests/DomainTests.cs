@@ -282,4 +282,137 @@ public class DomainTests : IDisposable
 
         Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
     }
+
+    [Fact]
+    public void NonOverlappingPeriods_SameRoom_Allowed()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500 };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 500,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 6, 30)
+        });
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 600,
+            StartDate = new DateTime(2026, 7, 1),
+            EndDate = null
+        });
+        db.SaveChanges();
+
+        var count = db.RoomRentPeriods.Count(rp => rp.RoomId == room.Id);
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void OverlappingPeriods_SameRoom_ShouldThrow()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500 };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 500,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 12, 31)
+        });
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 600,
+            StartDate = new DateTime(2026, 6, 1),
+            EndDate = new DateTime(2026, 7, 31)
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+        Assert.Contains("overlaps", ex.Message);
+    }
+
+    [Fact]
+    public void OpenEndedPeriod_OverlapsLaterPeriod_ShouldThrow()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500 };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 500,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = null
+        });
+        db.SaveChanges();
+
+        db.RoomRentPeriods.Add(new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 600,
+            StartDate = new DateTime(2026, 6, 1),
+            EndDate = null
+        });
+
+        var ex = Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
+        Assert.Contains("overlaps", ex.Message);
+    }
+
+    [Fact]
+    public void DifferentRooms_CanHaveOverlappingDates()
+    {
+        using var db = CreateContext();
+        var roomA = new Room { Name = "101", MonthlyRent = 500 };
+        var roomB = new Room { Name = "102", MonthlyRent = 600 };
+        db.Rooms.AddRange(roomA, roomB);
+        db.SaveChanges();
+
+        db.RoomRentPeriods.AddRange(
+            new RoomRentPeriod { RoomId = roomA.Id, MonthlyRent = 500, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31) },
+            new RoomRentPeriod { RoomId = roomB.Id, MonthlyRent = 600, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 6, 30) }
+        );
+        db.SaveChanges();
+
+        var count = db.RoomRentPeriods.Count();
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void EditingPeriod_DoesNotOverlapWithSelf()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500 };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        var period = new RoomRentPeriod
+        {
+            RoomId = room.Id,
+            MonthlyRent = 500,
+            StartDate = new DateTime(2026, 1, 1),
+            EndDate = new DateTime(2026, 12, 31)
+        };
+        db.RoomRentPeriods.Add(period);
+        db.SaveChanges();
+
+        period.MonthlyRent = 550;
+        db.SaveChanges();
+
+        var loaded = db.RoomRentPeriods.Find(period.Id);
+        Assert.NotNull(loaded);
+        Assert.Equal(550, loaded.MonthlyRent);
+    }
 }

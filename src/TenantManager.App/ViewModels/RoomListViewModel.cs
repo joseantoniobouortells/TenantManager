@@ -141,6 +141,13 @@ public class RoomListViewModel : ViewModelBase
         set => SetProperty(ref _rentPeriodEditNotes, value);
     }
 
+    private string? _errorMessage;
+    public string? ErrorMessage
+    {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
+    }
+
     public void LoadRooms()
     {
         Rooms.Clear();
@@ -249,6 +256,7 @@ public class RoomListViewModel : ViewModelBase
     {
         if (SelectedRoom == null) return;
 
+        ErrorMessage = null;
         _editingRentPeriod = null;
         RentPeriodEditMonthlyRent = SelectedRoom.MonthlyRent;
         RentPeriodEditStartDate = DateTimeOffset.Now;
@@ -261,6 +269,7 @@ public class RoomListViewModel : ViewModelBase
     {
         if (SelectedRentPeriod == null) return;
 
+        ErrorMessage = null;
         _editingRentPeriod = SelectedRentPeriod;
         RentPeriodEditMonthlyRent = _editingRentPeriod.MonthlyRent;
         RentPeriodEditStartDate = _editingRentPeriod.StartDate;
@@ -299,15 +308,19 @@ public class RoomListViewModel : ViewModelBase
             LoadRentPeriods();
             CancelRentPeriod();
         }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message;
+        }
         catch (Exception ex)
         {
-            // Simple failure handling for MVP
-            Console.WriteLine($"Error saving rent period: {ex.Message}");
+            ErrorMessage = $"Unexpected error: {ex.Message}";
         }
     }
 
     private void CancelRentPeriod()
     {
+        ErrorMessage = null;
         _editingRentPeriod = null;
         IsEditingRentPeriod = false;
     }

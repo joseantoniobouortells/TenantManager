@@ -19,7 +19,6 @@ The current `Room.MonthlyRent` stores a single static value. To reflect real-wor
 ## Out of Scope
 
 - Automatic recalculation of existing monthly payments based on rent period changes.
-- Complex overlap prevention logic requiring full UI validation (basic overlap checks in domain can be implemented if practical, else documented as a limitation).
 - Full UI redesign.
 - Breaking database migrations (we will use SQLite EnsureCreated, which implies the local db will need a reset if the schema changes).
 
@@ -35,5 +34,10 @@ The current `Room.MonthlyRent` stores a single static value. To reflect real-wor
 - The UI allows viewing and managing rent periods for a room.
 - The `EndDate` must be >= `StartDate`.
 - Monthly rent cannot be negative.
+- Overlapping rent periods for the same room are rejected (including open-ended periods).
+- Non-overlapping periods for the same room are allowed.
+- Overlapping periods for different rooms are allowed.
+- Editing a rent period does not falsely reject itself.
+- The UI shows a clear validation message when overlap is detected.
 - Existing features still work.
 - The build succeeds and tests pass.
