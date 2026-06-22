@@ -10,4 +10,12 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = new MainViewModel();
     }
+
+    private void TabControl_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source is TabControl && DataContext is MainViewModel vm)
+        {
+            vm.Dashboard.Refresh();
+        }
+    }
 }

@@ -214,4 +214,20 @@ public class DomainTests : IDisposable
         Assert.NotNull(loaded);
         Assert.False(loaded.IsActive);
     }
+
+    [Fact]
+    public void ReactivateRoom_ShouldSetActiveTrue()
+    {
+        using var db = CreateContext();
+        var room = new Room { Name = "101", MonthlyRent = 500, IsActive = false };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        room.IsActive = true;
+        db.SaveChanges();
+
+        var loaded = db.Rooms.Find(room.Id);
+        Assert.NotNull(loaded);
+        Assert.True(loaded.IsActive);
+    }
 }

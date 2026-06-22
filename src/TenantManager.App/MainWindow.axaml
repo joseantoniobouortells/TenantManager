@@ -3,12 +3,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:domain="using:TenantManager.App.Domain"
+        xmlns:vm="using:TenantManager.App.ViewModels"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="550"
         x:Class="TenantManager.App.MainWindow"
         x:CompileBindings="False"
         Title="Tenant Manager">
 
-    <TabControl>
+    <Window.Resources>
+        <vm:BooleanToActiveStatusConverter x:Key="ActiveStatusConverter" />
+    </Window.Resources>
+
+    <TabControl SelectionChanged="TabControl_SelectionChanged">
         <TabItem Header="Dashboard">
             <DockPanel>
                 <Button DockPanel.Dock="Top" Content="Refresh" Command="{Binding Dashboard.RefreshCommand}" Margin="8" />
@@ -68,6 +73,7 @@
                     <Button Content="New Room" Command="{Binding RoomList.NewRoomCommand}" />
                     <Button Content="Edit" Command="{Binding RoomList.EditRoomCommand}" />
                     <Button Content="Deactivate" Command="{Binding RoomList.DeactivateRoomCommand}" />
+                    <Button Content="Reactivate" Command="{Binding RoomList.ReactivateRoomCommand}" />
                 </StackPanel>
 
                 <Grid>
@@ -94,7 +100,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
                                     <TextBlock Text="{Binding Name}" Width="150" />
                                     <TextBlock Text="{Binding MonthlyRent, StringFormat='{}{0:F2}'}" Width="80" />
-                                    <TextBlock Text="{Binding IsActive}" Width="60" />
+                                    <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" Width="60" />
                                     <TextBlock Text="{Binding Notes}" Width="250" />
                                 </StackPanel>
                             </DataTemplate>
@@ -152,7 +158,7 @@
                                 <StackPanel Orientation="Horizontal" Spacing="8" Margin="4">
                                     <TextBlock Text="{Binding FullName}" Width="140" />
                                     <TextBlock Text="{Binding Phone}" Width="100" />
-                                    <TextBlock Text="{Binding IsActive}" Width="50" />
+                                    <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" Width="50" />
                                     <TextBlock Text="{Binding MoveInDate, StringFormat='{}{0:d}'}" Width="90" />
                                     <TextBlock Text="{Binding MoveOutDate, StringFormat='{}{0:d}'}" Width="90" />
                                     <TextBlock Text="{Binding DepositAmount, StringFormat='{}{0:F2}'}" Width="80" />

@@ -27,6 +27,7 @@ public class RoomListViewModel : ViewModelBase
         SaveRoomCommand = new RelayCommand(_ => SaveRoom());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
+        ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
 
         LoadRooms();
     }
@@ -39,6 +40,7 @@ public class RoomListViewModel : ViewModelBase
     public RelayCommand SaveRoomCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand DeactivateRoomCommand { get; }
+    public RelayCommand ReactivateRoomCommand { get; }
 
     public Room? SelectedRoom
     {
@@ -143,6 +145,16 @@ public class RoomListViewModel : ViewModelBase
             return;
 
         SelectedRoom.IsActive = false;
+        _db.SaveChanges();
+        LoadRooms();
+    }
+
+    private void ReactivateRoom()
+    {
+        if (SelectedRoom == null)
+            return;
+
+        SelectedRoom.IsActive = true;
         _db.SaveChanges();
         LoadRooms();
     }
