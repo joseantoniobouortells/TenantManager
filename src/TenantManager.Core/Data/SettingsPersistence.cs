@@ -17,12 +17,14 @@ public static class SettingsPersistence
         catch { }
     }
 
+    public static string? SettingsFilePath { get; set; }
+
     public static AppSettings LoadSettings()
     {
         Log("LoadSettings() started");
         try
         {
-            var path = DatabasePath.SettingsPath;
+            var path = SettingsFilePath ?? "settings.json";
             Log($"Settings file path: {path}");
             if (File.Exists(path))
             {
@@ -49,7 +51,7 @@ public static class SettingsPersistence
         Log($"SaveSettings() called - Theme: {settings.Theme}, Language: {settings.Language}");
         try
         {
-            var path = DatabasePath.SettingsPath;
+            var path = SettingsFilePath ?? "settings.json";
             var directory = Path.GetDirectoryName(path);
             Log($"Target directory: {directory}");
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))

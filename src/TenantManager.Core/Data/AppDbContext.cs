@@ -7,8 +7,17 @@ namespace TenantManager.App.Data;
 
 public class AppDbContext : DbContext
 {
+    public static string? DefaultConnectionString { get; set; }
+    
+    private readonly string? _connectionString;
+
     public AppDbContext()
     {
+    }
+
+    public AppDbContext(string connectionString)
+    {
+        _connectionString = connectionString;
     }
 
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
@@ -27,7 +36,8 @@ public class AppDbContext : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlite(DatabasePath.ConnectionString);
+            var connStr = _connectionString ?? DefaultConnectionString ?? "Data Source=tenantmanager.db";
+            optionsBuilder.UseSqlite(connStr, b => b.MigrationsAssembly("TenantManager.Core"));
         }
     }
 

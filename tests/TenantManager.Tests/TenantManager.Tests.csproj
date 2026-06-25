@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\TenantManager.App\TenantManager.App.csproj" />
+    <ProjectReference Include="..\..\src\TenantManager.Core\TenantManager.Core.csproj" />
   </ItemGroup>
 
 </Project>

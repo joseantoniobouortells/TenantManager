@@ -12,6 +12,8 @@ public class DomainTests : IDisposable
 
     public DomainTests()
     {
+        AppDbContext.DefaultConnectionString = "Data Source=:memory:";
+        SettingsPersistence.SettingsFilePath = "settings_test.json";
         _connection = new SqliteConnection("Data Source=:memory:");
         _connection.Open();
         _options = new DbContextOptionsBuilder<AppDbContext>()

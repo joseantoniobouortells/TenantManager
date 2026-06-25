@@ -15,6 +15,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        AppDbContext.DefaultConnectionString = DatabasePath.ConnectionString;
+        SettingsPersistence.SettingsFilePath = DatabasePath.SettingsPath;
+
         var dbDir = System.IO.Path.GetDirectoryName(DatabasePath.FullPath);
         if (!string.IsNullOrEmpty(dbDir))
         {
