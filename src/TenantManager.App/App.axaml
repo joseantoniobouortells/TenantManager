@@ -1,31 +1,81 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:TenantManager.App.ViewModels"
              x:Class="TenantManager.App.App"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://TenantManager.App/Assets/i18n/en.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <vm:BooleanToActiveStatusConverter x:Key="ActiveStatusConverter" />
+            <vm:BooleanToYesNoConverter x:Key="YesNoConverter" />
+            <vm:PaymentStatusLocalizerConverter x:Key="PaymentStatusConverter" />
+            <vm:StatusColorConverter x:Key="StatusColor" />
+            <vm:StatusTextColorConverter x:Key="StatusTextColor" />
+            <vm:EqualityConverter x:Key="EqualityConverter" />
+            
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F0F2F5" />
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="White" />
+                    <SolidColorBrush x:Key="TabSelectedBackgroundBrush" Color="#EAF2FD" />
+                    <SolidColorBrush x:Key="PrimaryBrush" Color="#0F52BA" />
+                    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#0D47A1" />
+                    <SolidColorBrush x:Key="DangerBrush" Color="#C5221F" />
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#137333" />
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#111827" />
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#374151" />
+                    <SolidColorBrush x:Key="TableBorderBrush" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="ActionBackgroundBrush" Color="#E5E7EB" />
+                    <SolidColorBrush x:Key="ActionHoverBrush" Color="#D1D5DB" />
+                    <SolidColorBrush x:Key="PeriodEditBackgroundBrush" Color="#F1F3F4" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppBackgroundBrush" Color="#121212" />
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="TabSelectedBackgroundBrush" Color="#2D2D2D" />
+                    <SolidColorBrush x:Key="PrimaryBrush" Color="#3B82F6" />
+                    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#60A5FA" />
+                    <SolidColorBrush x:Key="DangerBrush" Color="#EF4444" />
+                    <SolidColorBrush x:Key="SuccessBrush" Color="#10B981" />
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F3F4F6" />
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#9CA3AF" />
+                    <SolidColorBrush x:Key="TableBorderBrush" Color="#374151" />
+                    <SolidColorBrush x:Key="ActionBackgroundBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="ActionHoverBrush" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="PeriodEditBackgroundBrush" Color="#202020" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
         
         <Style Selector="Border.Card">
-            <Setter Property="Background" Value="{DynamicResource SystemRegionBrush}" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding" Value="24" />
             <Setter Property="Margin" Value="0 0 0 16" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseLowBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TableBorderBrush}" />
             <Setter Property="BoxShadow" Value="0 2 8 0 #10000000" />
         </Style>
 
         <Style Selector="TextBlock.H1">
             <Setter Property="FontSize" Value="28" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Margin" Value="0 0 0 24" />
         </Style>
 
         <Style Selector="TextBlock.H2">
             <Setter Property="FontSize" Value="18" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Margin" Value="0 0 0 16" />
         </Style>
 
@@ -37,16 +87,26 @@
         </Style>
 
         <Style Selector="Button.Primary">
-            <Setter Property="Background" Value="#0F52BA" />
+            <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
             <Setter Property="Foreground" Value="White" />
             <Setter Property="CornerRadius" Value="6" />
             <Setter Property="Padding" Value="16 8" />
             <Setter Property="FontWeight" Value="Medium" />
         </Style>
+        <Style Selector="Button.Primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
+            <Setter Property="TextBlock.Foreground" Value="White" />
+        </Style>
 
         <Style Selector="Button.Action">
+            <Setter Property="Background" Value="{DynamicResource ActionBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
             <Setter Property="Padding" Value="12 6" />
             <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style Selector="Button.Action:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ActionHoverBrush}" />
+            <Setter Property="TextBlock.Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
     </Application.Styles>
 </Application>

@@ -34,7 +34,7 @@ public class DomainTests : IDisposable
     public void CreateRoom_ShouldPersist()
     {
         using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
+        var room = new Room { Name = "101" };
         db.Rooms.Add(room);
         db.SaveChanges();
 
@@ -45,7 +45,7 @@ public class DomainTests : IDisposable
     public void CreateRoom_NullName_ShouldThrow()
     {
         using var db = CreateContext();
-        var room = new Room { Name = null!, MonthlyRent = 500 };
+        var room = new Room { Name = null! };
         db.Rooms.Add(room);
         Assert.Throws<DbUpdateException>(() => db.SaveChanges());
     }
@@ -65,7 +65,7 @@ public class DomainTests : IDisposable
     public void AssignTenantToRoom_ShouldSetRoomId()
     {
         using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
+        var room = new Room { Name = "101" };
         db.Rooms.Add(room);
         db.SaveChanges();
 
@@ -103,7 +103,7 @@ public class DomainTests : IDisposable
             TenantId = 1,
             Year = 2026,
             Month = 6,
-            ExpectedAmount = 500,
+            ExpectedRentAmount = 500,
             Status = PaymentStatus.Pending
         };
         db.MonthlyPayments.Add(payment);
@@ -121,7 +121,7 @@ public class DomainTests : IDisposable
             TenantId = 1,
             Year = 2026,
             Month = 6,
-            ExpectedAmount = 500,
+            ExpectedRentAmount = 500,
             Status = PaymentStatus.Pending
         };
         db.MonthlyPayments.Add(payment1);
@@ -132,7 +132,7 @@ public class DomainTests : IDisposable
             TenantId = 1,
             Year = 2026,
             Month = 6,
-            ExpectedAmount = 500,
+            ExpectedRentAmount = 500,
             Status = PaymentStatus.Pending
         };
         db.MonthlyPayments.Add(payment2);
@@ -144,9 +144,9 @@ public class DomainTests : IDisposable
     {
         using var db = CreateContext();
         db.MonthlyPayments.AddRange(
-            new MonthlyPayment { TenantId = 1, Year = 2026, Month = 6, ExpectedAmount = 500, Status = PaymentStatus.Pending },
-            new MonthlyPayment { TenantId = 2, Year = 2026, Month = 6, ExpectedAmount = 600, Status = PaymentStatus.Paid },
-            new MonthlyPayment { TenantId = 3, Year = 2026, Month = 6, ExpectedAmount = 700, Status = PaymentStatus.Pending }
+            new MonthlyPayment { TenantId = 1, Year = 2026, Month = 6, ExpectedRentAmount = 500, Status = PaymentStatus.Pending },
+            new MonthlyPayment { TenantId = 2, Year = 2026, Month = 6, ExpectedRentAmount = 600, Status = PaymentStatus.Paid },
+            new MonthlyPayment { TenantId = 3, Year = 2026, Month = 6, ExpectedRentAmount = 700, Status = PaymentStatus.Pending }
         );
         db.SaveChanges();
 
@@ -166,7 +166,7 @@ public class DomainTests : IDisposable
             TenantId = 1,
             Year = 2026,
             Month = 6,
-            ExpectedAmount = 500,
+            ExpectedRentAmount = 500,
             Status = PaymentStatus.Pending
         };
         db.MonthlyPayments.Add(payment);
@@ -203,7 +203,7 @@ public class DomainTests : IDisposable
     public void DeactivateRoom_ShouldNotDelete()
     {
         using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500, IsActive = true };
+        var room = new Room { Name = "101", IsActive = true };
         db.Rooms.Add(room);
         db.SaveChanges();
 
@@ -219,7 +219,7 @@ public class DomainTests : IDisposable
     public void ReactivateRoom_ShouldSetActiveTrue()
     {
         using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500, IsActive = false };
+        var room = new Room { Name = "101", IsActive = false };
         db.Rooms.Add(room);
         db.SaveChanges();
 
@@ -232,187 +232,129 @@ public class DomainTests : IDisposable
     }
 
     [Fact]
-    public void CreateRoomRentPeriod_ShouldPersist()
+    public void CreateProperty_ShouldPersist()
     {
         using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
-        db.Rooms.Add(room);
-        db.SaveChanges();
-
-        var period = new RoomRentPeriod
+        var property = new Property
         {
-            RoomId = room.Id,
-            MonthlyRent = 550,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2026, 12, 31)
+            Name = "Main Street Apt",
+            Address = "123 Main St",
+            City = "Metropolis",
+            PostalCode = "12345"
         };
-        db.RoomRentPeriods.Add(period);
+        db.Properties.Add(property);
         db.SaveChanges();
 
-        Assert.NotEqual(0, period.Id);
-    }
-
-    [Fact]
-    public void RoomRentPeriod_NegativeRent_ShouldThrow()
-    {
-        using var db = CreateContext();
-        var period = new RoomRentPeriod
-        {
-            RoomId = 1,
-            MonthlyRent = -10,
-            StartDate = new DateTime(2026, 1, 1)
-        };
-        db.RoomRentPeriods.Add(period);
-
-        Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
-    }
-
-    [Fact]
-    public void RoomRentPeriod_EndDateBeforeStartDate_ShouldThrow()
-    {
-        using var db = CreateContext();
-        var period = new RoomRentPeriod
-        {
-            RoomId = 1,
-            MonthlyRent = 500,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2025, 12, 31)
-        };
-        db.RoomRentPeriods.Add(period);
-
-        Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
-    }
-
-    [Fact]
-    public void NonOverlappingPeriods_SameRoom_Allowed()
-    {
-        using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
-        db.Rooms.Add(room);
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 500,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2026, 6, 30)
-        });
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 600,
-            StartDate = new DateTime(2026, 7, 1),
-            EndDate = null
-        });
-        db.SaveChanges();
-
-        var count = db.RoomRentPeriods.Count(rp => rp.RoomId == room.Id);
-        Assert.Equal(2, count);
-    }
-
-    [Fact]
-    public void OverlappingPeriods_SameRoom_ShouldThrow()
-    {
-        using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
-        db.Rooms.Add(room);
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 500,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2026, 12, 31)
-        });
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 600,
-            StartDate = new DateTime(2026, 6, 1),
-            EndDate = new DateTime(2026, 7, 31)
-        });
-
-        var ex = Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
-        Assert.Contains("overlaps", ex.Message);
-    }
-
-    [Fact]
-    public void OpenEndedPeriod_OverlapsLaterPeriod_ShouldThrow()
-    {
-        using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
-        db.Rooms.Add(room);
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 500,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = null
-        });
-        db.SaveChanges();
-
-        db.RoomRentPeriods.Add(new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 600,
-            StartDate = new DateTime(2026, 6, 1),
-            EndDate = null
-        });
-
-        var ex = Assert.Throws<InvalidOperationException>(() => db.SaveChanges());
-        Assert.Contains("overlaps", ex.Message);
-    }
-
-    [Fact]
-    public void DifferentRooms_CanHaveOverlappingDates()
-    {
-        using var db = CreateContext();
-        var roomA = new Room { Name = "101", MonthlyRent = 500 };
-        var roomB = new Room { Name = "102", MonthlyRent = 600 };
-        db.Rooms.AddRange(roomA, roomB);
-        db.SaveChanges();
-
-        db.RoomRentPeriods.AddRange(
-            new RoomRentPeriod { RoomId = roomA.Id, MonthlyRent = 500, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 12, 31) },
-            new RoomRentPeriod { RoomId = roomB.Id, MonthlyRent = 600, StartDate = new DateTime(2026, 1, 1), EndDate = new DateTime(2026, 6, 30) }
-        );
-        db.SaveChanges();
-
-        var count = db.RoomRentPeriods.Count();
-        Assert.Equal(2, count);
-    }
-
-    [Fact]
-    public void EditingPeriod_DoesNotOverlapWithSelf()
-    {
-        using var db = CreateContext();
-        var room = new Room { Name = "101", MonthlyRent = 500 };
-        db.Rooms.Add(room);
-        db.SaveChanges();
-
-        var period = new RoomRentPeriod
-        {
-            RoomId = room.Id,
-            MonthlyRent = 500,
-            StartDate = new DateTime(2026, 1, 1),
-            EndDate = new DateTime(2026, 12, 31)
-        };
-        db.RoomRentPeriods.Add(period);
-        db.SaveChanges();
-
-        period.MonthlyRent = 550;
-        db.SaveChanges();
-
-        var loaded = db.RoomRentPeriods.Find(period.Id);
+        Assert.NotEqual(0, property.Id);
+        var loaded = db.Properties.Find(property.Id);
         Assert.NotNull(loaded);
-        Assert.Equal(550, loaded.MonthlyRent);
+        Assert.Equal("Main Street Apt", loaded.Name);
+    }
+
+    [Fact]
+    public void CreateRentalContractExtension_ShouldPersist()
+    {
+        using var db = CreateContext();
+        var extension = new RentalContractExtension
+        {
+            RentalContractId = 1,
+            StartDate = DateTimeOffset.Now,
+            MonthlyRent = 750,
+            ExpensePaymentType = ExpensePaymentType.Fixed,
+            FixedExpenseAmount = 50,
+            Notes = "First extension"
+        };
+        db.RentalContractExtensions.Add(extension);
+        db.SaveChanges();
+
+        Assert.NotEqual(0, extension.Id);
+        var loaded = db.RentalContractExtensions.Find(extension.Id);
+        Assert.NotNull(loaded);
+        Assert.Equal(750, loaded.MonthlyRent);
+        Assert.Equal(ExpensePaymentType.Fixed, loaded.ExpensePaymentType);
+        Assert.Equal(50, loaded.FixedExpenseAmount);
+    }
+
+    [Fact]
+    public void GenerateBatchPayments_ShouldCreatePayments()
+    {
+        using var db = CreateContext();
+        
+        var property = new Property { Name = "Prop 1" };
+        db.Properties.Add(property);
+        db.SaveChanges();
+
+        var room = new Room { Name = "Room 101", PropertyId = property.Id, IsActive = true };
+        db.Rooms.Add(room);
+        db.SaveChanges();
+
+        var tenant = new Tenant { FullName = "Alice Smith", PropertyId = property.Id, RoomId = room.Id, IsActive = true };
+        db.Tenants.Add(tenant);
+        db.SaveChanges();
+
+        var contract = new RentalContract
+        {
+            PropertyId = property.Id,
+            TenantId = tenant.Id,
+            StartDate = new DateTimeOffset(new DateTime(2026, 1, 1)),
+            EndDate = new DateTimeOffset(new DateTime(2026, 12, 31)),
+            MonthlyRent = 500,
+            ExpensePaymentType = ExpensePaymentType.Fixed,
+            FixedExpenseAmount = 40
+        };
+        db.RentalContracts.Add(contract);
+        db.SaveChanges();
+
+        var vm = new TenantManager.App.ViewModels.MonthlyPaymentListViewModel(db);
+        vm.LoadPayments(property.Id);
+
+        vm.StartBatchCommand.Execute(null);
+
+        var alice = vm.AvailableTenants.FirstOrDefault(t => t.Id == tenant.Id);
+        Assert.NotNull(alice);
+        vm.BatchSelectedTenant = alice;
+        vm.BatchStartYear = 2026;
+        vm.BatchStartMonth = 1;
+        vm.BatchEndYear = 2026;
+        vm.BatchEndMonth = 3;
+        vm.BatchDefaultStatus = PaymentStatus.Pending;
+
+        vm.GenerateBatchCommand.Execute(null);
+
+        var payments = db.MonthlyPayments.Where(p => p.TenantId == tenant.Id && p.PropertyId == property.Id).ToList();
+        Assert.Equal(3, payments.Count);
+        
+        var p1 = payments.FirstOrDefault(p => p.Month == 1);
+        Assert.NotNull(p1);
+        Assert.Equal(500, p1.ExpectedRentAmount);
+        Assert.Equal(40, p1.ExpectedExpenseAmount);
+        Assert.Equal(PaymentStatus.Pending, p1.Status);
+    }
+
+    [Fact]
+    public void CreateExpenseInvoice_WithFile_ShouldPersist()
+    {
+        using var db = CreateContext();
+        var invoice = new ExpenseInvoice
+        {
+            PropertyId = 1,
+            ExpenseType = "Electricity",
+            Year = 2026,
+            Month = 6,
+            Amount = 120.50m,
+            FilePath = "/tmp/invoice.pdf",
+            FileContent = new byte[] { 1, 2, 3, 4 },
+            Notes = "June invoice"
+        };
+        db.ExpenseInvoices.Add(invoice);
+        db.SaveChanges();
+
+        Assert.NotEqual(0, invoice.Id);
+        var loaded = db.ExpenseInvoices.Find(invoice.Id);
+        Assert.NotNull(loaded);
+        Assert.Equal("Electricity", loaded.ExpenseType);
+        Assert.Equal("/tmp/invoice.pdf", loaded.FilePath);
+        Assert.NotNull(loaded.FileContent);
+        Assert.Equal(4, loaded.FileContent.Length);
     }
 }

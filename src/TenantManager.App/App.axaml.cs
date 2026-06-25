@@ -23,7 +23,7 @@ public partial class App : Application
 
         using (var db = new AppDbContext())
         {
-            db.Database.EnsureCreated();
+            db.Database.Migrate();
         }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

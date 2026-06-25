@@ -4,24 +4,19 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:domain="using:TenantManager.App.Domain"
         xmlns:vm="using:TenantManager.App.ViewModels"
+        xmlns:views="using:TenantManager.App.Views"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="TenantManager.App.MainWindow"
         x:CompileBindings="False"
         Title="Tenant Manager"
-        Background="#F8F9FA"
+        Background="{DynamicResource AppBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
-
-    <Window.Resources>
-        <vm:BooleanToActiveStatusConverter x:Key="ActiveStatusConverter" />
-        <vm:StatusColorConverter x:Key="StatusColor" />
-        <vm:StatusTextColorConverter x:Key="StatusTextColor" />
-    </Window.Resources>
 
     <Window.Styles>
         <Style Selector="TabControl">
             <Setter Property="TabStripPlacement" Value="Left" />
             <Setter Property="Padding" Value="32" />
-            <Setter Property="Background" Value="#F8F9FA" />
+            <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
         </Style>
         <Style Selector="TabItem">
             <Setter Property="FontSize" Value="15" />
@@ -30,10 +25,17 @@
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Width" Value="200" />
             <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+        <Style Selector="TabItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ActionBackgroundBrush}" />
         </Style>
         <Style Selector="TabItem:selected">
-            <Setter Property="Background" Value="#EAF2FD" />
-            <Setter Property="Foreground" Value="#0F52BA" />
+            <Setter Property="Background" Value="{DynamicResource TabSelectedBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+        </Style>
+        <Style Selector="TabItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource TabSelectedBackgroundBrush}" />
         </Style>
         
         <!-- Table Styles -->
@@ -45,504 +47,69 @@
             <Setter Property="Padding" Value="16 12" />
             <Setter Property="Margin" Value="0 0 0 8" />
             <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="White" />
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="BorderBrush" Value="#EAEAEA" />
+            <Setter Property="BorderBrush" Value="{DynamicResource TableBorderBrush}" />
         </Style>
     </Window.Styles>
 
-    <TabControl SelectionChanged="TabControl_SelectionChanged">
-        
-        <!-- DASHBOARD -->
-        <TabItem Header="Dashboard">
-            <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
-                    <TextBlock Grid.Column="0" Classes="H1" Text="Dashboard" Margin="0" VerticalAlignment="Center" />
-                    <Button Grid.Column="1" Content="Refresh" Command="{Binding Dashboard.RefreshCommand}" Classes="Action" HorizontalAlignment="Right" />
-                </Grid>
-
-                <ScrollViewer>
-                    <StackPanel Spacing="24">
-                        <!-- Summary Cards -->
-                        <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto" Margin="0 0 0 16">
-                            <!-- Row 0 -->
-                            <Border Classes="Card" Grid.Column="0" Grid.Row="0" Margin="0 0 16 16">
-                                <StackPanel>
-                                    <TextBlock Text="Total Rooms" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.TotalRooms}" FontSize="32" FontWeight="Bold" />
-                                </StackPanel>
-                            </Border>
-                            <Border Classes="Card" Grid.Column="1" Grid.Row="0" Margin="0 0 16 16">
-                                <StackPanel>
-                                    <TextBlock Text="Active Tenants" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.ActiveTenants}" FontSize="32" FontWeight="Bold" />
-                                </StackPanel>
-                            </Border>
-                            <Border Classes="Card" Grid.Column="2" Grid.Row="0" Margin="0 0 0 16">
-                                <StackPanel>
-                                    <TextBlock Text="Pending Payments" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.PendingPaymentsCount}" FontSize="32" FontWeight="Bold" Foreground="#C5221F"/>
-                                </StackPanel>
-                            </Border>
-                            
-                            <!-- Row 1 -->
-                            <Border Classes="Card" Grid.Column="0" Grid.Row="1" Margin="0 0 16 0">
-                                <StackPanel>
-                                    <TextBlock Text="Active Rooms" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.OccupiedRoomsCount}" FontSize="32" FontWeight="Bold" />
-                                </StackPanel>
-                            </Border>
-                            <Border Classes="Card" Grid.Column="1" Grid.Row="1" Margin="0 0 16 0">
-                                <StackPanel>
-                                    <TextBlock Text="Expected Income" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.ExpectedIncome, StringFormat='{}{0:C}'}" FontSize="32" FontWeight="Bold" />
-                                </StackPanel>
-                            </Border>
-                            <Border Classes="Card" Grid.Column="2" Grid.Row="1" Margin="0 0 0 0">
-                                <StackPanel>
-                                    <TextBlock Text="Collected Income" Foreground="Gray" FontSize="14" Margin="0 0 0 8"/>
-                                    <TextBlock Text="{Binding Dashboard.CollectedIncome, StringFormat='{}{0:C}'}" FontSize="32" FontWeight="Bold" Foreground="#137333"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <!-- Charts -->
-                        <Grid ColumnDefinitions="*,*,*" Margin="0 0 0 16">
-                            <!-- Occupancy -->
-                            <Border Classes="Card" Grid.Column="0" Margin="0 0 16 0">
-                                <StackPanel>
-                                    <TextBlock Text="Room Occupancy" Classes="H2" Margin="0 0 0 16"/>
-                                    <ProgressBar Minimum="0" Maximum="{Binding Dashboard.TotalRooms}" Value="{Binding Dashboard.OccupiedRoomsCount}" Height="20" CornerRadius="4" Foreground="#0F52BA" Margin="0 0 0 8" />
-                                    <Grid ColumnDefinitions="*,*">
-                                        <TextBlock Grid.Column="0" Text="{Binding Dashboard.OccupiedRoomsCount, StringFormat='{}Occupied: {0}'}" Foreground="Gray" />
-                                        <TextBlock Grid.Column="1" Text="{Binding Dashboard.AvailableRoomsCount, StringFormat='{}Available: {0}'}" Foreground="Gray" HorizontalAlignment="Right" />
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Income -->
-                            <Border Classes="Card" Grid.Column="1" Margin="0 0 16 0">
-                                <StackPanel>
-                                    <TextBlock Text="Income Collection" Classes="H2" Margin="0 0 0 16"/>
-                                    <ProgressBar Minimum="0" Maximum="{Binding Dashboard.ExpectedIncome}" Value="{Binding Dashboard.CollectedIncome}" Height="20" CornerRadius="4" Foreground="#137333" Margin="0 0 0 8" />
-                                    <Grid ColumnDefinitions="*,*">
-                                        <TextBlock Grid.Column="0" Text="{Binding Dashboard.CollectedIncome, StringFormat='{}Paid: {0:C}'}" Foreground="Gray" />
-                                        <TextBlock Grid.Column="1" Text="{Binding Dashboard.ExpectedIncome, StringFormat='{}Expected: {0:C}'}" Foreground="Gray" HorizontalAlignment="Right" />
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Payment Status -->
-                            <Border Classes="Card" Grid.Column="2" Margin="0">
-                                <StackPanel>
-                                    <TextBlock Text="Payment Status" Classes="H2" Margin="0 0 0 16"/>
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,*,*,*,*" Margin="0 0 0 0">
-                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Paid" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Dashboard.PaidPaymentsCount}" FontWeight="Bold" Margin="0 0 0 4" Foreground="#137333"/>
-                                        
-                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Pending" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Dashboard.PendingPaymentsCount}" FontWeight="Bold" Margin="0 0 0 4"/>
-
-                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Partial" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Dashboard.PartialPaymentsCount}" FontWeight="Bold" Margin="0 0 0 4"/>
-
-                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Late" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Dashboard.LatePaymentsCount}" FontWeight="Bold" Margin="0 0 0 4" Foreground="#C5221F"/>
-
-                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Waived" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Dashboard.WaivedPaymentsCount}" FontWeight="Bold" Margin="0 0 0 4"/>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <!-- Lists -->
-                        <Grid ColumnDefinitions="*,*,*">
-                            <!-- Pending Payments -->
-                            <StackPanel Grid.Column="0" Margin="0 0 16 0">
-                                <TextBlock Classes="H2" Text="Pending/Late Payments" />
-                                <TextBlock Text="No pending payments." Foreground="Gray" IsVisible="{Binding Dashboard.HasNoPendingPayments}" />
-                                <ListBox Classes="Table" ItemsSource="{Binding Dashboard.PendingPayments}" IsVisible="{Binding !Dashboard.HasNoPendingPayments}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid ColumnDefinitions="*,Auto,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0 0 8 0" />
-                                                <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="Gray" Margin="0 0 8 0" />
-                                                <TextBlock Grid.Column="2" Text="{Binding ExpectedAmount, StringFormat='{}{0:C}'}" Foreground="#C5221F" FontWeight="Bold" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
-
-                            <!-- Available Rooms -->
-                            <StackPanel Grid.Column="1" Margin="0 0 16 0">
-                                <TextBlock Classes="H2" Text="Available Rooms" />
-                                <TextBlock Text="No available rooms." Foreground="Gray" IsVisible="{Binding Dashboard.HasNoAvailableRooms}" />
-                                <ListBox Classes="Table" ItemsSource="{Binding Dashboard.AvailableRooms}" IsVisible="{Binding !Dashboard.HasNoAvailableRooms}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid ColumnDefinitions="*,Auto">
-                                                <TextBlock Grid.Column="0" Text="{Binding RoomName}" FontWeight="SemiBold" />
-                                                <TextBlock Grid.Column="1" Text="{Binding MonthlyRent, StringFormat='{}{0:C}'}" Foreground="Gray" />
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
-
-                            <!-- Missing Contracts -->
-                            <StackPanel Grid.Column="2" Margin="0">
-                                <TextBlock Classes="H2" Text="Missing Contract Files" />
-                                <TextBlock Text="All active contracts have valid paths." Foreground="Gray" IsVisible="{Binding Dashboard.HasNoMissingContracts}" />
-                                <ListBox Classes="Table" ItemsSource="{Binding Dashboard.MissingContracts}" IsVisible="{Binding !Dashboard.HasNoMissingContracts}">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel>
-                                                <TextBlock Text="{Binding TenantName}" FontWeight="SemiBold" />
-                                                <TextBlock Text="{Binding FilePath}" Foreground="Gray" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
-                            </StackPanel>
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </DockPanel>
-        </TabItem>
-
-        <!-- ROOMS -->
-        <TabItem Header="Rooms">
-            <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
-                    <TextBlock Grid.Column="0" Classes="H1" Text="Rooms" Margin="0" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Refresh" Command="{Binding RoomList.LoadRoomsCommand}" Classes="Action" />
-                        <Button Content="+ New Room" Command="{Binding RoomList.NewRoomCommand}" Classes="Primary" />
-                    </StackPanel>
-                </Grid>
-
-                <Grid ColumnDefinitions="2*, 1.2*">
-                    <!-- Left Side: Rooms List & Editing -->
-                    <DockPanel Grid.Column="0" Margin="0 0 16 0">
-                        <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding RoomList.IsEditing}">
-                            <StackPanel Spacing="16">
-                                <TextBlock Classes="H2" Text="Edit Room" Margin="0" />
-                                <TextBox PlaceholderText="Room Name" Text="{Binding RoomList.EditName}" />
-                                <NumericUpDown PlaceholderText="Monthly Rent" Value="{Binding RoomList.EditMonthlyRent}" Minimum="0" />
-                                <TextBox PlaceholderText="Notes (optional)" Text="{Binding RoomList.EditNotes}" AcceptsReturn="True" Height="80" />
-                                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-                                    <Button Content="Cancel" Command="{Binding RoomList.CancelEditCommand}" Classes="Action" />
-                                    <Button Content="Save Room" Command="{Binding RoomList.SaveRoomCommand}" Classes="Primary Action" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding RoomList.HasSelectedRoom}">
-                            <Button Content="Edit" Command="{Binding RoomList.EditRoomCommand}" Classes="Action" />
-                            <Button Content="Deactivate" Command="{Binding RoomList.DeactivateRoomCommand}" Classes="Action" />
-                            <Button Content="Reactivate" Command="{Binding RoomList.ReactivateRoomCommand}" Classes="Action" />
-                        </StackPanel>
-
-                        <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*" Margin="16 0 16 8">
-                            <TextBlock Grid.Column="0" Text="Name" Foreground="Gray" FontWeight="Medium" />
-                            <TextBlock Grid.Column="1" Text="Rent" Foreground="Gray" FontWeight="Medium" />
-                            <TextBlock Grid.Column="2" Text="Status" Foreground="Gray" FontWeight="Medium" />
-                            <TextBlock Grid.Column="3" Text="Notes" Foreground="Gray" FontWeight="Medium" />
-                        </Grid>
-
-                        <ListBox Classes="Table" ItemsSource="{Binding RoomList.Rooms}" SelectedItem="{Binding RoomList.SelectedRoom}">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid ColumnDefinitions="2*,1*,1*,2*">
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" Text="{Binding MonthlyRent, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
-                                        <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
-                                            <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
-                                                       Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
-                                                       FontSize="12" FontWeight="Bold" />
-                                        </Border>
-                                        <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="Gray" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </DockPanel>
-
-                    <!-- Right Side: Rent History -->
-                    <Border Grid.Column="1" Classes="Card" IsVisible="{Binding RoomList.HasSelectedRoom}" Margin="0">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Classes="H2" Text="Rent History" />
-                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
-                                <Button Content="+ New Period" Command="{Binding RoomList.NewRentPeriodCommand}" Classes="Primary Action" />
-                                <Button Content="Edit" Command="{Binding RoomList.EditRentPeriodCommand}" Classes="Action" />
-                                <Button Content="Delete" Command="{Binding RoomList.DeleteRentPeriodCommand}" Classes="Action" />
-                            </StackPanel>
-
-                            <Border DockPanel.Dock="Top" IsVisible="{Binding RoomList.IsEditingRentPeriod}" Padding="16" Background="#F1F3F4" CornerRadius="8" Margin="0 0 0 16">
-                                <StackPanel Spacing="12">
-                                    <NumericUpDown PlaceholderText="Monthly Rent" Value="{Binding RoomList.RentPeriodEditMonthlyRent}" Minimum="0" />
-                                    <StackPanel>
-                                        <TextBlock Text="Start Date" FontSize="12" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <DatePicker SelectedDate="{Binding RoomList.RentPeriodEditStartDate}" />
-                                    </StackPanel>
-                                    <StackPanel>
-                                        <TextBlock Text="End Date (optional)" FontSize="12" Foreground="Gray" Margin="0 0 0 4"/>
-                                        <DatePicker SelectedDate="{Binding RoomList.RentPeriodEditEndDate}" />
-                                    </StackPanel>
-                                    <TextBox PlaceholderText="Notes (optional)" Text="{Binding RoomList.RentPeriodEditNotes}" AcceptsReturn="True" Height="60" />
-                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                                        <Button Content="Cancel" Command="{Binding RoomList.CancelRentPeriodCommand}" Classes="Action" />
-                                        <Button Content="Save" Command="{Binding RoomList.SaveRentPeriodCommand}" Classes="Primary Action" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </Border>
-
-                            <ListBox Classes="Table" ItemsSource="{Binding RoomList.RentPeriods}" SelectedItem="{Binding RoomList.SelectedRentPeriod}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Spacing="4">
-                                            <TextBlock Text="{Binding MonthlyRent, StringFormat='{}{0:C} / month'}" FontWeight="Bold" FontSize="16" />
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <TextBlock Text="{Binding StartDate, StringFormat='From: {0:d}'}" Foreground="Gray" FontSize="13" />
-                                                <TextBlock Text="{Binding EndDate, StringFormat='To: {0:d}'}" Foreground="Gray" FontSize="13" />
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </DockPanel>
-                    </Border>
-                </Grid>
-            </DockPanel>
-        </TabItem>
-
-        <!-- TENANTS -->
-        <TabItem Header="Tenants">
-            <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
-                    <TextBlock Grid.Column="0" Classes="H1" Text="Tenants" Margin="0" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Refresh" Command="{Binding TenantList.LoadTenantsCommand}" Classes="Action" />
-                        <Button Content="+ New Tenant" Command="{Binding TenantList.NewTenantCommand}" Classes="Primary" />
-                    </StackPanel>
-                </Grid>
-
-                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding TenantList.IsEditing}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Classes="H2" Text="Edit Tenant" Margin="0" />
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0 0 0 0">
-                            <!-- Col 1 -->
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
-                                <TextBox PlaceholderText="Full Name" Text="{Binding TenantList.EditFullName}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12">
-                                <TextBox PlaceholderText="Phone (optional)" Text="{Binding TenantList.EditPhone}" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12">
-                                <TextBox PlaceholderText="Email (optional)" Text="{Binding TenantList.EditEmail}" />
-                            </StackPanel>
-                            <!-- Col 2 -->
-                            <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12">
-                                <ComboBox PlaceholderText="Assign Room" ItemsSource="{Binding TenantList.AvailableRooms}" SelectedItem="{Binding TenantList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12" Orientation="Horizontal" Spacing="8">
-                                <StackPanel>
-                                    <TextBlock Text="Move-in" FontSize="12" Foreground="Gray" />
-                                    <DatePicker SelectedDate="{Binding TenantList.EditMoveInDate}" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="Move-out (optional)" FontSize="12" Foreground="Gray" />
-                                    <DatePicker SelectedDate="{Binding TenantList.EditMoveOutDate}" />
-                                </StackPanel>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Grid.Row="2" Margin="8 0 0 12">
-                                <NumericUpDown PlaceholderText="Deposit Amount" Value="{Binding TenantList.EditDepositAmount}" Minimum="0" />
-                            </StackPanel>
-                        </Grid>
-                        <TextBox PlaceholderText="Notes (optional)" Text="{Binding TenantList.EditNotes}" AcceptsReturn="True" Height="60" />
-                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-                            <Button Content="Cancel" Command="{Binding TenantList.CancelEditCommand}" Classes="Action" />
-                            <Button Content="Save Tenant" Command="{Binding TenantList.SaveTenantCommand}" Classes="Primary Action" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
-                    <Button Content="Edit" Command="{Binding TenantList.EditTenantCommand}" Classes="Action" />
-                    <Button Content="Deactivate" Command="{Binding TenantList.DeactivateTenantCommand}" Classes="Action" />
-                </StackPanel>
-
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,1*,1*,1*" Margin="16 0 16 8">
-                    <TextBlock Grid.Column="0" Text="Full Name" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="1" Text="Phone" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="2" Text="Status" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="3" Text="Move-in" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="4" Text="Move-out" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="5" Text="Deposit" Foreground="Gray" FontWeight="Medium" />
-                </Grid>
-
-                <ListBox Classes="Table" ItemsSource="{Binding TenantList.Tenants}" SelectedItem="{Binding TenantList.SelectedTenant}">
-                    <ListBox.ItemTemplate>
+    <Grid RowDefinitions="Auto,*">
+        <!-- TOP BAR -->
+        <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="16 12" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource TableBorderBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right">
+                <TextBlock Text="Vivienda Activa:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                <ComboBox ItemsSource="{Binding Properties}" SelectedItem="{Binding SelectedProperty}" Width="200">
+                    <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid ColumnDefinitions="2*,1*,1*,1*,1*,1*">
-                                <TextBlock Grid.Column="0" Text="{Binding FullName}" FontWeight="Medium" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding Phone}" Foreground="Gray" VerticalAlignment="Center" />
-                                <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
-                                    <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
-                                               Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
-                                               FontSize="12" FontWeight="Bold" />
-                                </Border>
-                                <TextBlock Grid.Column="3" Text="{Binding MoveInDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding MoveOutDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="5" Text="{Binding DepositAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
-                            </Grid>
+                            <TextBlock Text="{Binding Name}" />
                         </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </TabItem>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
+            </StackPanel>
+        </Border>
 
-        <!-- CONTRACTS -->
-        <TabItem Header="Contracts">
-            <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
-                    <TextBlock Grid.Column="0" Classes="H1" Text="Contracts" Margin="0" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Refresh" Command="{Binding ContractList.LoadContractsCommand}" Classes="Action" />
-                        <Button Content="+ New Contract" Command="{Binding ContractList.NewContractCommand}" Classes="Primary" />
-                    </StackPanel>
-                </Grid>
+        <!-- MAIN NAVIGATION -->
+        <TabControl Grid.Row="1" SelectionChanged="TabControl_SelectionChanged">
+            
+            <!-- DASHBOARD -->
+            <TabItem Header="{DynamicResource DashboardTab}">
+                <views:DashboardView />
+            </TabItem>
 
-                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding ContractList.IsEditing}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Classes="H2" Text="Edit Contract" Margin="0" />
-                        <ComboBox PlaceholderText="Select Tenant" ItemsSource="{Binding ContractList.AvailableTenants}" SelectedItem="{Binding ContractList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
-                        <TextBox PlaceholderText="File Path (absolute)" Text="{Binding ContractList.EditFilePath}" />
-                        <StackPanel Orientation="Horizontal" Spacing="16">
-                            <StackPanel>
-                                <TextBlock Text="Start Date" FontSize="12" Foreground="Gray" />
-                                <DatePicker SelectedDate="{Binding ContractList.EditStartDate}" />
-                            </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="End Date (optional)" FontSize="12" Foreground="Gray" />
-                                <DatePicker SelectedDate="{Binding ContractList.EditEndDate}" />
-                            </StackPanel>
-                        </StackPanel>
-                        <TextBox PlaceholderText="Notes (optional)" Text="{Binding ContractList.EditNotes}" AcceptsReturn="True" Height="60" />
-                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-                            <Button Content="Cancel" Command="{Binding ContractList.CancelEditCommand}" Classes="Action" />
-                            <Button Content="Save Contract" Command="{Binding ContractList.SaveContractCommand}" Classes="Primary Action" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+            <!-- PROPERTIES -->
+            <TabItem Header="Viviendas">
+                <views:PropertiesView />
+            </TabItem>
 
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
-                    <Button Content="Edit" Command="{Binding ContractList.EditContractCommand}" Classes="Action" />
-                    <Button Content="Open File" Command="{Binding ContractList.OpenFileCommand}" Classes="Action" />
-                    <Button Content="Delete" Command="{Binding ContractList.DeleteContractCommand}" Classes="Action" />
-                </StackPanel>
+            <!-- ROOMS -->
+            <TabItem Header="{DynamicResource RoomsTab}">
+                <views:RoomsView />
+            </TabItem>
 
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,2*,1*,1*,1*" Margin="16 0 16 8">
-                    <TextBlock Grid.Column="0" Text="Tenant" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="1" Text="File Path" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="2" Text="File Status" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="3" Text="Start Date" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="4" Text="End Date" Foreground="Gray" FontWeight="Medium" />
-                </Grid>
+            <!-- TENANTS -->
+            <TabItem Header="{DynamicResource TenantsTab}">
+                <views:TenantsView />
+            </TabItem>
 
-                <ListBox Classes="Table" ItemsSource="{Binding ContractList.Contracts}" SelectedItem="{Binding ContractList.SelectedItem}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid ColumnDefinitions="1.5*,2*,1*,1*,1*">
-                                <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding Contract.FilePath}" Foreground="Gray" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
-                                <TextBlock Grid.Column="2" Text="{Binding FileStatus}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="3" Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </TabItem>
+            <!-- CONTRACTS -->
+            <TabItem Header="{DynamicResource ContractsTab}">
+                <views:ContractsView />
+            </TabItem>
 
-        <!-- PAYMENTS -->
-        <TabItem Header="Payments">
-            <DockPanel>
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
-                    <TextBlock Grid.Column="0" Classes="H1" Text="Payments" Margin="0" VerticalAlignment="Center" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                        <Button Content="Refresh" Command="{Binding PaymentList.LoadPaymentsCommand}" Classes="Action" />
-                        <Button Content="+ New Payment" Command="{Binding PaymentList.NewPaymentCommand}" Classes="Primary" />
-                    </StackPanel>
-                </Grid>
+            <!-- PAYMENTS -->
+            <TabItem Header="{DynamicResource PaymentsTab}">
+                <views:PaymentsView />
+            </TabItem>
 
-                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding PaymentList.IsEditing}">
-                    <StackPanel Spacing="16">
-                        <TextBlock Classes="H2" Text="Edit Payment" Margin="0" />
-                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0">
-                            <!-- Col 1 -->
-                            <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
-                                <ComboBox PlaceholderText="Select Tenant" ItemsSource="{Binding PaymentList.AvailableTenants}" SelectedItem="{Binding PaymentList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12" Orientation="Horizontal" Spacing="8">
-                                <NumericUpDown PlaceholderText="Year" Value="{Binding PaymentList.EditYear}" Minimum="2000" Maximum="2100" />
-                                <NumericUpDown PlaceholderText="Month" Value="{Binding PaymentList.EditMonth}" Minimum="1" Maximum="12" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12">
-                                <ComboBox PlaceholderText="Status" ItemsSource="{Binding PaymentList.AvailableStatuses}" SelectedItem="{Binding PaymentList.EditStatus}" HorizontalAlignment="Stretch" />
-                            </StackPanel>
-                            
-                            <!-- Col 2 -->
-                            <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12" Orientation="Horizontal" Spacing="8">
-                                <NumericUpDown PlaceholderText="Expected Amount" Value="{Binding PaymentList.EditExpectedAmount}" Minimum="0" />
-                                <NumericUpDown PlaceholderText="Paid Amount" Value="{Binding PaymentList.EditPaidAmount}" Minimum="0" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12">
-                                <TextBlock Text="Paid Date (optional)" FontSize="12" Foreground="Gray" />
-                                <DatePicker SelectedDate="{Binding PaymentList.EditPaidDate}" />
-                            </StackPanel>
-                        </Grid>
-                        <TextBox PlaceholderText="Notes (optional)" Text="{Binding PaymentList.EditNotes}" AcceptsReturn="True" Height="60" />
-                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
-                            <Button Content="Cancel" Command="{Binding PaymentList.CancelEditCommand}" Classes="Action" />
-                            <Button Content="Save Payment" Command="{Binding PaymentList.SavePaymentCommand}" Classes="Primary Action" />
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
+            <!-- EXPENSES -->
+            <TabItem Header="Gastos">
+                <views:ExpensesView DataContext="{Binding}" />
+            </TabItem>
 
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
-                    <Button Content="Edit" Command="{Binding PaymentList.EditPaymentCommand}" Classes="Action" />
-                </StackPanel>
-
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,1*" Margin="16 0 16 8">
-                    <TextBlock Grid.Column="0" Text="Tenant" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="1" Text="Year" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="2" Text="Month" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="3" Text="Expected" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="4" Text="Paid" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="5" Text="Status" Foreground="Gray" FontWeight="Medium" />
-                    <TextBlock Grid.Column="6" Text="Paid Date" Foreground="Gray" FontWeight="Medium" />
-                </Grid>
-
-                <ListBox Classes="Table" ItemsSource="{Binding PaymentList.Payments}" SelectedItem="{Binding PaymentList.SelectedItem}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,1*">
-                                <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding Payment.Year}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="2" Text="{Binding Payment.Month}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="3" Text="{Binding Payment.ExpectedAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding Payment.PaidAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="5" Text="{Binding Payment.Status}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="6" Text="{Binding Payment.PaidDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </TabItem>
-    </TabControl>
+            <!-- SETTINGS -->
+            <TabItem Header="{DynamicResource SettingsTab}">
+                <views:SettingsView />
+            </TabItem>
+        </TabControl>
+    </Grid>
 </Window>

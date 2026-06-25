@@ -11,5 +11,7 @@ public static class DatabasePath
 
     public static string FullPath => Path.Combine(BaseDirectory, "tenantmanager.db");
 
+    public static string SettingsPath => Path.Combine(BaseDirectory, "settings.json");
+
     public static string ConnectionString => $"Data Source={FullPath}";
 }

@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="1000" d:DesignHeight="700"
+             x:Class="TenantManager.App.Views.DashboardView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource DashboardTitle}" Margin="0" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Content="{DynamicResource RefreshButton}" Command="{Binding Dashboard.RefreshCommand}" Classes="Action" HorizontalAlignment="Right" />
+        </Grid>
+
+        <ScrollViewer>
+            <StackPanel Spacing="24">
+                <!-- Visual Charts Grid -->
+                <Grid ColumnDefinitions="*,*,*" Margin="0">
+                    <!-- Card 1: Room Occupancy -->
+                    <Border Classes="Card" Grid.Column="0" Margin="0 0 16 0" Height="220">
+                        <DockPanel>
+                            <TextBlock Text="{DynamicResource RoomOccupancyLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <!-- Progress Ring -->
+                                <Grid Grid.Column="0" Width="110" Height="110" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 16 0">
+                                    <Arc Stroke="{DynamicResource TableBorderBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="0" SweepAngle="360" />
+                                    <Arc Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="-90" SweepAngle="{Binding Dashboard.OccupancySweepAngle}" StrokeLineCap="Round" />
+                                    <TextBlock Text="{Binding Dashboard.OccupancyPercentageString}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <!-- Stats Details -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+                                        <TextBlock Text="{DynamicResource TotalRoomsLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.TotalRooms}" FontWeight="Bold" Margin="8 0 0 0" HorizontalAlignment="Right" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{DynamicResource OccupiedText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.OccupiedRoomsCount}" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="8 0 0 0" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{DynamicResource AvailableText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.AvailableRoomsCount}" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="8 0 0 0" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Card 2: Income Collected (Current Month) -->
+                    <Border Classes="Card" Grid.Column="1" Margin="0 0 16 0" Height="220">
+                        <DockPanel>
+                            <TextBlock Text="{DynamicResource IncomeCollectionLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <!-- Progress Ring -->
+                                <Grid Grid.Column="0" Width="110" Height="110" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 16 0">
+                                    <Arc Stroke="{DynamicResource TableBorderBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="0" SweepAngle="360" />
+                                    <Arc Stroke="{DynamicResource SuccessBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="-90" SweepAngle="{Binding Dashboard.IncomeSweepAngle}" StrokeLineCap="Round" />
+                                    <TextBlock Text="{Binding Dashboard.IncomeCollectedPercentageString}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <!-- Stats Details -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource ExpectedText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                        <TextBlock Text="{Binding Dashboard.ExpectedIncome, StringFormat='{}{0:C}'}" FontWeight="Bold" FontSize="14" />
+                                    </StackPanel>
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource PaidText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" />
+                                        <TextBlock Text="{Binding Dashboard.CollectedIncome, StringFormat='{}{0:C}'}" FontWeight="Bold" FontSize="14" Foreground="{DynamicResource SuccessBrush}" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Card 3: Payment Distribution (Total Donut) -->
+                    <Border Classes="Card" Grid.Column="2" Margin="0" Height="220">
+                        <DockPanel>
+                            <TextBlock Text="{DynamicResource PaymentStatusLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 12" />
+                            <Grid ColumnDefinitions="Auto,*">
+                                <!-- Donut Chart -->
+                                <Grid Grid.Column="0" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 12 0">
+                                    <Arc Stroke="{DynamicResource TableBorderBrush}" StrokeThickness="12" Width="100" Height="100" StartAngle="0" SweepAngle="360" />
+                                    <Arc Stroke="{DynamicResource SuccessBrush}" StrokeThickness="12" Width="100" Height="100"
+                                         StartAngle="{Binding Dashboard.PaidStartAngle}" SweepAngle="{Binding Dashboard.PaidSweepAngle}" StrokeLineCap="Round" />
+                                    <Arc Stroke="#FF9800" StrokeThickness="12" Width="100" Height="100"
+                                         StartAngle="{Binding Dashboard.PartialStartAngle}" SweepAngle="{Binding Dashboard.PartialSweepAngle}" StrokeLineCap="Round" />
+                                    <Arc Stroke="{DynamicResource DangerBrush}" StrokeThickness="12" Width="100" Height="100"
+                                         StartAngle="{Binding Dashboard.LateStartAngle}" SweepAngle="{Binding Dashboard.LateSweepAngle}" StrokeLineCap="Round" />
+                                    <Arc Stroke="#9C27B0" StrokeThickness="12" Width="100" Height="100"
+                                         StartAngle="{Binding Dashboard.WaivedStartAngle}" SweepAngle="{Binding Dashboard.WaivedSweepAngle}" StrokeLineCap="Round" />
+                                    <Arc Stroke="#2196F3" StrokeThickness="12" Width="100" Height="100"
+                                         StartAngle="{Binding Dashboard.PendingStartAngle}" SweepAngle="{Binding Dashboard.PendingSweepAngle}" StrokeLineCap="Round" />
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="Total" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{Binding Dashboard.TotalPaymentsCount}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                <!-- Legend Grid -->
+                                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
+                                    <!-- Paid -->
+                                    <Ellipse Grid.Row="0" Grid.Column="0" Fill="{DynamicResource SuccessBrush}" Width="8" Height="8" Margin="0 2 6 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource PaidStatus}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="0" Grid.Column="2" Text="{Binding Dashboard.PaidPaymentsCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="0 2" VerticalAlignment="Center" />
+
+                                    <!-- Pending -->
+                                    <Ellipse Grid.Row="1" Grid.Column="0" Fill="#2196F3" Width="8" Height="8" Margin="0 2 6 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{DynamicResource PendingStatus}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Dashboard.PendingPaymentsCount}" FontSize="11" FontWeight="Bold" Margin="0 2" VerticalAlignment="Center" />
+
+                                    <!-- Partial -->
+                                    <Ellipse Grid.Row="2" Grid.Column="0" Fill="#FF9800" Width="8" Height="8" Margin="0 2 6 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{DynamicResource PartialStatus}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Dashboard.PartialPaymentsCount}" FontSize="11" FontWeight="Bold" Margin="0 2" VerticalAlignment="Center" />
+
+                                    <!-- Late -->
+                                    <Ellipse Grid.Row="3" Grid.Column="0" Fill="{DynamicResource DangerBrush}" Width="8" Height="8" Margin="0 2 6 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{DynamicResource LateStatus}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding Dashboard.LatePaymentsCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" Margin="0 2" VerticalAlignment="Center" />
+
+                                    <!-- Waived -->
+                                    <Ellipse Grid.Row="4" Grid.Column="0" Fill="#9C27B0" Width="8" Height="8" Margin="0 2 6 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{DynamicResource WaivedStatus}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 2" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding Dashboard.WaivedPaymentsCount}" FontSize="11" FontWeight="Bold" Margin="0 2" VerticalAlignment="Center" />
+                                </Grid>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Lists & Alerts Grid -->
+                <Grid ColumnDefinitions="*,*,*">
+                    <!-- Column 0: Pending/Late Payments -->
+                    <Border Classes="Card" Grid.Column="0" Margin="0 0 16 0" MinHeight="300">
+                        <DockPanel>
+                            <TextBlock Classes="H2" Text="{DynamicResource PendingLatePaymentsLabel}" DockPanel.Dock="Top" />
+                            <TextBlock Text="{DynamicResource NoPendingPaymentsMsg}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoPendingPayments}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 40 0 0"/>
+                            
+                            <ListBox Classes="Table" ItemsSource="{Binding Dashboard.PendingPayments}" IsVisible="{Binding !Dashboard.HasNoPendingPayments}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 4">
+                                            <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8 0" VerticalAlignment="Center" FontSize="11" />
+                                            <TextBlock Grid.Column="2" Text="{Binding ExpectedAmount, StringFormat='{}{0:C}'}" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Column 1: Available Rooms -->
+                    <Border Classes="Card" Grid.Column="1" Margin="0 0 16 0" MinHeight="300">
+                        <DockPanel>
+                            <TextBlock Classes="H2" Text="{DynamicResource AvailableRoomsLabel}" DockPanel.Dock="Top" />
+                            <TextBlock Text="{DynamicResource NoAvailableRoomsMsg}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoAvailableRooms}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 40 0 0"/>
+
+                            <ListBox Classes="Table" ItemsSource="{Binding Dashboard.AvailableRooms}" IsVisible="{Binding !Dashboard.HasNoAvailableRooms}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0 4">
+                                            <TextBlock Grid.Column="0" Text="{Binding RoomName}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1" Text="{Binding MonthlyRent, StringFormat='{}{0:C}'}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Column 2: Missing Contracts -->
+                    <Border Classes="Card" Grid.Column="2" Margin="0" MinHeight="300">
+                        <DockPanel>
+                            <TextBlock Classes="H2" Text="{DynamicResource MissingContractFilesLabel}" DockPanel.Dock="Top" />
+                            <TextBlock Text="{DynamicResource AllContractsValidMsg}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoMissingContracts}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 40 0 0"/>
+
+                            <ListBox Classes="Table" ItemsSource="{Binding Dashboard.MissingContracts}" IsVisible="{Binding !Dashboard.HasNoMissingContracts}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0 4">
+                                            <TextBlock Text="{Binding TenantName}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

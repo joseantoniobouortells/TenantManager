@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.RoomsView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource RoomsTitle}" Margin="0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="{DynamicResource RefreshButton}" Command="{Binding RoomList.LoadRoomsCommand}" Classes="Action" />
+                <Button Content="{DynamicResource NewRoomButton}" Command="{Binding RoomList.NewRoomCommand}" Classes="Primary" />
+            </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="2*, 1.2*">
+            <!-- Left Side: Rooms List & Editing -->
+            <DockPanel Grid.Column="0" Margin="0 0 16 0">
+                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding RoomList.IsEditing}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource EditRoomTitle}" Margin="0" />
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource RoomNameLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBox Text="{Binding RoomList.EditName}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Precio Base (Alquiler)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding RoomList.EditBaseRent}" Minimum="0" FormatString="0.00" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBox Text="{Binding RoomList.EditNotes}" AcceptsReturn="True" Height="80" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                            <Button Content="{DynamicResource CancelButton}" Command="{Binding RoomList.CancelEditCommand}" Classes="Action" />
+                            <Button Content="{DynamicResource SaveRoomButton}" Command="{Binding RoomList.SaveRoomCommand}" Classes="Primary" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding RoomList.HasSelectedRoom}">
+                    <Button Content="{DynamicResource EditButton}" Command="{Binding RoomList.EditRoomCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource DeactivateButton}" Command="{Binding RoomList.DeactivateRoomCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource ReactivateButton}" Command="{Binding RoomList.ReactivateRoomCommand}" Classes="Action" />
+                </StackPanel>
+
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*" Margin="16 0 16 8">
+                    <TextBlock Grid.Column="0" Text="{DynamicResource NameHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="1" Text="Precio Base" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="3" Text="{DynamicResource NotesHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                </Grid>
+
+                <ListBox Classes="Table" ItemsSource="{Binding RoomList.Rooms}" SelectedItem="{Binding RoomList.SelectedRoom}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="2*,1*,1*,2*">
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding BaseRent, StringFormat='{}{0:C}'}" VerticalAlignment="Center" />
+                                <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
+                                    <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
+                                               Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
+                                               FontSize="12" FontWeight="Bold" />
+                                </Border>
+                                <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+        </Grid>
+    </DockPanel>
+</UserControl>

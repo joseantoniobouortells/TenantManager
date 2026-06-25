@@ -13,17 +13,17 @@ public class RoomListViewModel : ViewModelBase
     private Room? _editingRoom;
     private Room? _selectedRoom;
     private string _editName = string.Empty;
-    private decimal _editMonthlyRent;
+    private decimal _editBaseRent;
     private string? _editNotes;
     private bool _isEditing;
+    private int _currentPropertyId;
 
     public RoomListViewModel()
     {
         _db = new AppDbContext();
         Rooms = new ObservableCollection<Room>();
-        RentPeriods = new ObservableCollection<RoomRentPeriod>();
 
-        LoadRoomsCommand = new RelayCommand(_ => LoadRooms());
+        LoadRoomsCommand = new RelayCommand(_ => LoadRooms(_currentPropertyId));
         NewRoomCommand = new RelayCommand(_ => StartNewRoom());
         EditRoomCommand = new RelayCommand(_ => EditRoom());
         SaveRoomCommand = new RelayCommand(_ => SaveRoom());
@@ -31,13 +31,8 @@ public class RoomListViewModel : ViewModelBase
         DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
         ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
 
-        NewRentPeriodCommand = new RelayCommand(_ => StartNewRentPeriod());
-        EditRentPeriodCommand = new RelayCommand(_ => EditRentPeriod());
-        SaveRentPeriodCommand = new RelayCommand(_ => SaveRentPeriod());
-        CancelRentPeriodCommand = new RelayCommand(_ => CancelRentPeriod());
-        DeleteRentPeriodCommand = new RelayCommand(_ => DeleteRentPeriod());
-
-        LoadRooms();
+        DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
+        ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
     }
 
     public ObservableCollection<Room> Rooms { get; }
@@ -50,11 +45,7 @@ public class RoomListViewModel : ViewModelBase
     public RelayCommand DeactivateRoomCommand { get; }
     public RelayCommand ReactivateRoomCommand { get; }
 
-    public RelayCommand NewRentPeriodCommand { get; }
-    public RelayCommand EditRentPeriodCommand { get; }
-    public RelayCommand SaveRentPeriodCommand { get; }
-    public RelayCommand CancelRentPeriodCommand { get; }
-    public RelayCommand DeleteRentPeriodCommand { get; }
+
 
     public Room? SelectedRoom
     {
@@ -64,8 +55,7 @@ public class RoomListViewModel : ViewModelBase
             if (SetProperty(ref _selectedRoom, value))
             {
                 OnPropertyChanged(nameof(HasSelectedRoom));
-                LoadRentPeriods();
-                CancelRentPeriod();
+                if (_selectedRoom != null) EditRoom();
             }
         }
     }
@@ -78,10 +68,10 @@ public class RoomListViewModel : ViewModelBase
         set => SetProperty(ref _editName, value);
     }
 
-    public decimal EditMonthlyRent
+    public decimal EditBaseRent
     {
-        get => _editMonthlyRent;
-        set => SetProperty(ref _editMonthlyRent, value);
+        get => _editBaseRent;
+        set => SetProperty(ref _editBaseRent, value);
     }
 
     public string? EditNotes
@@ -96,62 +86,16 @@ public class RoomListViewModel : ViewModelBase
         set => SetProperty(ref _isEditing, value);
     }
 
-    public ObservableCollection<RoomRentPeriod> RentPeriods { get; }
 
-    private RoomRentPeriod? _selectedRentPeriod;
-    public RoomRentPeriod? SelectedRentPeriod
-    {
-        get => _selectedRentPeriod;
-        set => SetProperty(ref _selectedRentPeriod, value);
-    }
 
-    private RoomRentPeriod? _editingRentPeriod;
-    private bool _isEditingRentPeriod;
-    public bool IsEditingRentPeriod
+    public void LoadRooms(int propertyId)
     {
-        get => _isEditingRentPeriod;
-        set => SetProperty(ref _isEditingRentPeriod, value);
-    }
+        _currentPropertyId = propertyId;
+        if (_currentPropertyId == 0) return;
 
-    private decimal _rentPeriodEditMonthlyRent;
-    public decimal RentPeriodEditMonthlyRent
-    {
-        get => _rentPeriodEditMonthlyRent;
-        set => SetProperty(ref _rentPeriodEditMonthlyRent, value);
-    }
-
-    private DateTimeOffset _rentPeriodEditStartDate = DateTimeOffset.Now;
-    public DateTimeOffset RentPeriodEditStartDate
-    {
-        get => _rentPeriodEditStartDate;
-        set => SetProperty(ref _rentPeriodEditStartDate, value);
-    }
-
-    private DateTimeOffset? _rentPeriodEditEndDate;
-    public DateTimeOffset? RentPeriodEditEndDate
-    {
-        get => _rentPeriodEditEndDate;
-        set => SetProperty(ref _rentPeriodEditEndDate, value);
-    }
-
-    private string? _rentPeriodEditNotes;
-    public string? RentPeriodEditNotes
-    {
-        get => _rentPeriodEditNotes;
-        set => SetProperty(ref _rentPeriodEditNotes, value);
-    }
-
-    private string? _errorMessage;
-    public string? ErrorMessage
-    {
-        get => _errorMessage;
-        set => SetProperty(ref _errorMessage, value);
-    }
-
-    public void LoadRooms()
-    {
+        _db.ChangeTracker.Clear();
         Rooms.Clear();
-        foreach (var room in _db.Rooms.OrderBy(r => r.Name))
+        foreach (var room in _db.Rooms.Where(r => r.PropertyId == propertyId).OrderBy(r => r.Name))
         {
             Rooms.Add(room);
         }
@@ -161,7 +105,7 @@ public class RoomListViewModel : ViewModelBase
     {
         _editingRoom = null;
         EditName = string.Empty;
-        EditMonthlyRent = 0;
+        EditBaseRent = 0;
         EditNotes = null;
         IsEditing = true;
     }
@@ -173,7 +117,7 @@ public class RoomListViewModel : ViewModelBase
 
         _editingRoom = SelectedRoom;
         EditName = _editingRoom.Name;
-        EditMonthlyRent = _editingRoom.MonthlyRent;
+        EditBaseRent = _editingRoom.BaseRent;
         EditNotes = _editingRoom.Notes;
         IsEditing = true;
     }
@@ -187,8 +131,9 @@ public class RoomListViewModel : ViewModelBase
         {
             var room = new Room
             {
+                PropertyId = _currentPropertyId,
                 Name = EditName.Trim(),
-                MonthlyRent = EditMonthlyRent,
+                BaseRent = EditBaseRent,
                 Notes = EditNotes?.Trim(),
                 IsActive = true
             };
@@ -197,12 +142,12 @@ public class RoomListViewModel : ViewModelBase
         else
         {
             _editingRoom.Name = EditName.Trim();
-            _editingRoom.MonthlyRent = EditMonthlyRent;
+            _editingRoom.BaseRent = EditBaseRent;
             _editingRoom.Notes = EditNotes?.Trim();
         }
 
         _db.SaveChanges();
-        LoadRooms();
+        LoadRooms(_currentPropertyId);
         CancelEdit();
     }
 
@@ -210,7 +155,7 @@ public class RoomListViewModel : ViewModelBase
     {
         _editingRoom = null;
         EditName = string.Empty;
-        EditMonthlyRent = 0;
+        EditBaseRent = 0;
         EditNotes = null;
         IsEditing = false;
     }
@@ -222,7 +167,7 @@ public class RoomListViewModel : ViewModelBase
 
         SelectedRoom.IsActive = false;
         _db.SaveChanges();
-        LoadRooms();
+        LoadRooms(_currentPropertyId);
     }
 
     private void ReactivateRoom()
@@ -232,105 +177,6 @@ public class RoomListViewModel : ViewModelBase
 
         SelectedRoom.IsActive = true;
         _db.SaveChanges();
-        LoadRooms();
-    }
-
-    private void LoadRentPeriods()
-    {
-        RentPeriods.Clear();
-        if (SelectedRoom != null)
-        {
-            var periods = _db.RoomRentPeriods
-                .Where(rp => rp.RoomId == SelectedRoom.Id)
-                .OrderByDescending(rp => rp.StartDate)
-                .ToList();
-
-            foreach (var period in periods)
-            {
-                RentPeriods.Add(period);
-            }
-        }
-    }
-
-    private void StartNewRentPeriod()
-    {
-        if (SelectedRoom == null) return;
-
-        ErrorMessage = null;
-        _editingRentPeriod = null;
-        RentPeriodEditMonthlyRent = SelectedRoom.MonthlyRent;
-        RentPeriodEditStartDate = DateTimeOffset.Now;
-        RentPeriodEditEndDate = null;
-        RentPeriodEditNotes = null;
-        IsEditingRentPeriod = true;
-    }
-
-    private void EditRentPeriod()
-    {
-        if (SelectedRentPeriod == null) return;
-
-        ErrorMessage = null;
-        _editingRentPeriod = SelectedRentPeriod;
-        RentPeriodEditMonthlyRent = _editingRentPeriod.MonthlyRent;
-        RentPeriodEditStartDate = _editingRentPeriod.StartDate;
-        RentPeriodEditEndDate = _editingRentPeriod.EndDate.HasValue ? new DateTimeOffset(_editingRentPeriod.EndDate.Value) : null;
-        RentPeriodEditNotes = _editingRentPeriod.Notes;
-        IsEditingRentPeriod = true;
-    }
-
-    private void SaveRentPeriod()
-    {
-        if (SelectedRoom == null) return;
-
-        if (_editingRentPeriod == null)
-        {
-            var newPeriod = new RoomRentPeriod
-            {
-                RoomId = SelectedRoom.Id,
-                MonthlyRent = RentPeriodEditMonthlyRent,
-                StartDate = RentPeriodEditStartDate.Date,
-                EndDate = RentPeriodEditEndDate?.Date,
-                Notes = RentPeriodEditNotes?.Trim()
-            };
-            _db.RoomRentPeriods.Add(newPeriod);
-        }
-        else
-        {
-            _editingRentPeriod.MonthlyRent = RentPeriodEditMonthlyRent;
-            _editingRentPeriod.StartDate = RentPeriodEditStartDate.Date;
-            _editingRentPeriod.EndDate = RentPeriodEditEndDate?.Date;
-            _editingRentPeriod.Notes = RentPeriodEditNotes?.Trim();
-        }
-
-        try
-        {
-            _db.SaveChanges();
-            LoadRentPeriods();
-            CancelRentPeriod();
-        }
-        catch (InvalidOperationException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Unexpected error: {ex.Message}";
-        }
-    }
-
-    private void CancelRentPeriod()
-    {
-        ErrorMessage = null;
-        _editingRentPeriod = null;
-        IsEditingRentPeriod = false;
-    }
-
-    private void DeleteRentPeriod()
-    {
-        if (SelectedRentPeriod == null) return;
-
-        _db.RoomRentPeriods.Remove(SelectedRentPeriod);
-        _db.SaveChanges();
-        LoadRentPeriods();
+        LoadRooms(_currentPropertyId);
     }
 }

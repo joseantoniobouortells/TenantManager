@@ -1,3 +1,4 @@
+using Avalonia.Controls;
 using Avalonia.Data.Converters;
 using System;
 using System.Globalization;
@@ -12,6 +13,14 @@ public class BooleanToActiveStatusConverter : IValueConverter
     {
         if (value is bool b)
         {
+            if (Avalonia.Application.Current != null)
+            {
+                var key = b ? "ActiveBadge" : "InactiveBadge";
+                if (Avalonia.Application.Current.TryGetResource(key, null, out var resource) && resource is string s)
+                {
+                    return s;
+                }
+            }
             return b ? "Active" : "Inactive";
         }
         return value;

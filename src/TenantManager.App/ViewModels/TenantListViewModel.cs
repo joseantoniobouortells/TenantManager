@@ -16,11 +16,10 @@ public class TenantListViewModel : ViewModelBase
     private string _editFullName = string.Empty;
     private string? _editPhone;
     private string? _editEmail;
-    private DateTimeOffset? _editMoveInDate;
-    private DateTimeOffset? _editMoveOutDate;
     private decimal _editDepositAmount;
     private string? _editNotes;
     private Room? _editSelectedRoom;
+    private int _currentPropertyId;
 
     public TenantListViewModel()
     {
@@ -28,14 +27,12 @@ public class TenantListViewModel : ViewModelBase
         Tenants = new ObservableCollection<Tenant>();
         AvailableRooms = new ObservableCollection<Room>();
 
-        LoadTenantsCommand = new RelayCommand(_ => LoadTenants());
+        LoadTenantsCommand = new RelayCommand(_ => LoadTenants(_currentPropertyId));
         NewTenantCommand = new RelayCommand(_ => StartNewTenant());
         EditTenantCommand = new RelayCommand(_ => EditTenant());
         SaveTenantCommand = new RelayCommand(_ => SaveTenant());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         DeactivateTenantCommand = new RelayCommand(_ => DeactivateTenant());
-
-        LoadTenants();
     }
 
     public ObservableCollection<Tenant> Tenants { get; }
@@ -51,7 +48,13 @@ public class TenantListViewModel : ViewModelBase
     public Tenant? SelectedTenant
     {
         get => _selectedTenant;
-        set => SetProperty(ref _selectedTenant, value);
+        set
+        {
+            if (SetProperty(ref _selectedTenant, value))
+            {
+                if (_selectedTenant != null) EditTenant();
+            }
+        }
     }
 
     public bool IsEditing
@@ -78,18 +81,6 @@ public class TenantListViewModel : ViewModelBase
         set => SetProperty(ref _editEmail, value);
     }
 
-    public DateTimeOffset? EditMoveInDate
-    {
-        get => _editMoveInDate;
-        set => SetProperty(ref _editMoveInDate, value);
-    }
-
-    public DateTimeOffset? EditMoveOutDate
-    {
-        get => _editMoveOutDate;
-        set => SetProperty(ref _editMoveOutDate, value);
-    }
-
     public decimal EditDepositAmount
     {
         get => _editDepositAmount;
@@ -108,12 +99,16 @@ public class TenantListViewModel : ViewModelBase
         set => SetProperty(ref _editSelectedRoom, value);
     }
 
-    public void LoadTenants()
+    public void LoadTenants(int propertyId)
     {
+        _currentPropertyId = propertyId;
+        if (_currentPropertyId == 0) return;
+
+        _db.ChangeTracker.Clear();
         LoadAvailableRooms();
 
         Tenants.Clear();
-        foreach (var tenant in _db.Tenants.OrderBy(t => t.FullName))
+        foreach (var tenant in _db.Tenants.Where(t => t.PropertyId == propertyId).OrderBy(t => t.FullName))
         {
             Tenants.Add(tenant);
         }
@@ -123,7 +118,7 @@ public class TenantListViewModel : ViewModelBase
     {
         AvailableRooms.Clear();
         AvailableRooms.Add(new Room { Id = 0, Name = "(None)" });
-        foreach (var room in _db.Rooms.Where(r => r.IsActive).OrderBy(r => r.Name))
+        foreach (var room in _db.Rooms.Where(r => r.IsActive && r.PropertyId == _currentPropertyId).OrderBy(r => r.Name))
         {
             AvailableRooms.Add(room);
         }
@@ -135,8 +130,6 @@ public class TenantListViewModel : ViewModelBase
         EditFullName = string.Empty;
         EditPhone = null;
         EditEmail = null;
-        EditMoveInDate = null;
-        EditMoveOutDate = null;
         EditDepositAmount = 0;
         EditNotes = null;
         EditSelectedRoom = AvailableRooms.FirstOrDefault();
@@ -152,12 +145,6 @@ public class TenantListViewModel : ViewModelBase
         EditFullName = _editingTenant.FullName;
         EditPhone = _editingTenant.Phone;
         EditEmail = _editingTenant.Email;
-        EditMoveInDate = _editingTenant.MoveInDate != default
-            ? new DateTimeOffset(_editingTenant.MoveInDate)
-            : null;
-        EditMoveOutDate = _editingTenant.MoveOutDate is DateTime mo
-            ? new DateTimeOffset(mo)
-            : null;
         EditDepositAmount = _editingTenant.DepositAmount;
         EditNotes = _editingTenant.Notes;
         EditSelectedRoom = _editingTenant.RoomId is int roomId
@@ -178,10 +165,9 @@ public class TenantListViewModel : ViewModelBase
                 FullName = EditFullName.Trim(),
                 Phone = EditPhone?.Trim(),
                 Email = EditEmail?.Trim(),
-                MoveInDate = EditMoveInDate?.DateTime ?? DateTime.Today,
-                MoveOutDate = EditMoveOutDate?.DateTime,
                 DepositAmount = EditDepositAmount,
                 Notes = EditNotes?.Trim(),
+                PropertyId = _currentPropertyId,
                 IsActive = true,
                 RoomId = EditSelectedRoom?.Id > 0 ? EditSelectedRoom.Id : null
             };
@@ -192,15 +178,13 @@ public class TenantListViewModel : ViewModelBase
             _editingTenant.FullName = EditFullName.Trim();
             _editingTenant.Phone = EditPhone?.Trim();
             _editingTenant.Email = EditEmail?.Trim();
-            _editingTenant.MoveInDate = EditMoveInDate?.DateTime ?? DateTime.Today;
-            _editingTenant.MoveOutDate = EditMoveOutDate?.DateTime;
             _editingTenant.DepositAmount = EditDepositAmount;
             _editingTenant.Notes = EditNotes?.Trim();
             _editingTenant.RoomId = EditSelectedRoom?.Id > 0 ? EditSelectedRoom.Id : null;
         }
 
         _db.SaveChanges();
-        LoadTenants();
+        LoadTenants(_currentPropertyId);
         CancelEdit();
     }
 
@@ -210,8 +194,6 @@ public class TenantListViewModel : ViewModelBase
         EditFullName = string.Empty;
         EditPhone = null;
         EditEmail = null;
-        EditMoveInDate = null;
-        EditMoveOutDate = null;
         EditDepositAmount = 0;
         EditNotes = null;
         EditSelectedRoom = null;
@@ -225,6 +207,6 @@ public class TenantListViewModel : ViewModelBase
 
         SelectedTenant.IsActive = false;
         _db.SaveChanges();
-        LoadTenants();
+        LoadTenants(_currentPropertyId);
     }
 }

@@ -1,0 +1,175 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.ContractsView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource ContractsTitle}" Margin="0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="{DynamicResource RefreshButton}" Command="{Binding ContractList.LoadContractsCommand}" Classes="Action" />
+                <Button Content="{DynamicResource NewContractButton}" Command="{Binding ContractList.NewContractCommand}" Classes="Primary" />
+            </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="2*, 1.2*">
+            <!-- Left Side: Contracts List & Editing -->
+            <DockPanel Grid.Column="0" Margin="0 0 16 0">
+                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding ContractList.IsEditing}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource EditContractTitle}" Margin="0" />
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <ComboBox ItemsSource="{Binding ContractList.AvailableTenants}" SelectedItem="{Binding ContractList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource FilePathLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Text="{Binding ContractList.EditFilePath}" IsReadOnly="True" />
+                                <Button Grid.Column="1" Content="..." Click="BrowseFile_Click" Margin="8 0 0 0" Classes="Action" />
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource StartDateLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                                <DatePicker SelectedDate="{Binding ContractList.EditStartDate}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource EndDateOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                                <DatePicker SelectedDate="{Binding ContractList.EditEndDate}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <StackPanel>
+                                <TextBlock Text="Cuota de Alquiler" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <NumericUpDown Value="{Binding ContractList.EditMonthlyRent}" Minimum="0" FormatString="0.00" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Tipo de Gastos" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseTypes}" SelectedItem="{Binding ContractList.EditExpensePaymentType}" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Fixed}">
+                                <TextBlock Text="Gastos Fijos" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <NumericUpDown Value="{Binding ContractList.EditFixedExpenseAmount}" Minimum="0" FormatString="0.00" />
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBox Text="{Binding ContractList.EditNotes}" AcceptsReturn="True" Height="60" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                            <Button Content="{DynamicResource CancelButton}" Command="{Binding ContractList.CancelEditCommand}" Classes="Action" />
+                            <Button Content="{DynamicResource SaveContractButton}" Command="{Binding ContractList.SaveContractCommand}" Classes="Primary" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding ContractList.HasSelectedContract}">
+                    <Button Content="{DynamicResource EditButton}" Command="{Binding ContractList.EditContractCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource OpenFileButton}" Command="{Binding ContractList.OpenFileCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource DeleteButton}" Command="{Binding ContractList.DeleteContractCommand}" Classes="Action" />
+                </StackPanel>
+
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,2*,1*,1*,1*" Margin="16 0 16 8">
+                    <TextBlock Grid.Column="0" Text="{DynamicResource TenantHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="1" Text="{DynamicResource FilePathHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="2" Text="{DynamicResource FileStatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="3" Text="{DynamicResource StartDateLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="4" Text="{DynamicResource EndDateOptionalLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                </Grid>
+
+                <ListBox Classes="Table" ItemsSource="{Binding ContractList.Contracts}" SelectedItem="{Binding ContractList.SelectedItem}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid ColumnDefinitions="1.5*,2*,1*,1*,1*">
+                                <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding Contract.FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
+                                <TextBlock Grid.Column="2" Text="{Binding FileExists, Converter={StaticResource YesNoConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="3" Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="4" Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+            <!-- Right Side: Extensions -->
+            <Border Grid.Column="1" Classes="Card" IsVisible="{Binding ContractList.HasSelectedContract}" Margin="0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="H2" Text="{DynamicResource ExtensionsTitle}" />
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
+                        <Button Content="{DynamicResource NewExtensionButton}" Command="{Binding ContractList.NewExtensionCommand}" Classes="Primary" />
+                        <Button Content="{DynamicResource EditButton}" Command="{Binding ContractList.EditExtensionCommand}" Classes="Action" />
+                        <Button Content="{DynamicResource DeleteButton}" Command="{Binding ContractList.DeleteExtensionCommand}" Classes="Action" />
+                        <Button Content="{DynamicResource OpenFileButton}" Command="{Binding ContractList.OpenFileExtensionCommand}" Classes="Action" />
+                    </StackPanel>
+
+                    <Border DockPanel.Dock="Top" IsVisible="{Binding ContractList.IsEditingExtension}" Padding="16" Background="{DynamicResource PeriodEditBackgroundBrush}" CornerRadius="8" Margin="0 0 0 16">
+                        <StackPanel Spacing="12">
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource FilePathLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBox Grid.Column="0" Text="{Binding ContractList.ExtensionEditFilePath}" IsReadOnly="True" />
+                                    <Button Grid.Column="1" Content="..." Click="BrowseExtensionFile_Click" Margin="8 0 0 0" Classes="Action" />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource StartDateLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <DatePicker SelectedDate="{Binding ContractList.ExtensionEditStartDate}" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource EndDateOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <DatePicker SelectedDate="{Binding ContractList.ExtensionEditEndDate}" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <StackPanel>
+                                    <TextBlock Text="Alquiler" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.ExtensionEditMonthlyRent}" Minimum="0" FormatString="0.00" Width="100" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="Gastos" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseTypes}" SelectedItem="{Binding ContractList.ExtensionEditExpensePaymentType}" Width="110" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding ContractList.ExtensionEditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Fixed}">
+                                    <TextBlock Text="Fijo" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.ExtensionEditFixedExpenseAmount}" Minimum="0" FormatString="0.00" Width="90" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <TextBox Text="{Binding ContractList.ExtensionEditNotes}" AcceptsReturn="True" Height="60" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                                <Button Content="{DynamicResource CancelButton}" Command="{Binding ContractList.CancelExtensionCommand}" Classes="Action" />
+                                <Button Content="{DynamicResource SaveButton}" Command="{Binding ContractList.SaveExtensionCommand}" Classes="Primary" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <ListBox Classes="Table" ItemsSource="{Binding ContractList.Extensions}" SelectedItem="{Binding ContractList.SelectedExtension}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="{Binding FilePath}" FontWeight="Bold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{DynamicResource FromLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" />
+                                            <TextBlock Text="{Binding StartDate, StringFormat='{}{0:d}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" />
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{DynamicResource ToLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" />
+                                            <TextBlock Text="{Binding EndDate, StringFormat='{}{0:d}'}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="13" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

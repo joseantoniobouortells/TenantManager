@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.PaymentsView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource PaymentsTitle}" Margin="0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="{DynamicResource RefreshButton}" Command="{Binding PaymentList.LoadPaymentsCommand}" Classes="Action" />
+                <Button Content="{DynamicResource BatchGenerateButton}" Command="{Binding PaymentList.StartBatchCommand}" Classes="Action" />
+                <Button Content="{DynamicResource NewPaymentButton}" Command="{Binding PaymentList.NewPaymentCommand}" Classes="Primary" />
+            </StackPanel>
+        </Grid>
+
+        <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding PaymentList.IsBatchGenerating}" Margin="0 0 0 16" Background="{DynamicResource PeriodEditBackgroundBrush}">
+            <StackPanel Spacing="16">
+                <TextBlock Classes="H2" Text="{DynamicResource BatchGenerateTitle}" Margin="0" />
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0">
+                    <!-- Col 1 -->
+                    <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
+                        <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <ComboBox ItemsSource="{Binding PaymentList.AvailableTenants}" SelectedItem="{Binding PaymentList.BatchSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12" Orientation="Horizontal" Spacing="8">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource FromYearLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.BatchStartYear}" Minimum="2000" Maximum="2100" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource FromMonthLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.BatchStartMonth}" Minimum="1" Maximum="12" FormatString="0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12" Orientation="Horizontal" Spacing="8">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource ToYearLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.BatchEndYear}" Minimum="2000" Maximum="2100" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource ToMonthLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.BatchEndMonth}" Minimum="1" Maximum="12" FormatString="0" />
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- Col 2 -->
+                    <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12">
+                        <TextBlock Text="{DynamicResource StatusHeader}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <ComboBox ItemsSource="{Binding PaymentList.AvailableStatuses}" SelectedItem="{Binding PaymentList.BatchDefaultStatus}" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12">
+                        <TextBlock Text="{DynamicResource PaidDateLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <DatePicker SelectedDate="{Binding PaymentList.BatchPaidDate}" />
+                            <Button Content="X" Command="{Binding PaymentList.ClearBatchPaidDateCommand}" Classes="Action" Padding="8 4" ToolTip.Tip="Clear Date" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                    <Button Content="{DynamicResource CancelButton}" Command="{Binding PaymentList.CancelBatchCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource GenerateButton}" Command="{Binding PaymentList.GenerateBatchCommand}" Classes="Primary" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding PaymentList.IsEditing}">
+            <StackPanel Spacing="16">
+                <TextBlock Classes="H2" Text="{DynamicResource EditPaymentTitle}" Margin="0" />
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0">
+                    <!-- Col 1 -->
+                    <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <ComboBox ItemsSource="{Binding PaymentList.AvailableTenants}" SelectedItem="{Binding PaymentList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12" Orientation="Horizontal" Spacing="8">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource YearLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.EditYear}" Minimum="2000" Maximum="2100" FormatString="0" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource MonthLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.EditMonth}" Minimum="1" Maximum="12" FormatString="0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12">
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource StatusHeader}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <ComboBox ItemsSource="{Binding PaymentList.AvailableStatuses}" SelectedItem="{Binding PaymentList.EditStatus}" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+                    </StackPanel>
+                    
+                    <!-- Col 2 -->
+                    <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12" Orientation="Horizontal" Spacing="8">
+                        <StackPanel>
+                            <TextBlock Text="Rent Amount" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.EditExpectedRentAmount}" Minimum="0" FormatString="0.00" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Expense Amount" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.EditExpectedExpenseAmount}" Minimum="0" FormatString="0.00" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource PaidAmountLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding PaymentList.EditPaidAmount}" Minimum="0" FormatString="0.00" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12">
+                        <TextBlock Text="{DynamicResource PaidDateLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <DatePicker SelectedDate="{Binding PaymentList.EditPaidDate}" />
+                            <Button Content="X" Command="{Binding PaymentList.ClearPaidDateCommand}" Classes="Action" Padding="8 4" ToolTip.Tip="Clear Date" />
+                        </StackPanel>
+                    </StackPanel>
+                </Grid>
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                    <TextBox Text="{Binding PaymentList.EditNotes}" AcceptsReturn="True" Height="60" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                    <Button Content="{DynamicResource CancelButton}" Command="{Binding PaymentList.CancelEditCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource SavePaymentButton}" Command="{Binding PaymentList.SavePaymentCommand}" Classes="Primary" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
+            <Button Content="{DynamicResource EditButton}" Command="{Binding PaymentList.EditPaymentCommand}" Classes="Action" />
+        </StackPanel>
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,1*,1*" Margin="16 0 16 8">
+            <TextBlock Grid.Column="0" Text="{DynamicResource TenantHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource YearLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="2" Text="{DynamicResource MonthLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="3" Text="Expected Rent" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="4" Text="Expected Exp." Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="5" Text="{DynamicResource PaidHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="6" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="7" Text="{DynamicResource PaidDateHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+        </Grid>
+
+        <ListBox Classes="Table" ItemsSource="{Binding PaymentList.Payments}" SelectedItem="{Binding PaymentList.SelectedItem}" SelectionMode="Multiple" KeyDown="ListBox_KeyDown">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,1*,1*">
+                        <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Payment.Year}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding Payment.Month}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Payment.ExpectedRentAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding Payment.ExpectedExpenseAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="5" Text="{Binding Payment.PaidAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="6" Text="{Binding Payment.Status, Converter={StaticResource PaymentStatusConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="7" Text="{Binding Payment.PaidDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

@@ -15,7 +15,7 @@ public partial class MainWindow : Window
     {
         if (e.Source is TabControl && DataContext is MainViewModel vm)
         {
-            vm.Dashboard.Refresh();
+            vm.RefreshAll();
         }
     }
 }

@@ -1,0 +1,85 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.TenantsView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource TenantsTitle}" Margin="0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="{DynamicResource RefreshButton}" Command="{Binding TenantList.LoadTenantsCommand}" Classes="Action" />
+                <Button Content="{DynamicResource NewTenantButton}" Command="{Binding TenantList.NewTenantCommand}" Classes="Primary" />
+            </StackPanel>
+        </Grid>
+
+        <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding TenantList.IsEditing}">
+            <StackPanel Spacing="16">
+                <TextBlock Classes="H2" Text="{DynamicResource EditTenantTitle}" Margin="0" />
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" Margin="0 0 0 0">
+                    <!-- Col 1 -->
+                    <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
+                        <TextBlock Text="{DynamicResource FullNameLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <TextBox Text="{Binding TenantList.EditFullName}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12">
+                        <TextBlock Text="{DynamicResource PhoneOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <TextBox Text="{Binding TenantList.EditPhone}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12">
+                        <TextBlock Text="{DynamicResource EmailOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <TextBox Text="{Binding TenantList.EditEmail}" />
+                    </StackPanel>
+                    <!-- Col 2 -->
+                    <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12">
+                        <TextBlock Text="{DynamicResource AssignRoomLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <ComboBox ItemsSource="{Binding TenantList.AvailableRooms}" SelectedItem="{Binding TenantList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12">
+                        <TextBlock Text="{DynamicResource DepositAmountLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                        <NumericUpDown Value="{Binding TenantList.EditDepositAmount}" Minimum="0" FormatString="0.00" />
+                    </StackPanel>
+                </Grid>
+                <StackPanel>
+                    <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                    <TextBox Text="{Binding TenantList.EditNotes}" AcceptsReturn="True" Height="60" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                    <Button Content="{DynamicResource CancelButton}" Command="{Binding TenantList.CancelEditCommand}" Classes="Action" />
+                    <Button Content="{DynamicResource SaveTenantButton}" Command="{Binding TenantList.SaveTenantCommand}" Classes="Primary" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
+            <Button Content="{DynamicResource EditButton}" Command="{Binding TenantList.EditTenantCommand}" Classes="Action" />
+            <Button Content="{DynamicResource DeactivateButton}" Command="{Binding TenantList.DeactivateTenantCommand}" Classes="Action" />
+        </StackPanel>
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1.5*,1*,1*" Margin="16 0 16 8">
+            <TextBlock Grid.Column="0" Text="{DynamicResource FullNameLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="1" Text="{DynamicResource PhoneHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+            <TextBlock Grid.Column="3" Text="{DynamicResource DepositHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+        </Grid>
+
+        <ListBox Classes="Table" ItemsSource="{Binding TenantList.Tenants}" SelectedItem="{Binding TenantList.SelectedTenant}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid ColumnDefinitions="2*,1.5*,1*,1*">
+                        <TextBlock Grid.Column="0" Text="{Binding FullName}" FontWeight="Medium" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Phone}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                        <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
+                            <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
+                                       Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
+                                       FontSize="12" FontWeight="Bold" />
+                        </Border>
+                        <TextBlock Grid.Column="3" Text="{Binding DepositAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.SettingsView"
+             x:CompileBindings="False">
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource SettingsTitle}" Margin="0" VerticalAlignment="Center" />
+        </Grid>
+
+        <ScrollViewer>
+            <StackPanel Spacing="24" MaxWidth="800" HorizontalAlignment="Left" Width="600">
+                <!-- Appearance Section -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource AppearanceLabel}" />
+                        <TextBlock Text="{DynamicResource AppearanceDesc}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        
+                        <StackPanel Spacing="10" Margin="0 8 0 0">
+                            <RadioButton Content="{DynamicResource LightModeLabel}" IsChecked="{Binding Settings.IsLight, Mode=TwoWay}" GroupName="Theme" />
+                            <RadioButton Content="{DynamicResource DarkModeLabel}" IsChecked="{Binding Settings.IsDark, Mode=TwoWay}" GroupName="Theme" />
+                            <RadioButton Content="{DynamicResource SystemDefaultLabel}" IsChecked="{Binding Settings.IsSystem, Mode=TwoWay}" GroupName="Theme" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Language Section -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource LanguageLabel}" />
+                        <TextBlock Text="{DynamicResource LanguageDesc}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        
+                        <ComboBox ItemsSource="{Binding Settings.SupportedLanguages}"
+                                  SelectedItem="{Binding Settings.SelectedLanguage, Mode=TwoWay}"
+                                  DisplayMemberBinding="{Binding Name}"
+                                  HorizontalAlignment="Stretch"
+                                  Margin="0 8 0 0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Information Section -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource InformationLabel}" />
+                        
+                        <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto" Margin="0 0 0 8">
+                            <!-- Database Path -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource DatabasePathLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" VerticalAlignment="Center" Margin="0 0 0 12" />
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Settings.DbPath}" IsReadOnly="True" VerticalAlignment="Center" Margin="0 0 0 12" />
+
+                            <!-- Version -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource AppVersionLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" VerticalAlignment="Center" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Settings.AppVersion}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

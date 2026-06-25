@@ -1,0 +1,138 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+    <system:String x:Key="SettingsTitle">Settings</system:String>
+    <system:String x:Key="AppearanceLabel">Appearance</system:String>
+    <system:String x:Key="AppearanceDesc">Choose your preferred visual theme for the application.</system:String>
+    <system:String x:Key="LightModeLabel">Light Mode</system:String>
+    <system:String x:Key="DarkModeLabel">Dark Mode</system:String>
+    <system:String x:Key="SystemDefaultLabel">System Default</system:String>
+    <system:String x:Key="LanguageLabel">Language</system:String>
+    <system:String x:Key="LanguageDesc">Choose the application language.</system:String>
+    <system:String x:Key="InformationLabel">Information</system:String>
+    <system:String x:Key="DatabasePathLabel">Database Path:</system:String>
+    <system:String x:Key="AppVersionLabel">App Version:</system:String>
+    
+    <system:String x:Key="DashboardTab">Dashboard</system:String>
+    <system:String x:Key="RoomsTab">Rooms</system:String>
+    <system:String x:Key="TenantsTab">Tenants</system:String>
+    <system:String x:Key="ContractsTab">Contracts</system:String>
+    <system:String x:Key="PaymentsTab">Payments</system:String>
+    <system:String x:Key="SettingsTab">Settings</system:String>
+
+    <!-- Dashboard -->
+    <system:String x:Key="DashboardTitle">Dashboard</system:String>
+    <system:String x:Key="RefreshButton">Refresh</system:String>
+    <system:String x:Key="TotalRoomsLabel">Total Rooms</system:String>
+    <system:String x:Key="ActiveTenantsLabel">Active Tenants</system:String>
+    <system:String x:Key="PendingPaymentsLabel">Pending Payments</system:String>
+    <system:String x:Key="ActiveRoomsLabel">Active Rooms</system:String>
+    <system:String x:Key="ExpectedIncomeLabel">Expected Income</system:String>
+    <system:String x:Key="CollectedIncomeLabel">Collected Income</system:String>
+    
+    <system:String x:Key="RoomOccupancyLabel">Room Occupancy</system:String>
+    <system:String x:Key="OccupiedText">Occupied: </system:String>
+    <system:String x:Key="AvailableText">Available: </system:String>
+    
+    <system:String x:Key="IncomeCollectionLabel">Income Collection</system:String>
+    <system:String x:Key="PaidText">Paid: </system:String>
+    <system:String x:Key="ExpectedText">Expected: </system:String>
+    
+    <system:String x:Key="PaymentStatusLabel">Payment Status</system:String>
+    <system:String x:Key="PaidStatus">Paid</system:String>
+    <system:String x:Key="PendingStatus">Pending</system:String>
+    <system:String x:Key="PartialStatus">Partial</system:String>
+    <system:String x:Key="LateStatus">Late</system:String>
+    <system:String x:Key="WaivedStatus">Waived</system:String>
+    
+    <system:String x:Key="PendingLatePaymentsLabel">Pending/Late Payments</system:String>
+    <system:String x:Key="NoPendingPaymentsMsg">No pending payments.</system:String>
+    
+    <system:String x:Key="AvailableRoomsLabel">Available Rooms</system:String>
+    <system:String x:Key="NoAvailableRoomsMsg">No available rooms.</system:String>
+    
+    <system:String x:Key="MissingContractFilesLabel">Missing Contract Files</system:String>
+    <system:String x:Key="AllContractsValidMsg">All active contracts have valid paths.</system:String>
+    <system:String x:Key="ActiveBadge">Active</system:String>
+    <system:String x:Key="InactiveBadge">Inactive</system:String>
+
+    <!-- Rooms View -->
+    <system:String x:Key="RoomsTitle">Rooms</system:String>
+    <system:String x:Key="NewRoomButton">+ New Room</system:String>
+    <system:String x:Key="EditRoomTitle">Edit Room</system:String>
+    <system:String x:Key="RoomNameLabel">Room Name</system:String>
+    <system:String x:Key="MonthlyRentLabel">Monthly Rent</system:String>
+    <system:String x:Key="NotesOptionalLabel">Notes (optional)</system:String>
+    <system:String x:Key="CancelButton">Cancel</system:String>
+    <system:String x:Key="SaveRoomButton">Save Room</system:String>
+    <system:String x:Key="EditButton">Edit</system:String>
+    <system:String x:Key="DeactivateButton">Deactivate</system:String>
+    <system:String x:Key="ReactivateButton">Reactivate</system:String>
+    <system:String x:Key="NameHeader">Name</system:String>
+    <system:String x:Key="RentHeader">Rent</system:String>
+    <system:String x:Key="StatusHeader">Status</system:String>
+    <system:String x:Key="NotesHeader">Notes</system:String>
+    
+    <!-- Rent History -->
+    <system:String x:Key="RentHistoryTitle">Rent History</system:String>
+    <system:String x:Key="NewPeriodButton">+ New Period</system:String>
+    <system:String x:Key="DeleteButton">Delete</system:String>
+    <system:String x:Key="StartDateLabel">Start Date</system:String>
+    <system:String x:Key="EndDateOptionalLabel">End Date (optional)</system:String>
+    <system:String x:Key="SaveButton">Save</system:String>
+    <system:String x:Key="MonthlyRentUnit">/ month</system:String>
+    <system:String x:Key="FromLabel">From: </system:String>
+    <system:String x:Key="ToLabel">To: </system:String>
+
+    <!-- Tenants View -->
+    <system:String x:Key="TenantsTitle">Tenants</system:String>
+    <system:String x:Key="NewTenantButton">+ New Tenant</system:String>
+    <system:String x:Key="EditTenantTitle">Edit Tenant</system:String>
+    <system:String x:Key="FullNameLabel">Full Name</system:String>
+    <system:String x:Key="PhoneOptionalLabel">Phone (optional)</system:String>
+    <system:String x:Key="EmailOptionalLabel">Email (optional)</system:String>
+    <system:String x:Key="AssignRoomLabel">Assign Room</system:String>
+    <system:String x:Key="MoveInLabel">Move-in</system:String>
+    <system:String x:Key="MoveOutOptionalLabel">Move-out (optional)</system:String>
+    <system:String x:Key="DepositAmountLabel">Deposit Amount</system:String>
+    <system:String x:Key="SaveTenantButton">Save Tenant</system:String>
+    <system:String x:Key="PhoneHeader">Phone</system:String>
+    <system:String x:Key="MoveInHeader">Move-in</system:String>
+    <system:String x:Key="MoveOutHeader">Move-out</system:String>
+    <system:String x:Key="DepositHeader">Deposit</system:String>
+
+    <!-- Contracts View -->
+    <system:String x:Key="ContractsTitle">Contracts</system:String>
+    <system:String x:Key="NewContractButton">+ New Contract</system:String>
+    <system:String x:Key="EditContractTitle">Edit Contract</system:String>
+    <system:String x:Key="SelectTenantLabel">Select Tenant</system:String>
+    <system:String x:Key="FilePathLabel">File Path (absolute)</system:String>
+    <system:String x:Key="SaveContractButton">Save Contract</system:String>
+    <system:String x:Key="OpenFileButton">Open File</system:String>
+    <system:String x:Key="TenantHeader">Tenant</system:String>
+    <system:String x:Key="FilePathHeader">File Path</system:String>
+    <system:String x:Key="FileStatusHeader">File Status</system:String>
+    <system:String x:Key="YesLabel">Yes</system:String>
+    <system:String x:Key="NoLabel">No</system:String>
+
+    <!-- Payments View -->
+    <system:String x:Key="PaymentsTitle">Payments</system:String>
+    <system:String x:Key="NewPaymentButton">+ New Payment</system:String>
+    <system:String x:Key="EditPaymentTitle">Edit Payment</system:String>
+    <system:String x:Key="SavePaymentButton">Save Payment</system:String>
+    <system:String x:Key="YearLabel">Year</system:String>
+    <system:String x:Key="MonthLabel">Month</system:String>
+    <system:String x:Key="PaidDateLabel">Paid Date (optional)</system:String>
+    <system:String x:Key="PaidDateHeader">Paid Date</system:String>
+    <system:String x:Key="ExpectedAmountLabel">Expected Amount</system:String>
+    <system:String x:Key="PaidAmountLabel">Paid Amount</system:String>
+    <system:String x:Key="ExpectedHeader">Expected</system:String>
+    <system:String x:Key="PaidHeader">Paid</system:String>
+    <system:String x:Key="BatchGenerateButton">+ Batch Generate</system:String>
+    <system:String x:Key="BatchGenerateTitle">Batch Payment Generation</system:String>
+    <system:String x:Key="FromYearLabel">From Year</system:String>
+    <system:String x:Key="FromMonthLabel">From Month</system:String>
+    <system:String x:Key="ToYearLabel">To Year</system:String>
+    <system:String x:Key="ToMonthLabel">To Month</system:String>
+    <system:String x:Key="GenerateButton">Generate</system:String>
+</ResourceDictionary>
