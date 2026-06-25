@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug TenantManager.App (Avalonia Desktop)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/TenantManager.App/bin/Debug/net10.0/TenantManager.App.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/TenantManager.App",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Attach to .NET Process",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}
