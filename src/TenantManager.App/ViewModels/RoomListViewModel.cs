@@ -28,11 +28,7 @@ public class RoomListViewModel : ViewModelBase
         EditRoomCommand = new RelayCommand(_ => EditRoom());
         SaveRoomCommand = new RelayCommand(_ => SaveRoom());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
-        ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
-
-        DeactivateRoomCommand = new RelayCommand(_ => DeactivateRoom());
-        ReactivateRoomCommand = new RelayCommand(_ => ReactivateRoom());
+        ToggleRoomActiveCommand = new RelayCommand(param => ToggleRoomActive(param));
     }
 
     public ObservableCollection<Room> Rooms { get; }
@@ -42,8 +38,7 @@ public class RoomListViewModel : ViewModelBase
     public RelayCommand EditRoomCommand { get; }
     public RelayCommand SaveRoomCommand { get; }
     public RelayCommand CancelEditCommand { get; }
-    public RelayCommand DeactivateRoomCommand { get; }
-    public RelayCommand ReactivateRoomCommand { get; }
+    public RelayCommand ToggleRoomActiveCommand { get; }
 
 
 
@@ -160,23 +155,13 @@ public class RoomListViewModel : ViewModelBase
         IsEditing = false;
     }
 
-    private void DeactivateRoom()
+    private void ToggleRoomActive(object? parameter)
     {
-        if (SelectedRoom == null)
-            return;
-
-        SelectedRoom.IsActive = false;
-        _db.SaveChanges();
-        LoadRooms(_currentPropertyId);
-    }
-
-    private void ReactivateRoom()
-    {
-        if (SelectedRoom == null)
-            return;
-
-        SelectedRoom.IsActive = true;
-        _db.SaveChanges();
-        LoadRooms(_currentPropertyId);
+        if (parameter is Room room)
+        {
+            room.IsActive = !room.IsActive;
+            _db.SaveChanges();
+            LoadRooms(_currentPropertyId);
+        }
     }
 }

@@ -42,8 +42,6 @@
 
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding RoomList.HasSelectedRoom}">
                     <Button Content="{DynamicResource EditButton}" Command="{Binding RoomList.EditRoomCommand}" Classes="Action" />
-                    <Button Content="{DynamicResource DeactivateButton}" Command="{Binding RoomList.DeactivateRoomCommand}" Classes="Action" />
-                    <Button Content="{DynamicResource ReactivateButton}" Command="{Binding RoomList.ReactivateRoomCommand}" Classes="Action" />
                 </StackPanel>
 
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*" Margin="16 0 16 8">
@@ -59,11 +57,14 @@
                             <Grid ColumnDefinitions="2*,1*,1*,2*">
                                 <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="1" Text="{Binding BaseRent, StringFormat='{}{0:C}'}" VerticalAlignment="Center" />
-                                <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
-                                    <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
-                                               Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
-                                               FontSize="12" FontWeight="Bold" />
-                                </Border>
+                                <ToggleSwitch Grid.Column="2" 
+                                              IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                              Command="{Binding $parent[UserControl].DataContext.RoomList.ToggleRoomActiveCommand}" 
+                                              CommandParameter="{Binding}"
+                                              OnContent="" OffContent="" 
+                                              Margin="0" Padding="0"
+                                              MinWidth="0" MinHeight="0"
+                                              VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                             </Grid>
                         </DataTemplate>

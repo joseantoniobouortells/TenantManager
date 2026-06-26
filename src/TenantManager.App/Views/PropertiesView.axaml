@@ -18,21 +18,30 @@
 
             <Border Grid.Row="1" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}">
                 <Grid RowDefinitions="Auto,*">
-                    <Grid Grid.Row="0" ColumnDefinitions="2*,2*,*,*" Margin="16 12">
+                    <Grid Grid.Row="0" ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*" Margin="16 12">
                         <TextBlock Grid.Column="0" Text="Nombre" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBlock Grid.Column="1" Text="Calle" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBlock Grid.Column="2" Text="Localidad" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
                         <TextBlock Grid.Column="3" Text="C.P." FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock Grid.Column="4" Text="Estado" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                     </Grid>
                     
                     <ListBox Grid.Row="1" ItemsSource="{Binding PropertyList.Properties}" SelectedItem="{Binding PropertyList.SelectedProperty}" Classes="Table">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="2*,2*,*,*">
+                                <Grid ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*">
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryBrush}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Address}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                     <TextBlock Grid.Column="2" Text="{Binding City}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
                                     <TextBlock Grid.Column="3" Text="{Binding PostalCode}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <ToggleSwitch Grid.Column="4" 
+                                                  IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                                  Command="{Binding $parent[UserControl].DataContext.PropertyList.TogglePropertyActiveCommand}" 
+                                                  CommandParameter="{Binding}"
+                                                  OnContent="" OffContent="" 
+                                                  Margin="0" Padding="0"
+                                                  MinWidth="0" MinHeight="0"
+                                                  VerticalAlignment="Center" HorizontalAlignment="Center"/>
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -79,7 +88,6 @@
                 </ScrollViewer>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0 24 0 0">
-                    <Button Content="Desactivar" Command="{Binding PropertyList.DeactivatePropertyCommand}" Foreground="White" Background="{DynamicResource ErrorBrush}" IsVisible="{Binding PropertyList.SelectedProperty, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <Button Content="Cancelar" Command="{Binding PropertyList.CancelEditCommand}" />
                     <Button Content="Guardar" Command="{Binding PropertyList.SavePropertyCommand}" Classes="Primary" />
                 </StackPanel>

@@ -32,7 +32,7 @@ public class TenantListViewModel : ViewModelBase
         EditTenantCommand = new RelayCommand(_ => EditTenant());
         SaveTenantCommand = new RelayCommand(_ => SaveTenant());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        DeactivateTenantCommand = new RelayCommand(_ => DeactivateTenant());
+        ToggleTenantActiveCommand = new RelayCommand(param => ToggleTenantActive(param));
     }
 
     public ObservableCollection<Tenant> Tenants { get; }
@@ -43,7 +43,7 @@ public class TenantListViewModel : ViewModelBase
     public RelayCommand EditTenantCommand { get; }
     public RelayCommand SaveTenantCommand { get; }
     public RelayCommand CancelEditCommand { get; }
-    public RelayCommand DeactivateTenantCommand { get; }
+    public RelayCommand ToggleTenantActiveCommand { get; }
 
     public Tenant? SelectedTenant
     {
@@ -200,13 +200,13 @@ public class TenantListViewModel : ViewModelBase
         IsEditing = false;
     }
 
-    private void DeactivateTenant()
+    private void ToggleTenantActive(object? parameter)
     {
-        if (SelectedTenant == null)
-            return;
-
-        SelectedTenant.IsActive = false;
-        _db.SaveChanges();
-        LoadTenants(_currentPropertyId);
+        if (parameter is Tenant tenant)
+        {
+            tenant.IsActive = !tenant.IsActive;
+            _db.SaveChanges();
+            LoadTenants(_currentPropertyId);
+        }
     }
 }

@@ -31,7 +31,7 @@ public class PropertyListViewModel : ViewModelBase
         EditPropertyCommand = new RelayCommand(_ => EditProperty());
         SavePropertyCommand = new RelayCommand(_ => SaveProperty());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        DeactivatePropertyCommand = new RelayCommand(_ => DeactivateProperty());
+        TogglePropertyActiveCommand = new RelayCommand(param => TogglePropertyActive(param));
 
         LoadProperties();
     }
@@ -43,7 +43,7 @@ public class PropertyListViewModel : ViewModelBase
     public RelayCommand EditPropertyCommand { get; }
     public RelayCommand SavePropertyCommand { get; }
     public RelayCommand CancelEditCommand { get; }
-    public RelayCommand DeactivatePropertyCommand { get; }
+    public RelayCommand TogglePropertyActiveCommand { get; }
 
     public Property? SelectedProperty
     {
@@ -97,7 +97,7 @@ public class PropertyListViewModel : ViewModelBase
     {
         _db.ChangeTracker.Clear();
         Properties.Clear();
-        foreach (var property in _db.Properties.Where(p => p.IsActive).OrderBy(p => p.Name))
+        foreach (var property in _db.Properties.OrderBy(p => p.Name))
         {
             Properties.Add(property);
         }
@@ -172,15 +172,15 @@ public class PropertyListViewModel : ViewModelBase
         IsEditing = false;
     }
 
-    private void DeactivateProperty()
+    private void TogglePropertyActive(object? parameter)
     {
-        if (SelectedProperty == null)
-            return;
-
-        SelectedProperty.IsActive = false;
-        _db.SaveChanges();
-        LoadProperties();
-        CancelEdit();
-        _onPropertiesChanged();
+        if (parameter is Property property)
+        {
+            property.IsActive = !property.IsActive;
+            _db.SaveChanges();
+            LoadProperties();
+            CancelEdit();
+            _onPropertiesChanged();
+        }
     }
 }

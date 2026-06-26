@@ -53,9 +53,8 @@
             </StackPanel>
         </Border>
 
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding TenantList.SelectedTenant, Converter={x:Static ObjectConverters.IsNotNull}}">
             <Button Content="{DynamicResource EditButton}" Command="{Binding TenantList.EditTenantCommand}" Classes="Action" />
-            <Button Content="{DynamicResource DeactivateButton}" Command="{Binding TenantList.DeactivateTenantCommand}" Classes="Action" />
         </StackPanel>
 
         <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1.5*,1*,1*" Margin="16 0 16 8">
@@ -71,11 +70,14 @@
                     <Grid ColumnDefinitions="2*,1.5*,1*,1*">
                         <TextBlock Grid.Column="0" Text="{Binding FullName}" FontWeight="Medium" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Phone}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                        <Border Grid.Column="2" Classes="Badge" Background="{Binding IsActive, Converter={StaticResource StatusColor}}">
-                            <TextBlock Text="{Binding IsActive, Converter={StaticResource ActiveStatusConverter}}" 
-                                       Foreground="{Binding IsActive, Converter={StaticResource StatusTextColor}}" 
-                                       FontSize="12" FontWeight="Bold" />
-                        </Border>
+                        <ToggleSwitch Grid.Column="2" 
+                                      IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                      Command="{Binding $parent[UserControl].DataContext.TenantList.ToggleTenantActiveCommand}" 
+                                      CommandParameter="{Binding}"
+                                      OnContent="" OffContent="" 
+                                      Margin="0" Padding="0"
+                                      MinWidth="0" MinHeight="0"
+                                      VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         <TextBlock Grid.Column="3" Text="{Binding DepositAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
                     </Grid>
                 </DataTemplate>
