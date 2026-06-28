@@ -8,10 +8,7 @@ public class Tenant
     public string FullName { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public string? Email { get; set; }
-    public decimal DepositAmount { get; set; }
     public bool IsActive { get; set; } = true;
     public string? Notes { get; set; }
     public int PropertyId { get; set; }
-
-    public int? RoomId { get; set; }
 }

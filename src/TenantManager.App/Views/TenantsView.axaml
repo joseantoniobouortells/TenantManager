@@ -32,15 +32,7 @@
                         <TextBlock Text="{DynamicResource EmailOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                         <TextBox Text="{Binding TenantList.EditEmail}" />
                     </StackPanel>
-                    <!-- Col 2 -->
-                    <StackPanel Grid.Column="1" Grid.Row="0" Margin="8 0 0 12">
-                        <TextBlock Text="{DynamicResource AssignRoomLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                        <ComboBox ItemsSource="{Binding TenantList.AvailableRooms}" SelectedItem="{Binding TenantList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Grid.Row="1" Margin="8 0 0 12">
-                        <TextBlock Text="{DynamicResource DepositAmountLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                        <NumericUpDown Value="{Binding TenantList.EditDepositAmount}" Minimum="0" FormatString="0.00" />
-                    </StackPanel>
+
                 </Grid>
                 <StackPanel>
                     <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
@@ -57,17 +49,16 @@
             <Button Content="{DynamicResource EditButton}" Command="{Binding TenantList.EditTenantCommand}" Classes="Action" />
         </StackPanel>
 
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1.5*,1*,1*" Margin="16 0 16 8">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1.5*,1*" Margin="16 0 16 8">
             <TextBlock Grid.Column="0" Text="{DynamicResource FullNameLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
             <TextBlock Grid.Column="1" Text="{DynamicResource PhoneHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
             <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-            <TextBlock Grid.Column="3" Text="{DynamicResource DepositHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
         </Grid>
 
         <ListBox Classes="Table" ItemsSource="{Binding TenantList.Tenants}" SelectedItem="{Binding TenantList.SelectedTenant}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid ColumnDefinitions="2*,1.5*,1*,1*">
+                    <Grid ColumnDefinitions="2*,1.5*,1*">
                         <TextBlock Grid.Column="0" Text="{Binding FullName}" FontWeight="Medium" VerticalAlignment="Center" />
                         <TextBlock Grid.Column="1" Text="{Binding Phone}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                         <ToggleSwitch Grid.Column="2" 
@@ -78,7 +69,6 @@
                                       Margin="0" Padding="0"
                                       MinWidth="0" MinHeight="0"
                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                        <TextBlock Grid.Column="3" Text="{Binding DepositAmount, StringFormat='{}{0:F2}'}" VerticalAlignment="Center" />
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>

@@ -18,4 +18,6 @@ public class RentalContract
     public string? Notes { get; set; }
 
     public int TenantId { get; set; }
+    public int RoomId { get; set; }
+    public decimal DepositAmount { get; set; }
 }

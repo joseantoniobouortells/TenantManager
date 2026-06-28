@@ -371,7 +371,6 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         }
 
         var tenantId = BatchSelectedTenant.Id;
-        var roomId = BatchSelectedTenant.RoomId;
 
         var existingPayments = _db.MonthlyPayments
             .Where(p => p.TenantId == tenantId && p.Year >= (int)BatchStartYear && p.Year <= (int)BatchEndYear)
@@ -435,9 +434,11 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                         .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId)
                         .Sum(i => i.Amount);
 
-                    var occupiedRooms = _db.Tenants
-                        .Where(t => t.IsActive && t.RoomId != null && t.PropertyId == _currentPropertyId)
-                        .Select(t => t.RoomId)
+                    var occupiedRooms = _db.RentalContracts
+                        .Where(c => c.PropertyId == _currentPropertyId)
+                        .AsEnumerable()
+                        .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
+                        .Select(c => c.RoomId)
                         .Distinct()
                         .Count();
 

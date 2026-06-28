@@ -14,6 +14,7 @@ public class ContractDisplayItem
 {
     public RentalContract Contract { get; init; } = null!;
     public string TenantName { get; set; } = string.Empty;
+    public string RoomName { get; set; } = string.Empty;
     public string FileStatus { get; set; } = string.Empty;
     public bool FileExists { get; set; }
 }
@@ -25,11 +26,13 @@ public class ContractListViewModel : ViewModelBase
     private RentalContract? _editingContract;
     private bool _isEditing;
     private Tenant? _editSelectedTenant;
+    private Room? _editSelectedRoom;
     private string _editFilePath = string.Empty;
     private byte[]? _editFileContent;
     private DateTimeOffset? _editStartDate;
     private DateTimeOffset? _editEndDate;
     private decimal _editMonthlyRent;
+    private decimal _editDepositAmount;
     private ExpensePaymentType _editExpensePaymentType;
     private decimal _editFixedExpenseAmount;
     private string? _editNotes;
@@ -40,6 +43,7 @@ public class ContractListViewModel : ViewModelBase
         _db = new AppDbContext();
         Contracts = new ObservableCollection<ContractDisplayItem>();
         AvailableTenants = new ObservableCollection<Tenant>();
+        AvailableRooms = new ObservableCollection<Room>();
         AvailableExpenseTypes = new ObservableCollection<ExpensePaymentType>(Enum.GetValues<ExpensePaymentType>());
         Extensions = new ObservableCollection<RentalContractExtension>();
 
@@ -61,6 +65,7 @@ public class ContractListViewModel : ViewModelBase
 
     public ObservableCollection<ContractDisplayItem> Contracts { get; }
     public ObservableCollection<Tenant> AvailableTenants { get; }
+    public ObservableCollection<Room> AvailableRooms { get; }
     public ObservableCollection<ExpensePaymentType> AvailableExpenseTypes { get; }
     public ObservableCollection<RentalContractExtension> Extensions { get; }
 
@@ -108,6 +113,12 @@ public class ContractListViewModel : ViewModelBase
         set => SetProperty(ref _editSelectedTenant, value);
     }
 
+    public Room? EditSelectedRoom
+    {
+        get => _editSelectedRoom;
+        set => SetProperty(ref _editSelectedRoom, value);
+    }
+
     public string EditFilePath
     {
         get => _editFilePath;
@@ -136,6 +147,12 @@ public class ContractListViewModel : ViewModelBase
     {
         get => _editMonthlyRent;
         set => SetProperty(ref _editMonthlyRent, value);
+    }
+
+    public decimal EditDepositAmount
+    {
+        get => _editDepositAmount;
+        set => SetProperty(ref _editDepositAmount, value);
     }
 
     public ExpensePaymentType EditExpensePaymentType
@@ -234,8 +251,10 @@ public class ContractListViewModel : ViewModelBase
 
         _db.ChangeTracker.Clear();
         LoadAvailableTenants();
+        LoadAvailableRooms();
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
+        var roomLookup = _db.Rooms.ToDictionary(r => r.Id, r => r.Name);
 
         Contracts.Clear();
         foreach (var contract in _db.RentalContracts.Where(c => c.PropertyId == propertyId).AsEnumerable().OrderBy(c => c.StartDate))
@@ -245,6 +264,7 @@ public class ContractListViewModel : ViewModelBase
             {
                 Contract = contract,
                 TenantName = tenantLookup.TryGetValue(contract.TenantId, out var name) ? name : $"(id={contract.TenantId})",
+                RoomName = roomLookup.TryGetValue(contract.RoomId, out var rName) ? rName : $"(id={contract.RoomId})",
                 FileExists = exists,
                 FileStatus = exists ? "Yes" : "No"
             });
@@ -260,15 +280,27 @@ public class ContractListViewModel : ViewModelBase
         }
     }
 
+    private void LoadAvailableRooms()
+    {
+        AvailableRooms.Clear();
+        foreach (var room in _db.Rooms.Where(r => r.IsActive && r.PropertyId == _currentPropertyId).OrderBy(r => r.Name))
+        {
+            AvailableRooms.Add(room);
+        }
+    }
+
     private void StartNewContract()
     {
+        SelectedItem = null;
         _editingContract = null;
         EditSelectedTenant = AvailableTenants.FirstOrDefault();
+        EditSelectedRoom = AvailableRooms.FirstOrDefault();
         EditFilePath = string.Empty;
         EditFileContent = null;
         EditStartDate = null;
         EditEndDate = null;
         EditMonthlyRent = 0;
+        EditDepositAmount = 0;
         EditExpensePaymentType = ExpensePaymentType.Variable;
         EditFixedExpenseAmount = 0;
         EditNotes = null;
@@ -282,6 +314,7 @@ public class ContractListViewModel : ViewModelBase
 
         _editingContract = SelectedItem.Contract;
         EditSelectedTenant = AvailableTenants.FirstOrDefault(t => t.Id == _editingContract.TenantId);
+        EditSelectedRoom = AvailableRooms.FirstOrDefault(r => r.Id == _editingContract.RoomId);
         EditFilePath = _editingContract.FilePath;
         EditFileContent = _editingContract.FileContent;
         EditStartDate = _editingContract.StartDate != default
@@ -291,6 +324,7 @@ public class ContractListViewModel : ViewModelBase
             ? ed
             : null;
         EditMonthlyRent = _editingContract.MonthlyRent;
+        EditDepositAmount = _editingContract.DepositAmount;
         EditExpensePaymentType = _editingContract.ExpensePaymentType;
         EditFixedExpenseAmount = _editingContract.FixedExpenseAmount;
         EditNotes = _editingContract.Notes;
@@ -299,7 +333,7 @@ public class ContractListViewModel : ViewModelBase
 
     private void SaveContract()
     {
-        if (EditSelectedTenant == null)
+        if (EditSelectedTenant == null || EditSelectedRoom == null)
             return;
 
         if (_editingContract == null)
@@ -308,11 +342,13 @@ public class ContractListViewModel : ViewModelBase
             {
                 PropertyId = _currentPropertyId,
                 TenantId = EditSelectedTenant.Id,
+                RoomId = EditSelectedRoom.Id,
                 FilePath = EditFilePath.Trim(),
                 FileContent = EditFileContent,
                 StartDate = EditStartDate ?? DateTimeOffset.Now,
                 EndDate = EditEndDate,
                 MonthlyRent = EditMonthlyRent,
+                DepositAmount = EditDepositAmount,
                 ExpensePaymentType = EditExpensePaymentType,
                 FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0,
                 Notes = EditNotes?.Trim()
@@ -322,11 +358,13 @@ public class ContractListViewModel : ViewModelBase
         else
         {
             _editingContract.TenantId = EditSelectedTenant.Id;
+            _editingContract.RoomId = EditSelectedRoom.Id;
             _editingContract.FilePath = EditFilePath.Trim();
             _editingContract.FileContent = EditFileContent;
             _editingContract.StartDate = EditStartDate ?? DateTimeOffset.Now;
             _editingContract.EndDate = EditEndDate;
             _editingContract.MonthlyRent = EditMonthlyRent;
+            _editingContract.DepositAmount = EditDepositAmount;
             _editingContract.ExpensePaymentType = EditExpensePaymentType;
             _editingContract.FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0;
             _editingContract.Notes = EditNotes?.Trim();
@@ -341,15 +379,18 @@ public class ContractListViewModel : ViewModelBase
     {
         _editingContract = null;
         EditSelectedTenant = null;
+        EditSelectedRoom = null;
         EditFilePath = string.Empty;
         EditFileContent = null;
         EditStartDate = null;
         EditEndDate = null;
         EditMonthlyRent = 0;
+        EditDepositAmount = 0;
         EditExpensePaymentType = ExpensePaymentType.Variable;
         EditFixedExpenseAmount = 0;
         EditNotes = null;
         IsEditing = false;
+        SelectedItem = null;
     }
 
     private void OpenFile()

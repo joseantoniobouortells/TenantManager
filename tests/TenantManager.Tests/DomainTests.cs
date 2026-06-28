@@ -64,18 +64,20 @@ public class DomainTests : IDisposable
     }
 
     [Fact]
-    public void AssignTenantToRoom_ShouldSetRoomId()
+    public void AssignContractToRoom_ShouldSetRoomId()
     {
         using var db = CreateContext();
         var room = new Room { Name = "101" };
         db.Rooms.Add(room);
-        db.SaveChanges();
-
-        var tenant = new Tenant { FullName = "Jane Doe", RoomId = room.Id };
+        var tenant = new Tenant { FullName = "Jane Doe" };
         db.Tenants.Add(tenant);
         db.SaveChanges();
 
-        var loaded = db.Tenants.Find(tenant.Id);
+        var contract = new RentalContract { RoomId = room.Id, TenantId = tenant.Id };
+        db.RentalContracts.Add(contract);
+        db.SaveChanges();
+
+        var loaded = db.RentalContracts.Find(contract.Id);
         Assert.NotNull(loaded);
         Assert.Equal(room.Id, loaded.RoomId);
     }
@@ -290,7 +292,7 @@ public class DomainTests : IDisposable
         db.Rooms.Add(room);
         db.SaveChanges();
 
-        var tenant = new Tenant { FullName = "Alice Smith", PropertyId = property.Id, RoomId = room.Id, IsActive = true };
+        var tenant = new Tenant { FullName = "Alice Smith", PropertyId = property.Id, IsActive = true };
         db.Tenants.Add(tenant);
         db.SaveChanges();
 
@@ -298,6 +300,7 @@ public class DomainTests : IDisposable
         {
             PropertyId = property.Id,
             TenantId = tenant.Id,
+            RoomId = room.Id,
             StartDate = new DateTimeOffset(new DateTime(2026, 1, 1)),
             EndDate = new DateTimeOffset(new DateTime(2026, 12, 31)),
             MonthlyRent = 500,

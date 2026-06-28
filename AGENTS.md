@@ -4,6 +4,7 @@
 Local-first desktop app for property owners to manage rooms, tenants, rental contracts (including storing PDF file contents in the database), and monthly payments.
 - **Stack:** .NET 10 (C#), Avalonia v12.0.4, SQLite (SQLitePCLRaw 3.50.3 / EF Core Sqlite 10.0.x), xUnit.
 - **Strictly Out of Scope:** Cloud sync, HTTP API/backend, auth/login, CRM, digital signatures, Unit of Work, generic repositories, entity navigation properties.
+- **Agent Memory:** Always read `docs/memory.md` to get context on recent architectural decisions, known issues, and pending roadmap tasks. You MUST update this document every time a new feature is implemented, a significant refactor is done, or a key decision is made.
 
 ## Architecture & Data Rules
 1. **DB Context:** Use `AppDbContext` directly per ViewModel (no DI container). 

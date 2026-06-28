@@ -21,10 +21,16 @@
                 <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding ContractList.IsEditing}">
                     <StackPanel Spacing="16">
                         <TextBlock Classes="H2" Text="{DynamicResource EditContractTitle}" Margin="0" />
-                        <StackPanel>
-                            <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                            <ComboBox ItemsSource="{Binding ContractList.AvailableTenants}" SelectedItem="{Binding ContractList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
-                        </StackPanel>
+                        <Grid ColumnDefinitions="*,*">
+                            <StackPanel Grid.Column="0" Margin="0 0 8 0">
+                                <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <ComboBox ItemsSource="{Binding ContractList.AvailableTenants}" SelectedItem="{Binding ContractList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8 0 0 0">
+                                <TextBlock Text="Habitación" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <ComboBox ItemsSource="{Binding ContractList.AvailableRooms}" SelectedItem="{Binding ContractList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
+                            </StackPanel>
+                        </Grid>
                         <StackPanel>
                             <TextBlock Text="{DynamicResource FilePathLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                             <Grid ColumnDefinitions="*,Auto">
@@ -46,6 +52,10 @@
                             <StackPanel>
                                 <TextBlock Text="Cuota de Alquiler" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                                 <NumericUpDown Value="{Binding ContractList.EditMonthlyRent}" Minimum="0" FormatString="0.00" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Fianza" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <NumericUpDown Value="{Binding ContractList.EditDepositAmount}" Minimum="0" FormatString="0.00" />
                             </StackPanel>
                             <StackPanel>
                                 <TextBlock Text="Tipo de Gastos" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
@@ -73,23 +83,25 @@
                     <Button Content="{DynamicResource DeleteButton}" Command="{Binding ContractList.DeleteContractCommand}" Classes="Action" />
                 </StackPanel>
 
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,2*,1*,1*,1*" Margin="16 0 16 8">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,1*,1*,1*,1*,1*" Margin="16 0 16 8">
                     <TextBlock Grid.Column="0" Text="{DynamicResource TenantHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="1" Text="{DynamicResource FilePathHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="2" Text="{DynamicResource FileStatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="3" Text="{DynamicResource StartDateLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="4" Text="{DynamicResource EndDateOptionalLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="1" Text="Habitación" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="2" Text="{DynamicResource FilePathHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="3" Text="{DynamicResource FileStatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="4" Text="{DynamicResource StartDateLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <TextBlock Grid.Column="5" Text="{DynamicResource EndDateOptionalLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                 </Grid>
 
                 <ListBox Classes="Table" ItemsSource="{Binding ContractList.Contracts}" SelectedItem="{Binding ContractList.SelectedItem}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid ColumnDefinitions="1.5*,2*,1*,1*,1*">
+                            <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,1*">
                                 <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding Contract.FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
-                                <TextBlock Grid.Column="2" Text="{Binding FileExists, Converter={StaticResource YesNoConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="3" Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="4" Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding RoomName}" FontWeight="Medium" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2" Text="{Binding Contract.FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
+                                <TextBlock Grid.Column="3" Text="{Binding FileExists, Converter={StaticResource YesNoConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="4" Text="{Binding Contract.StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="5" Text="{Binding Contract.EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

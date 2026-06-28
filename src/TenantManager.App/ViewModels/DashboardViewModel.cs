@@ -245,6 +245,7 @@ public class DashboardViewModel : ViewModelBase
         _db.ChangeTracker.Clear();
 
         var now = DateTime.Today;
+        var nowOffset = new DateTimeOffset(now);
         var currentYear = now.Year;
         var currentMonth = now.Month;
 
@@ -254,9 +255,14 @@ public class DashboardViewModel : ViewModelBase
         TotalRooms = rooms.Count;
         ActiveTenants = activeTenants.Count;
 
-        var occupiedRoomIds = activeTenants
-            .Where(t => t.RoomId.HasValue)
-            .Select(t => t.RoomId!.Value)
+        var activeContracts = _db.RentalContracts
+            .Where(c => c.PropertyId == propertyId)
+            .AsEnumerable()
+            .Where(c => c.StartDate <= nowOffset && (c.EndDate == null || c.EndDate >= nowOffset))
+            .ToList();
+
+        var occupiedRoomIds = activeContracts
+            .Select(c => c.RoomId)
             .Distinct()
             .ToHashSet();
 
@@ -267,9 +273,11 @@ public class DashboardViewModel : ViewModelBase
         var roomLookup = rooms.ToDictionary(r => r.Id, r => r);
 
         OccupiedRooms.Clear();
-        foreach (var tenant in activeTenants.Where(t => t.RoomId.HasValue))
+        foreach (var contract in activeContracts)
         {
-            var roomName = roomLookup.TryGetValue(tenant.RoomId!.Value, out var rn) ? rn.Name : $"(id={tenant.RoomId})";
+            var tenant = activeTenants.FirstOrDefault(t => t.Id == contract.TenantId);
+            if (tenant == null) continue;
+            var roomName = roomLookup.TryGetValue(contract.RoomId, out var rn) ? rn.Name : $"(id={contract.RoomId})";
             OccupiedRooms.Add(new RoomOccupancyItem
             {
                 RoomName = roomName,
