@@ -9,6 +9,7 @@
         x:Class="TenantManager.App.MainWindow"
         x:CompileBindings="False"
         Title="Tenant Manager"
+        Icon="/Assets/app-icon.ico"
         Background="{DynamicResource AppBackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
