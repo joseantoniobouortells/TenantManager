@@ -96,6 +96,12 @@
 86. **Buscador y Ordenación Bidireccional en Inquilinos (Junio 2026):**
     - *Decisión:* Se eliminaron los botones obsoletos de Editar/Actualizar y se introdujo la búsqueda y ordenación interactiva (▲/▼) por Nombre y Teléfono en la vista de Inquilinos, utilizando la caché local en memoria (`_allTenants`).
     - *Motivo:* Finalizar la estandarización UX de las tablas de datos, logrando una interfaz limpia y rápida donde los filtrados ocurren en tiempo real del lado del cliente.
+87. **Infraestructura de Empaquetado y Publicación (Junio 2026):**
+    - *Decisión:* Se configuró un workflow en GitHub Actions para generar binarios multiplataforma automáticos. En Windows se configuró un instalador MSI usando WiX v4 (empaquetando el `.cab` internamente) y asegurando la inclusión de las librerías nativas de SQLite (`IncludeNativeLibrariesForSelfExtract=true`) para evitar cierres al arranque. En macOS se reescribió la creación del `.dmg` montando un disco virtual temporal para aislar el proceso y evitar el desbordamiento de memoria al crear el enlace simbólico a `/Applications`.
+    - *Motivo:* Proveer instaladores nativos, sólidos y profesionales (en lugar de obligar al usuario a usar scripts) superando los fallos estándar de despliegue de XCOPY / SingleFile en .NET.
+88. **Extensión del Área de Cliente y Título Dinámico (Junio 2026):**
+    - *Decisión:* Se activó `ExtendClientAreaToDecorationsHint="True"` en Avalonia, fusionando el marco de la app con la barra de título del sistema operativo. Se introdujeron márgenes estáticos para evitar el solapamiento con los botones de control de Windows/macOS. Se implementó un "breadcrumb" dinámico (ej. Vivienda Principal / Inquilinos) y se inyectó la versión compilada dinámicamente en el pie de la barra lateral.
+    - *Motivo:* Proveer un diseño excepcionalmente moderno y "premium", liberando espacio vertical y otorgando un look-and-feel nativo a la altura de las aplicaciones comerciales top.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.
