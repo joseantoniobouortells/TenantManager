@@ -1,0 +1,29 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Tenant Manager" Manufacturer="Tenant Manager" Version="1.0.0.0" UpgradeCode="a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Tenant Manager">
+        <Component Id="MainExecutable" Bitness="always64">
+          <File Id="TenantManagerExe" Source="publish\win-x64\TenantManager.App.exe" KeyPath="yes">
+            <Shortcut Id="ApplicationStartMenuShortcut"
+                      Directory="ProgramMenuFolder"
+                      Name="Tenant Manager"
+                      WorkingDirectory="INSTALLFOLDER"
+                      Icon="AppIcon"
+                      Advertise="yes" />
+          </File>
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Icon Id="AppIcon" SourceFile="src\TenantManager.App\Assets\app-icon.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+
+    <Feature Id="Main">
+      <ComponentRef Id="MainExecutable" />
+    </Feature>
+  </Package>
+</Wix>

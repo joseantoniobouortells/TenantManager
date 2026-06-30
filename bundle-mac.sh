@@ -37,14 +37,20 @@ cp "assets/TenantManager.icns" "${APP_BUNDLE}/Contents/Resources/TenantManager.i
 echo "▶ Setting executable permission..."
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}.App"
 
-echo "▶ Zipping the app bundle..."
-cd dist
-zip -q -r "${APP_NAME}-${RUNTIME}.zip" "${APP_NAME}.app"
-cd ..
+echo "▶ Packaging as DMG..."
+DMG_NAME="dist/${APP_NAME}-${RUNTIME}.dmg"
+DMG_STAGING="dist/dmg_staging"
+
+rm -rf "$DMG_STAGING"
+mkdir -p "$DMG_STAGING"
+mv "$APP_BUNDLE" "$DMG_STAGING/"
+ln -s /Applications "$DMG_STAGING/Applications"
+
+hdiutil create -volname "Tenant Manager" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG_NAME"
 
 echo ""
-echo "✅ Bundle created at: ${APP_BUNDLE}"
-echo "📦 Zipped version at: ${ZIP_NAME}"
+echo "✅ Bundle created at: ${DMG_STAGING}/${APP_NAME}.app"
+echo "📦 DMG generated at: ${DMG_NAME}"
 echo ""
 echo "To run:  open ${APP_BUNDLE}"
 echo "To install: cp -r ${APP_BUNDLE} /Applications/"

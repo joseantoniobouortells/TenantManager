@@ -47,10 +47,15 @@ jobs:
         run: |
           dotnet publish src/TenantManager.App/TenantManager.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o publish/${{ matrix.runtime }}
           
-      - name: Package Windows
+      - name: Install WiX Toolset
+        if: matrix.os == 'windows-latest'
+        run: dotnet tool install --global wix
+        
+      - name: Package Windows (MSI)
         if: matrix.os == 'windows-latest'
         run: |
-          Compress-Archive -Path publish\${{ matrix.runtime }}\* -DestinationPath ${{ matrix.artifact_name }}.zip
+          wix extension add WixToolset.UI.wixext
+          wix build installer\windows\Package.wxs -out ${{ matrix.artifact_name }}.msi -ext WixToolset.UI.wixext
 
       - name: Package Linux
         if: matrix.os == 'ubuntu-latest'
@@ -64,14 +69,14 @@ jobs:
         run: |
           chmod +x bundle-mac.sh
           ./bundle-mac.sh Release ${{ matrix.runtime }}
-          mv dist/TenantManager-${{ matrix.runtime }}.zip ${{ matrix.artifact_name }}.zip
+          mv dist/TenantManager-${{ matrix.runtime }}.dmg ${{ matrix.artifact_name }}.dmg
 
       - name: Upload Artifacts (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.zip
+          path: ${{ matrix.artifact_name }}.msi
 
       - name: Upload Artifacts (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -85,7 +90,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.zip
+          path: ${{ matrix.artifact_name }}.dmg
 
   release:
     name: Create GitHub Release

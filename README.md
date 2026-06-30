@@ -56,15 +56,19 @@ Provide individual property owners with a clean, visually rich, and secure tool 
 The application is distributed as a self-contained executable for Windows, macOS, and Linux. You can download the latest version from the [Releases](../../releases) page.
 
 ### Windows
-1. Download the `TenantManager-Windows-x64.zip` file.
-2. Extract the contents to a folder of your choice.
-3. Run `TenantManager.App.exe`.
+1. Download the `TenantManager-Windows-x64.msi` installer.
+2. Double-click the `.msi` file and follow the setup wizard.
+3. The application will be installed in your Program Files and a shortcut will be added to your Start Menu.
 
 ### macOS (Apple Silicon & Intel)
-1. Download `TenantManager-macOS-ARM64.zip` (for M1/M2/M3) or `TenantManager-macOS-Intel.zip`.
-2. Extract the archive.
-3. Drag and drop `TenantManager.app` to your `/Applications` folder.
-4. *Note: On the first run, you might need to right-click (or Control-click) the app and select **Open** to bypass macOS security for unidentified developers.*
+1. Download `TenantManager-macOS-ARM64.dmg` (for M1/M2/M3) or `TenantManager-macOS-Intel.dmg`.
+2. Double-click the `.dmg` file to mount it.
+3. Drag and drop the `Tenant Manager` app into the `Applications` folder shortcut provided in the window.
+4. **Security Notice (Unidentified Developer):** Because the application is not signed with an Apple Developer Certificate, macOS Gatekeeper will block it by default. To allow it to run, open your Terminal and execute this command to clear the quarantine flag:
+   ```bash
+   xattr -cr /Applications/TenantManager.app
+   ```
+   *After running this, you can open the app normally from Launchpad or Applications.*
 
 ### Linux
 1. Download `TenantManager-Linux-x64.tar.gz`.
