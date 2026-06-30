@@ -13,8 +13,12 @@ public partial class MainWindow : Window
 
     private void TabControl_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (e.Source is TabControl && DataContext is MainViewModel vm)
+        if (e.Source is TabControl tc && DataContext is MainViewModel vm)
         {
+            if (tc.SelectedItem is TabItem tabItem && tabItem.Header != null)
+            {
+                vm.CurrentPageTitle = tabItem.Header.ToString() ?? "Dashboard";
+            }
             vm.RefreshAll();
         }
     }

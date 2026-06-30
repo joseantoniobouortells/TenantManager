@@ -11,7 +11,8 @@
         Title="Tenant Manager"
         Icon="avares://TenantManager.App/Assets/app-icon.ico"
         Background="{DynamicResource AppBackgroundBrush}"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True">
 
     <Window.Styles>
         <Style Selector="TabControl">
@@ -55,18 +56,28 @@
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*">
-        <!-- TOP BAR -->
-        <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="16 12" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource TableBorderBrush}">
-            <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right">
-                <TextBlock Text="Vivienda Activa:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                <ComboBox ItemsSource="{Binding Properties}" SelectedItem="{Binding SelectedProperty}" Width="200">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Name}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-            </StackPanel>
+        <!-- TOP BAR (Integrated with Window Title Bar) -->
+        <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="80,16,140,16" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource TableBorderBrush}">
+            <Grid>
+                <!-- DYNAMIC CONTEXT TITLE (Left) -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False">
+                    <TextBlock Text="{Binding SelectedProperty.Name, FallbackValue='Tenant Manager'}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" FontSize="15" />
+                    <TextBlock Text="/" Foreground="{DynamicResource TableBorderBrush}" FontWeight="Medium" FontSize="15" Margin="4,0" />
+                    <TextBlock Text="{Binding CurrentPageTitle}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="15" />
+                </StackPanel>
+
+                <!-- ACTIVE PROPERTY SELECTOR (Right) -->
+                <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right">
+                    <TextBlock Text="Vivienda Activa:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                    <ComboBox ItemsSource="{Binding Properties}" SelectedItem="{Binding SelectedProperty}" Width="200">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Name}" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- MAIN NAVIGATION -->

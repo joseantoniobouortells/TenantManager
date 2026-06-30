@@ -19,6 +19,13 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    private string _currentPageTitle = "Dashboard";
+    public string CurrentPageTitle
+    {
+        get => _currentPageTitle;
+        set => SetProperty(ref _currentPageTitle, value);
+    }
+
     public MainViewModel()
     {
         _db = new AppDbContext();
