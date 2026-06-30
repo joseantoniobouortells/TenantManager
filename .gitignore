@@ -32,3 +32,7 @@ packages/
 *.db-wal
 *.sqlite
 *.sqlite3
+
+# macOS bundle outputs
+publish/
+dist/
