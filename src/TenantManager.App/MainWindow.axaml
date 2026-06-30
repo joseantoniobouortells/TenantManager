@@ -29,14 +29,14 @@
             <Setter Property="FontWeight" Value="Medium" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         </Style>
-        <Style Selector="TabItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="TabItem:pointerover /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource ActionBackgroundBrush}" />
         </Style>
         <Style Selector="TabItem:selected">
             <Setter Property="Background" Value="{DynamicResource TabSelectedBackgroundBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
         </Style>
-        <Style Selector="TabItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="TabItem:selected:pointerover /template/ Border#PART_LayoutRoot">
             <Setter Property="Background" Value="{DynamicResource TabSelectedBackgroundBrush}" />
         </Style>
         
