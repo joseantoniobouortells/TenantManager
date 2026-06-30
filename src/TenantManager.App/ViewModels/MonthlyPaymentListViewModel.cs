@@ -653,7 +653,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         // Variable: split invoices among occupied rooms
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
         var invoicesTotal = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId)
+            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && i.IsChargeableToTenant)
             .ToList()
             .Sum(i => i.Amount);
 

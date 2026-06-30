@@ -13,4 +13,8 @@ public class ExpenseInvoice
     public int PropertyId { get; set; }
     public string? FilePath { get; set; }
     public byte[]? FileContent { get; set; }
+    public bool IsChargeableToTenant { get; set; } = true;
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool HasFile => FileContent != null || !string.IsNullOrWhiteSpace(FilePath);
 }

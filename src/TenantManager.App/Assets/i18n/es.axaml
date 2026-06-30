@@ -136,4 +136,11 @@
     <system:String x:Key="ToYearLabel">Hasta Año</system:String>
     <system:String x:Key="ToMonthLabel">Hasta Mes</system:String>
     <system:String x:Key="GenerateButton">Generar</system:String>
+    
+    <!-- Expenses View -->
+    <system:String x:Key="ExpensesTitle">Gastos</system:String>
+    <system:String x:Key="NewExpenseButton">Nuevo Gasto</system:String>
+    <system:String x:Key="ViewPdfButton">Ver Factura PDF</system:String>
+    <system:String x:Key="IsChargeableLabel">¿Repercutible a inquilinos?</system:String>
+    <system:String x:Key="ChargeableColumnHeader">Repercutible</system:String>
 </ResourceDictionary>

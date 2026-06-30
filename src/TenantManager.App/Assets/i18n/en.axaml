@@ -134,4 +134,11 @@
     <system:String x:Key="ToYearLabel">To Year</system:String>
     <system:String x:Key="ToMonthLabel">To Month</system:String>
     <system:String x:Key="GenerateButton">Generate</system:String>
+    
+    <!-- Expenses View -->
+    <system:String x:Key="ExpensesTitle">Expenses</system:String>
+    <system:String x:Key="NewExpenseButton">New Expense</system:String>
+    <system:String x:Key="ViewPdfButton">View PDF</system:String>
+    <system:String x:Key="IsChargeableLabel">Chargeable to tenants?</system:String>
+    <system:String x:Key="ChargeableColumnHeader">Chargeable</system:String>
 </ResourceDictionary>
