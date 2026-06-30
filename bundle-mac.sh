@@ -39,17 +39,28 @@ chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}.App"
 
 echo "▶ Packaging as DMG..."
 DMG_NAME="dist/${APP_NAME}-${RUNTIME}.dmg"
-DMG_STAGING="dist/dmg_staging"
+TEMP_DMG="dist/temp.dmg"
 
-rm -rf "$DMG_STAGING"
-mkdir -p "$DMG_STAGING"
-mv "$APP_BUNDLE" "$DMG_STAGING/"
-ln -s /Applications "$DMG_STAGING/Applications"
+rm -f "$DMG_NAME" "$TEMP_DMG"
+# Create a temporary empty DMG (e.g. 250MB should be plenty for the self-contained .NET app)
+hdiutil create -size 250m -fs HFS+ -volname "Tenant Manager" "$TEMP_DMG"
 
-hdiutil create -volname "Tenant Manager" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG_NAME"
+# Mount it and get the device name
+DEVICE=$(hdiutil attach -noverify -noautoopen "$TEMP_DMG" | egrep '^/dev/' | sed 1q | awk '{print $1}')
+
+# Copy the .app into the mounted DMG and create the Applications symlink
+cp -R "$APP_BUNDLE" "/Volumes/Tenant Manager/"
+ln -s /Applications "/Volumes/Tenant Manager/Applications"
+
+# Detach (unmount)
+hdiutil detach "$DEVICE"
+
+# Compress into the final DMG
+hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_NAME"
+rm -f "$TEMP_DMG"
 
 echo ""
-echo "✅ Bundle created at: ${DMG_STAGING}/${APP_NAME}.app"
+echo "✅ Bundle created at: ${APP_BUNDLE}"
 echo "📦 DMG generated at: ${DMG_NAME}"
 echo ""
 echo "To run:  open ${APP_BUNDLE}"
