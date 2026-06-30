@@ -51,6 +51,27 @@ Provide individual property owners with a clean, visually rich, and secure tool 
 - Digital signatures or automatic contract generation.
 - Online payments or bank integration.
 
+## Installation
+
+The application is distributed as a self-contained executable for Windows, macOS, and Linux. You can download the latest version from the [Releases](../../releases) page.
+
+### Windows
+1. Download the `TenantManager-Windows-x64.zip` file.
+2. Extract the contents to a folder of your choice.
+3. Run `TenantManager.App.exe`.
+
+### macOS (Apple Silicon & Intel)
+1. Download `TenantManager-macOS-ARM64.zip` (for M1/M2/M3) or `TenantManager-macOS-Intel.zip`.
+2. Extract the archive.
+3. Drag and drop `TenantManager.app` to your `/Applications` folder.
+4. *Note: On the first run, you might need to right-click (or Control-click) the app and select **Open** to bypass macOS security for unidentified developers.*
+
+### Linux
+1. Download `TenantManager-Linux-x64.tar.gz`.
+2. Extract the contents: `tar -xzf TenantManager-Linux-x64.tar.gz`
+3. Give execution permissions: `chmod +x TenantManager.App`
+4. Run the application: `./TenantManager.App`
+
 ## How to Build
 
 Run the following commands to restore and build the application:
