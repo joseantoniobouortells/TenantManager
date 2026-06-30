@@ -17,6 +17,10 @@ public class PaymentDisplayItem
 public class MonthlyPaymentListViewModel : ViewModelBase
 {
     private readonly AppDbContext _db;
+    private List<PaymentDisplayItem> _allPayments = new();
+    private string _searchQuery = string.Empty;
+    private string _sortColumn = "Year";
+    private bool _sortAscending = false;
     private PaymentDisplayItem? _selectedItem;
     private MonthlyPayment? _editingPayment;
     private bool _isEditing;
@@ -56,8 +60,8 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             Enum.GetValues<PaymentStatus>());
 
         LoadPaymentsCommand = new RelayCommand(_ => LoadPayments(_currentPropertyId));
+        SortCommand = new RelayCommand(param => Sort(param as string));
         NewPaymentCommand = new RelayCommand(_ => StartNewPayment());
-        EditPaymentCommand = new RelayCommand(_ => EditPayment());
         SavePaymentCommand = new RelayCommand(_ => SavePayment());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ClearPaidDateCommand = new RelayCommand(_ => EditPaidDate = null);
@@ -77,8 +81,8 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     public ObservableCollection<PaymentStatus> AvailableStatuses { get; }
 
     public RelayCommand LoadPaymentsCommand { get; }
+    public RelayCommand SortCommand { get; }
     public RelayCommand NewPaymentCommand { get; }
-    public RelayCommand EditPaymentCommand { get; }
     public RelayCommand SavePaymentCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ClearPaidDateCommand { get; }
@@ -115,6 +119,24 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         get => _isBatchGenerating;
         set => SetProperty(ref _isBatchGenerating, value);
     }
+
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public string TenantSortIndicator => _sortColumn == "Tenant" ? (_sortAscending ? "▲" : "▼") : "";
+    public string YearSortIndicator => _sortColumn == "Year" ? (_sortAscending ? "▲" : "▼") : "";
+    public string MonthSortIndicator => _sortColumn == "Month" ? (_sortAscending ? "▲" : "▼") : "";
+    public string TotalSortIndicator => _sortColumn == "Total" ? (_sortAscending ? "▲" : "▼") : "";
+    public string StatusSortIndicator => _sortColumn == "Status" ? (_sortAscending ? "▲" : "▼") : "";
 
     public Tenant? EditSelectedTenant
     {
@@ -293,18 +315,71 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
 
-        Payments.Clear();
+        _allPayments.Clear();
         foreach (var payment in _db.MonthlyPayments
             .Where(p => p.PropertyId == propertyId)
-            .OrderBy(p => p.Year)
-            .ThenBy(p => p.Month)
-            .ThenBy(p => p.TenantId))
+            .ToList())
         {
-            Payments.Add(new PaymentDisplayItem
+            _allPayments.Add(new PaymentDisplayItem
             {
                 Payment = payment,
                 TenantName = tenantLookup.TryGetValue(payment.TenantId, out var name) ? name : $"(id={payment.TenantId})"
             });
+        }
+        ApplyFiltersAndSort();
+    }
+
+    private void Sort(string? column)
+    {
+        if (string.IsNullOrWhiteSpace(column)) return;
+
+        if (_sortColumn == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+
+        OnPropertyChanged(nameof(TenantSortIndicator));
+        OnPropertyChanged(nameof(YearSortIndicator));
+        OnPropertyChanged(nameof(MonthSortIndicator));
+        OnPropertyChanged(nameof(TotalSortIndicator));
+        OnPropertyChanged(nameof(StatusSortIndicator));
+
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        var filtered = _allPayments.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var q = SearchQuery.ToLowerInvariant();
+            filtered = filtered.Where(i => 
+                (i.TenantName?.ToLowerInvariant().Contains(q) ?? false) ||
+                i.Payment.Year.ToString().Contains(q) ||
+                i.Payment.Month.ToString().Contains(q) ||
+                i.Payment.Status.ToString().ToLowerInvariant().Contains(q));
+        }
+
+        filtered = _sortColumn switch
+        {
+            "Tenant" => _sortAscending ? filtered.OrderBy(i => i.TenantName) : filtered.OrderByDescending(i => i.TenantName),
+            "Year" => _sortAscending ? filtered.OrderBy(i => i.Payment.Year).ThenBy(i => i.Payment.Month) : filtered.OrderByDescending(i => i.Payment.Year).ThenByDescending(i => i.Payment.Month),
+            "Month" => _sortAscending ? filtered.OrderBy(i => i.Payment.Month) : filtered.OrderByDescending(i => i.Payment.Month),
+            "Total" => _sortAscending ? filtered.OrderBy(i => i.Payment.ExpectedRentAmount + i.Payment.ExpectedExpenseAmount) : filtered.OrderByDescending(i => i.Payment.ExpectedRentAmount + i.Payment.ExpectedExpenseAmount),
+            "Status" => _sortAscending ? filtered.OrderBy(i => i.Payment.Status.ToString()) : filtered.OrderByDescending(i => i.Payment.Status.ToString()),
+            _ => filtered.OrderByDescending(i => i.Payment.Year).ThenByDescending(i => i.Payment.Month)
+        };
+
+        Payments.Clear();
+        foreach (var inv in filtered)
+        {
+            Payments.Add(inv);
         }
     }
 
@@ -339,7 +414,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             .ToHashSet();
 
         foreach (var tenant in _db.Tenants
-            .Where(t => t.IsActive && t.PropertyId == _currentPropertyId)
+            .Where(t => t.PropertyId == _currentPropertyId)
             .ToList()
             .Where(t => activeTenantIds.Contains(t.Id) || t.Id == includeTenantId)
             .OrderBy(t => t.FullName))

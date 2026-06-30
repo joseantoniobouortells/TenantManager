@@ -290,10 +290,9 @@ public class DashboardViewModel : ViewModelBase
         var currentMonth = now.Month;
 
         var rooms = _db.Rooms.Where(r => r.PropertyId == propertyId).ToList();
-        var activeTenants = _db.Tenants.Where(t => t.IsActive && t.PropertyId == propertyId).ToList();
+        var allTenants = _db.Tenants.Where(t => t.PropertyId == propertyId).ToList();
 
         TotalRooms = rooms.Count;
-        ActiveTenants = activeTenants.Count;
 
         var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
         var propertyContractIds = propertyContracts.Select(c => c.Id).ToList();
@@ -312,6 +311,7 @@ public class DashboardViewModel : ViewModelBase
             .ToHashSet();
 
         OccupiedRoomsCount = occupiedRoomIds.Count;
+        ActiveTenants = activeContracts.Select(c => c.TenantId).Distinct().Count();
 
         AvailableRoomsCount = TotalRooms - OccupiedRoomsCount;
 
@@ -348,7 +348,7 @@ public class DashboardViewModel : ViewModelBase
         OccupiedRooms.Clear();
         foreach (var contract in activeContracts)
         {
-            var tenant = activeTenants.FirstOrDefault(t => t.Id == contract.TenantId);
+            var tenant = allTenants.FirstOrDefault(t => t.Id == contract.TenantId);
             if (tenant == null) continue;
             var roomName = roomLookup.TryGetValue(contract.RoomId, out var rn) ? rn.Name : $"(id={contract.RoomId})";
             OccupiedRooms.Add(new RoomOccupancyItem

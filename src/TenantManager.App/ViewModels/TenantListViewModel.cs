@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,10 @@ namespace TenantManager.App.ViewModels;
 public class TenantListViewModel : ViewModelBase
 {
     private readonly AppDbContext _db;
+    private List<Tenant> _allTenants = new();
+    private string _searchQuery = string.Empty;
+    private string _sortColumn = "Name";
+    private bool _sortAscending = true;
     private Tenant? _editingTenant;
     private Tenant? _selectedTenant;
     private bool _isEditing;
@@ -25,11 +30,10 @@ public class TenantListViewModel : ViewModelBase
         Tenants = new ObservableCollection<Tenant>();
 
         LoadTenantsCommand = new RelayCommand(_ => LoadTenants(_currentPropertyId));
+        SortCommand = new RelayCommand(param => Sort(param as string));
         NewTenantCommand = new RelayCommand(_ => StartNewTenant());
-        EditTenantCommand = new RelayCommand(_ => EditTenant());
         SaveTenantCommand = new RelayCommand(_ => SaveTenant());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        ToggleTenantActiveCommand = new RelayCommand(param => ToggleTenantActive(param));
         DeleteTenantCommand = new RelayCommand(param => DeleteTenant(param));
         ConfirmDeleteTenantCommand = new RelayCommand(_ => ConfirmDeleteTenant());
         CancelDeleteTenantCommand = new RelayCommand(_ => CancelDeleteTenant());
@@ -38,11 +42,10 @@ public class TenantListViewModel : ViewModelBase
     public ObservableCollection<Tenant> Tenants { get; }
 
     public RelayCommand LoadTenantsCommand { get; }
+    public RelayCommand SortCommand { get; }
     public RelayCommand NewTenantCommand { get; }
-    public RelayCommand EditTenantCommand { get; }
     public RelayCommand SaveTenantCommand { get; }
     public RelayCommand CancelEditCommand { get; }
-    public RelayCommand ToggleTenantActiveCommand { get; }
     public RelayCommand DeleteTenantCommand { get; }
     public RelayCommand ConfirmDeleteTenantCommand { get; }
     public RelayCommand CancelDeleteTenantCommand { get; }
@@ -90,6 +93,21 @@ public class TenantListViewModel : ViewModelBase
         set => SetProperty(ref _editNotes, value);
     }
 
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public string NameSortIndicator => _sortColumn == "Name" ? (_sortAscending ? "▲" : "▼") : "";
+    public string PhoneSortIndicator => _sortColumn == "Phone" ? (_sortAscending ? "▲" : "▼") : "";
+
     public void LoadTenants(int propertyId)
     {
         _currentPropertyId = propertyId;
@@ -97,10 +115,58 @@ public class TenantListViewModel : ViewModelBase
 
         _db.ChangeTracker.Clear();
 
-        Tenants.Clear();
-        foreach (var tenant in _db.Tenants.Where(t => t.PropertyId == propertyId).OrderBy(t => t.FullName))
+        _allTenants.Clear();
+        foreach (var tenant in _db.Tenants.Where(t => t.PropertyId == propertyId).ToList())
         {
-            Tenants.Add(tenant);
+            _allTenants.Add(tenant);
+        }
+        ApplyFiltersAndSort();
+    }
+
+    private void Sort(string? column)
+    {
+        if (string.IsNullOrWhiteSpace(column)) return;
+
+        if (_sortColumn == column)
+        {
+            _sortAscending = !_sortAscending;
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortAscending = true;
+        }
+
+        OnPropertyChanged(nameof(NameSortIndicator));
+        OnPropertyChanged(nameof(PhoneSortIndicator));
+
+        ApplyFiltersAndSort();
+    }
+
+    private void ApplyFiltersAndSort()
+    {
+        var filtered = _allTenants.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            var q = SearchQuery.ToLowerInvariant();
+            filtered = filtered.Where(t => 
+                (t.FullName?.ToLowerInvariant().Contains(q) ?? false) ||
+                (t.Phone?.ToLowerInvariant().Contains(q) ?? false) ||
+                (t.Email?.ToLowerInvariant().Contains(q) ?? false));
+        }
+
+        filtered = _sortColumn switch
+        {
+            "Name" => _sortAscending ? filtered.OrderBy(t => t.FullName) : filtered.OrderByDescending(t => t.FullName),
+            "Phone" => _sortAscending ? filtered.OrderBy(t => t.Phone) : filtered.OrderByDescending(t => t.Phone),
+            _ => filtered.OrderBy(t => t.FullName)
+        };
+
+        Tenants.Clear();
+        foreach (var t in filtered)
+        {
+            Tenants.Add(t);
         }
     }
 
@@ -142,8 +208,7 @@ public class TenantListViewModel : ViewModelBase
                 Phone = EditPhone?.Trim(),
                 Email = EditEmail?.Trim(),
                 Notes = EditNotes?.Trim(),
-                PropertyId = _currentPropertyId,
-                IsActive = true
+                PropertyId = _currentPropertyId
             };
             _db.Tenants.Add(tenant);
         }
@@ -170,15 +235,7 @@ public class TenantListViewModel : ViewModelBase
         IsEditing = false;
     }
 
-    private void ToggleTenantActive(object? parameter)
-    {
-        if (parameter is Tenant tenant)
-        {
-            tenant.IsActive = !tenant.IsActive;
-            _db.SaveChanges();
-            LoadTenants(_currentPropertyId);
-        }
-    }
+
 
     private bool _isConfirmingDeleteTenant;
     public bool IsConfirmingDeleteTenant

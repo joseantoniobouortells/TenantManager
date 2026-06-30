@@ -24,6 +24,8 @@ public class ContractDisplayItem
 public class ContractListViewModel : ViewModelBase
 {
     private readonly AppDbContext _db;
+    private List<ContractDisplayItem> _allContracts = new();
+    private string _searchQuery = string.Empty;
     private ContractDisplayItem? _selectedItem;
     private RentalContract? _editingContract;
     private bool _isEditing;
@@ -312,31 +314,8 @@ public class ContractListViewModel : ViewModelBase
             });
         }
 
-        Contracts.Clear();
-        IEnumerable<ContractDisplayItem> sorted;
-        if (CurrentSortField == "StartDate")
-        {
-            sorted = IsSortAscending 
-                ? items.OrderBy(i => i.StartDate) 
-                : items.OrderByDescending(i => i.StartDate);
-        }
-        else if (CurrentSortField == "EndDate")
-        {
-            sorted = IsSortAscending 
-                ? items.OrderBy(i => i.EndDate ?? DateTimeOffset.MaxValue) 
-                : items.OrderByDescending(i => i.EndDate ?? DateTimeOffset.MinValue);
-        }
-        else
-        {
-            sorted = IsSortAscending 
-                ? items.OrderBy(i => i.TenantName) 
-                : items.OrderByDescending(i => i.TenantName);
-        }
-
-        foreach (var item in sorted)
-        {
-            Contracts.Add(item);
-        }
+        _allContracts = items;
+        ApplyFiltersAndSort();
 
         if (selectedContractId.HasValue)
         {
@@ -348,28 +327,56 @@ public class ContractListViewModel : ViewModelBase
         }
     }
 
-    private string _currentSortField = "Tenant";
-    public string CurrentSortField
+    private void ApplyFiltersAndSort()
     {
-        get => _currentSortField;
-        set 
+        var filtered = _allContracts.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
-            if (SetProperty(ref _currentSortField, value))
-            {
-                NotifySortIndicators();
-            }
+            var q = SearchQuery.ToLowerInvariant();
+            filtered = filtered.Where(i => 
+                (i.TenantName?.ToLowerInvariant().Contains(q) ?? false) ||
+                (i.RoomName?.ToLowerInvariant().Contains(q) ?? false));
+        }
+
+        IEnumerable<ContractDisplayItem> sorted;
+        if (_currentSortField == "StartDate")
+        {
+            sorted = _isSortAscending 
+                ? filtered.OrderBy(i => i.StartDate) 
+                : filtered.OrderByDescending(i => i.StartDate);
+        }
+        else if (_currentSortField == "EndDate")
+        {
+            sorted = _isSortAscending 
+                ? filtered.OrderBy(i => i.EndDate ?? DateTimeOffset.MaxValue) 
+                : filtered.OrderByDescending(i => i.EndDate ?? DateTimeOffset.MinValue);
+        }
+        else
+        {
+            sorted = _isSortAscending 
+                ? filtered.OrderBy(i => i.TenantName) 
+                : filtered.OrderByDescending(i => i.TenantName);
+        }
+
+        Contracts.Clear();
+        foreach (var item in sorted)
+        {
+            Contracts.Add(item);
         }
     }
 
+    private string _currentSortField = "Tenant";
     private bool _isSortAscending = true;
-    public bool IsSortAscending
+
+    public string SearchQuery
     {
-        get => _isSortAscending;
+        get => _searchQuery;
         set
         {
-            if (SetProperty(ref _isSortAscending, value))
+            if (SetProperty(ref _searchQuery, value))
             {
-                NotifySortIndicators();
+                ApplyFiltersAndSort();
             }
         }
     }
@@ -380,8 +387,8 @@ public class ContractListViewModel : ViewModelBase
 
     private string GetSortIndicator(string field)
     {
-        if (CurrentSortField != field) return string.Empty;
-        return IsSortAscending ? " ▲" : " ▼";
+        if (_currentSortField != field) return string.Empty;
+        return _isSortAscending ? " ▲" : " ▼";
     }
 
     private void NotifySortIndicators()
@@ -395,23 +402,24 @@ public class ContractListViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(field)) return;
         
-        if (CurrentSortField == field)
+        if (_currentSortField == field)
         {
-            IsSortAscending = !IsSortAscending;
+            _isSortAscending = !_isSortAscending;
         }
         else
         {
-            CurrentSortField = field;
-            IsSortAscending = true;
+            _currentSortField = field;
+            _isSortAscending = true;
         }
         
-        LoadContracts(_currentPropertyId);
+        NotifySortIndicators();
+        ApplyFiltersAndSort();
     }
 
     private void LoadAvailableTenants()
     {
         AvailableTenants.Clear();
-        foreach (var tenant in _db.Tenants.Where(t => t.IsActive && t.PropertyId == _currentPropertyId).OrderBy(t => t.FullName))
+        foreach (var tenant in _db.Tenants.Where(t => t.PropertyId == _currentPropertyId).OrderBy(t => t.FullName))
         {
             AvailableTenants.Add(tenant);
         }

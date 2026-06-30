@@ -87,6 +87,15 @@
 83. **Buscador y Ordenación Bidireccional en Gastos (Junio 2026):**
     - *Decisión:* Se introdujo un campo de búsqueda en tiempo real (barra superior) y cabeceras interactivas en la tabla de Gastos, reutilizando el patrón de almacenamiento en memoria (`_allInvoices`) empleado en los contratos. Se puede ordenar haciendo clic en "Type", "Año", "Mes", "Amount" y "Repercutible", actualizando los indicadores visuales "▲/▼".
     - *Motivo:* Proveer a la vista de Gastos con las mismas capacidades de filtrado y ordenación avanzadas y rápidas que tiene la sección de Contratos, mejorando sustancialmente el manejo de históricos de facturación largos sin penalizar a la base de datos (SQLite).
+84. **Automatización de Estado de Inquilinos y Eliminación de Switch Manual (Junio 2026):**
+    - *Decisión:* Se eliminó la propiedad `IsActive` de la entidad `Tenant` (y su respectiva columna en base de datos), así como el botón de activación/desactivación en la UI.
+    - *Motivo:* Reducir el trabajo manual y la redundancia. El sistema ya es inteligente calculando estados a través de los Contratos (fechas de inicio y fin). El Dashboard ahora calcula los "Inquilinos Activos" basándose exclusivamente en si tienen un contrato vigente en el día actual, y los selectores muestran siempre todos los inquilinos para permitir re-contratar a ex-inquilinos de manera fluida.
+85. **Buscador y Ordenación Bidireccional en Pagos Mensuales (Junio 2026):**
+    - *Decisión:* Se estandarizó la pantalla de Pagos Mensuales aplicando el mismo patrón de caché en memoria (`_allPayments`) y ordenación interactiva implementado previamente en Contratos y Gastos.
+    - *Motivo:* Proveer consistencia a lo largo de toda la aplicación, reduciendo las llamadas de lectura intensiva a SQLite y permitiendo filtrar por Inquilino, Año o Mes al instante.
+86. **Buscador y Ordenación Bidireccional en Inquilinos (Junio 2026):**
+    - *Decisión:* Se eliminaron los botones obsoletos de Editar/Actualizar y se introdujo la búsqueda y ordenación interactiva (▲/▼) por Nombre y Teléfono en la vista de Inquilinos, utilizando la caché local en memoria (`_allTenants`).
+    - *Motivo:* Finalizar la estandarización UX de las tablas de datos, logrando una interfaz limpia y rápida donde los filtrados ocurren en tiempo real del lado del cliente.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.

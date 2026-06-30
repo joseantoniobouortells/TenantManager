@@ -187,21 +187,6 @@ public class DomainTests : IDisposable
         Assert.Equal(500, loaded.PaidAmount);
     }
 
-    [Fact]
-    public void DeactivateTenant_ShouldNotDelete()
-    {
-        using var db = CreateContext();
-        var tenant = new Tenant { FullName = "John Doe", IsActive = true };
-        db.Tenants.Add(tenant);
-        db.SaveChanges();
-
-        tenant.IsActive = false;
-        db.SaveChanges();
-
-        var loaded = db.Tenants.Find(tenant.Id);
-        Assert.NotNull(loaded);
-        Assert.False(loaded.IsActive);
-    }
 
     [Fact]
     public void DeactivateRoom_ShouldNotDelete()
@@ -292,7 +277,7 @@ public class DomainTests : IDisposable
         db.Rooms.Add(room);
         db.SaveChanges();
 
-        var tenant = new Tenant { FullName = "Alice Smith", PropertyId = property.Id, IsActive = true };
+        var tenant = new Tenant { FullName = "Alice Smith", PropertyId = property.Id };
         db.Tenants.Add(tenant);
         db.SaveChanges();
 
