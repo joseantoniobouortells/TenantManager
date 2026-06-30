@@ -11,8 +11,7 @@
                       Directory="ProgramMenuFolder"
                       Name="Tenant Manager"
                       WorkingDirectory="INSTALLFOLDER"
-                      Icon="AppIcon"
-                      Advertise="yes" />
+                      Icon="AppIcon" />
           </File>
         </Component>
       </Directory>

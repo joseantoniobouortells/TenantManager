@@ -45,7 +45,7 @@ jobs:
       - name: Publish (Windows / Linux)
         if: ${{ !matrix.is_mac }}
         run: |
-          dotnet publish src/TenantManager.App/TenantManager.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o publish/${{ matrix.runtime }}
+          dotnet publish src/TenantManager.App/TenantManager.App.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/${{ matrix.runtime }}
           
       - name: Install WiX Toolset
         if: matrix.os == 'windows-latest'
