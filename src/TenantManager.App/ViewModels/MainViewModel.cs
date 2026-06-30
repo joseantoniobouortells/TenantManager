@@ -10,6 +10,15 @@ public class MainViewModel : ViewModelBase
     private readonly AppDbContext _db;
     private Property? _selectedProperty;
 
+    public string AppVersion 
+    {
+        get
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return version != null ? $"v{version.Major}.{version.Minor}.{version.Build}" : "v1.0.0";
+        }
+    }
+
     public MainViewModel()
     {
         _db = new AppDbContext();
