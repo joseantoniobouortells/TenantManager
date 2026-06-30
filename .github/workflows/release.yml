@@ -49,13 +49,13 @@ jobs:
           
       - name: Install WiX Toolset
         if: matrix.os == 'windows-latest'
-        run: dotnet tool install --global wix --version 4.0.5
+        run: |
+          dotnet new tool-manifest
+          dotnet tool install wix --version 4.0.5
         
       - name: Package Windows (MSI)
         if: matrix.os == 'windows-latest'
-        run: |
-          wix extension add WixToolset.UI.wixext
-          wix build installer\windows\Package.wxs -out ${{ matrix.artifact_name }}.msi -ext WixToolset.UI.wixext
+        run: dotnet wix build installer\windows\Package.wxs -out ${{ matrix.artifact_name }}.msi
 
       - name: Package Linux
         if: matrix.os == 'ubuntu-latest'
