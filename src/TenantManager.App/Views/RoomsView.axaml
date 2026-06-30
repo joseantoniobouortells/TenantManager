@@ -6,7 +6,8 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="TenantManager.App.Views.RoomsView"
              x:CompileBindings="False">
-    <DockPanel>
+    <Grid>
+        <DockPanel IsEnabled="{Binding !RoomList.IsConfirmingDeleteRoom}">
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
             <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource RoomsTitle}" Margin="0" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
@@ -15,9 +16,9 @@
             </StackPanel>
         </Grid>
 
-        <Grid ColumnDefinitions="2*, 1.2*">
-            <!-- Left Side: Rooms List & Editing -->
-            <DockPanel Grid.Column="0" Margin="0 0 16 0">
+        <Grid>
+            <!-- Rooms List & Editing -->
+            <DockPanel Margin="0">
                 <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding RoomList.IsEditing}">
                     <StackPanel Spacing="16">
                         <TextBlock Classes="H2" Text="{DynamicResource EditRoomTitle}" Margin="0" />
@@ -44,34 +45,64 @@
                     <Button Content="{DynamicResource EditButton}" Command="{Binding RoomList.EditRoomCommand}" Classes="Action" />
                 </StackPanel>
 
-                <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*" Margin="16 0 16 8">
-                    <TextBlock Grid.Column="0" Text="{DynamicResource NameHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="1" Text="Precio Base" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                    <TextBlock Grid.Column="3" Text="{DynamicResource NotesHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                </Grid>
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*,Auto" Margin="16 0 16 8">
+                     <TextBlock Grid.Column="0" Text="{DynamicResource NameHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="1" Text="Precio Base" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="3" Text="{DynamicResource NotesHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="4" Text="" Width="40" />
+                 </Grid>
 
                 <ListBox Classes="Table" ItemsSource="{Binding RoomList.Rooms}" SelectedItem="{Binding RoomList.SelectedRoom}">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <Grid ColumnDefinitions="2*,1*,1*,2*">
-                                <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding BaseRent, StringFormat='{}{0:C}'}" VerticalAlignment="Center" />
-                                <ToggleSwitch Grid.Column="2" 
-                                              IsChecked="{Binding IsActive, Mode=OneWay}" 
-                                              Command="{Binding $parent[UserControl].DataContext.RoomList.ToggleRoomActiveCommand}" 
-                                              CommandParameter="{Binding}"
-                                              OnContent="" OffContent="" 
-                                              Margin="0" Padding="0"
-                                              MinWidth="0" MinHeight="0"
-                                              VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                            </Grid>
+                             <Grid ColumnDefinitions="2*,1*,1*,2*,Auto">
+                                 <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
+                                 <TextBlock Grid.Column="1" Text="{Binding BaseRent, StringFormat='{}{0:C}'}" VerticalAlignment="Center" />
+                                 <ToggleSwitch Grid.Column="2" 
+                                               IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                               Command="{Binding $parent[UserControl].DataContext.RoomList.ToggleRoomActiveCommand}" 
+                                               CommandParameter="{Binding}"
+                                               OnContent="" OffContent="" 
+                                               Margin="0" Padding="0"
+                                               MinWidth="0" MinHeight="0"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                 <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                 <Button Grid.Column="4" 
+                                         Command="{Binding $parent[UserControl].DataContext.RoomList.DeleteRoomCommand}" 
+                                         CommandParameter="{Binding}"
+                                         Classes="Action" Padding="4" Margin="4 0 0 0" ToolTip.Tip="{DynamicResource DeleteButton}" Cursor="Hand">
+                                     <PathIcon Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}" />
+                                 </Button>
+                             </Grid>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
             </DockPanel>
 
         </Grid>
-    </DockPanel>
+        </DockPanel>
+
+        <!-- Confirmation Overlay -->
+        <Border Background="#A0000000" IsVisible="{Binding RoomList.IsConfirmingDeleteRoom}">
+            <Border Background="{DynamicResource CardBackgroundBrush}" 
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="320"
+                    Height="160"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <StackPanel Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="¿Confirmar eliminación?" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock Text="Esta acción no se puede deshacer." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                        <Button Content="Confirmar" Command="{Binding RoomList.ConfirmDeleteRoomCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
+                        <Button Content="Cancelar" Command="{Binding RoomList.CancelDeleteRoomCommand}" Classes="Action" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
 </UserControl>

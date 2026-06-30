@@ -32,6 +32,9 @@ public class PropertyListViewModel : ViewModelBase
         SavePropertyCommand = new RelayCommand(_ => SaveProperty());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         TogglePropertyActiveCommand = new RelayCommand(param => TogglePropertyActive(param));
+        DeletePropertyCommand = new RelayCommand(param => DeleteProperty(param));
+        ConfirmDeletePropertyCommand = new RelayCommand(_ => ConfirmDeleteProperty());
+        CancelDeletePropertyCommand = new RelayCommand(_ => CancelDeleteProperty());
 
         LoadProperties();
     }
@@ -44,6 +47,9 @@ public class PropertyListViewModel : ViewModelBase
     public RelayCommand SavePropertyCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand TogglePropertyActiveCommand { get; }
+    public RelayCommand DeletePropertyCommand { get; }
+    public RelayCommand ConfirmDeletePropertyCommand { get; }
+    public RelayCommand CancelDeletePropertyCommand { get; }
 
     public Property? SelectedProperty
     {
@@ -52,6 +58,7 @@ public class PropertyListViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedProperty, value))
             {
+                IsConfirmingDeleteProperty = false;
                 if (_selectedProperty != null) EditProperty();
             }
         }
@@ -182,5 +189,49 @@ public class PropertyListViewModel : ViewModelBase
             CancelEdit();
             _onPropertiesChanged();
         }
+    }
+
+    private bool _isConfirmingDeleteProperty;
+    public bool IsConfirmingDeleteProperty
+    {
+        get => _isConfirmingDeleteProperty;
+        set => SetProperty(ref _isConfirmingDeleteProperty, value);
+    }
+
+    private Property? _propertyToDelete;
+
+    private void DeleteProperty(object? param)
+    {
+        if (param is Property property)
+        {
+            _propertyToDelete = property;
+            IsConfirmingDeleteProperty = true;
+        }
+    }
+
+    private void ConfirmDeleteProperty()
+    {
+        if (_propertyToDelete != null)
+        {
+            _db.Properties.Remove(_propertyToDelete);
+            _db.SaveChanges();
+            
+            if (SelectedProperty?.Id == _propertyToDelete.Id)
+            {
+                SelectedProperty = null;
+            }
+            
+            _propertyToDelete = null;
+            IsConfirmingDeleteProperty = false;
+            LoadProperties();
+            CancelEdit();
+            _onPropertiesChanged();
+        }
+    }
+
+    private void CancelDeleteProperty()
+    {
+        _propertyToDelete = null;
+        IsConfirmingDeleteProperty = false;
     }
 }

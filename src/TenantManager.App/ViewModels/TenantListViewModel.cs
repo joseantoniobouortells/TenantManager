@@ -30,6 +30,9 @@ public class TenantListViewModel : ViewModelBase
         SaveTenantCommand = new RelayCommand(_ => SaveTenant());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ToggleTenantActiveCommand = new RelayCommand(param => ToggleTenantActive(param));
+        DeleteTenantCommand = new RelayCommand(param => DeleteTenant(param));
+        ConfirmDeleteTenantCommand = new RelayCommand(_ => ConfirmDeleteTenant());
+        CancelDeleteTenantCommand = new RelayCommand(_ => CancelDeleteTenant());
     }
 
     public ObservableCollection<Tenant> Tenants { get; }
@@ -40,6 +43,9 @@ public class TenantListViewModel : ViewModelBase
     public RelayCommand SaveTenantCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ToggleTenantActiveCommand { get; }
+    public RelayCommand DeleteTenantCommand { get; }
+    public RelayCommand ConfirmDeleteTenantCommand { get; }
+    public RelayCommand CancelDeleteTenantCommand { get; }
 
     public Tenant? SelectedTenant
     {
@@ -48,6 +54,7 @@ public class TenantListViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedTenant, value))
             {
+                IsConfirmingDeleteTenant = false;
                 if (_selectedTenant != null) EditTenant();
             }
         }
@@ -171,5 +178,47 @@ public class TenantListViewModel : ViewModelBase
             _db.SaveChanges();
             LoadTenants(_currentPropertyId);
         }
+    }
+
+    private bool _isConfirmingDeleteTenant;
+    public bool IsConfirmingDeleteTenant
+    {
+        get => _isConfirmingDeleteTenant;
+        set => SetProperty(ref _isConfirmingDeleteTenant, value);
+    }
+
+    private Tenant? _tenantToDelete;
+
+    private void DeleteTenant(object? param)
+    {
+        if (param is Tenant tenant)
+        {
+            _tenantToDelete = tenant;
+            IsConfirmingDeleteTenant = true;
+        }
+    }
+
+    private void ConfirmDeleteTenant()
+    {
+        if (_tenantToDelete != null)
+        {
+            _db.Tenants.Remove(_tenantToDelete);
+            _db.SaveChanges();
+            
+            if (SelectedTenant?.Id == _tenantToDelete.Id)
+            {
+                SelectedTenant = null;
+            }
+            
+            _tenantToDelete = null;
+            IsConfirmingDeleteTenant = false;
+            LoadTenants(_currentPropertyId);
+        }
+    }
+
+    private void CancelDeleteTenant()
+    {
+        _tenantToDelete = null;
+        IsConfirmingDeleteTenant = false;
     }
 }

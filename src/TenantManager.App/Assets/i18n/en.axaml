@@ -42,8 +42,6 @@
     <system:String x:Key="PaidStatus">Paid</system:String>
     <system:String x:Key="PendingStatus">Pending</system:String>
     <system:String x:Key="PartialStatus">Partial</system:String>
-    <system:String x:Key="LateStatus">Late</system:String>
-    <system:String x:Key="WaivedStatus">Waived</system:String>
     
     <system:String x:Key="PendingLatePaymentsLabel">Pending/Late Payments</system:String>
     <system:String x:Key="NoPendingPaymentsMsg">No pending payments.</system:String>
@@ -78,6 +76,7 @@
     <system:String x:Key="NewPeriodButton">+ New Period</system:String>
     <system:String x:Key="DeleteButton">Delete</system:String>
     <system:String x:Key="StartDateLabel">Start Date</system:String>
+    <system:String x:Key="EndDateLabel">End Date</system:String>
     <system:String x:Key="EndDateOptionalLabel">End Date (optional)</system:String>
     <system:String x:Key="SaveButton">Save</system:String>
     <system:String x:Key="MonthlyRentUnit">/ month</system:String>

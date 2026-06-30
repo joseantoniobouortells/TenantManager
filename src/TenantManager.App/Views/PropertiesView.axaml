@@ -8,9 +8,10 @@
              x:DataType="vm:MainViewModel"
              x:CompileBindings="False">
 
-    <Grid ColumnDefinitions="3*,2*" Margin="24">
+    <Grid>
+        <Grid IsEnabled="{Binding !PropertyList.IsConfirmingDeleteProperty}" ColumnDefinitions="*, Auto" Margin="24">
         <!-- LIST SECTION -->
-        <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0 0 24 0">
+        <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0">
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0 0 0 16">
                 <TextBlock Grid.Column="0" Text="Viviendas" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Content="Nueva Vivienda" Command="{Binding PropertyList.NewPropertyCommand}" Classes="Primary" />
@@ -18,31 +19,38 @@
 
             <Border Grid.Row="1" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}">
                 <Grid RowDefinitions="Auto,*">
-                    <Grid Grid.Row="0" ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*" Margin="16 12">
-                        <TextBlock Grid.Column="0" Text="Nombre" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Grid.Column="1" Text="Calle" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Grid.Column="2" Text="Localidad" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Grid.Column="3" Text="C.P." FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                        <TextBlock Grid.Column="4" Text="Estado" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
-                    </Grid>
+                     <Grid Grid.Row="0" ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*,Auto" Margin="16 12">
+                         <TextBlock Grid.Column="0" Text="Nombre" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="1" Text="Calle" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="2" Text="Localidad" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="3" Text="C.P." FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="4" Text="Estado" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                         <TextBlock Grid.Column="5" Text="" Width="40" />
+                     </Grid>
                     
                     <ListBox Grid.Row="1" ItemsSource="{Binding PropertyList.Properties}" SelectedItem="{Binding PropertyList.SelectedProperty}" Classes="Table">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*">
-                                    <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                    <TextBlock Grid.Column="1" Text="{Binding Address}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <TextBlock Grid.Column="2" Text="{Binding City}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <TextBlock Grid.Column="3" Text="{Binding PostalCode}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <ToggleSwitch Grid.Column="4" 
-                                                  IsChecked="{Binding IsActive, Mode=OneWay}" 
-                                                  Command="{Binding $parent[UserControl].DataContext.PropertyList.TogglePropertyActiveCommand}" 
-                                                  CommandParameter="{Binding}"
-                                                  OnContent="" OffContent="" 
-                                                  Margin="0" Padding="0"
-                                                  MinWidth="0" MinHeight="0"
-                                                  VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                </Grid>
+                                 <Grid ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*,Auto">
+                                     <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center" FontWeight="Medium" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                     <TextBlock Grid.Column="1" Text="{Binding Address}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                     <TextBlock Grid.Column="2" Text="{Binding City}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                     <TextBlock Grid.Column="3" Text="{Binding PostalCode}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                     <ToggleSwitch Grid.Column="4" 
+                                                   IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                                   Command="{Binding $parent[UserControl].DataContext.PropertyList.TogglePropertyActiveCommand}" 
+                                                   CommandParameter="{Binding}"
+                                                   OnContent="" OffContent="" 
+                                                   Margin="0" Padding="0"
+                                                   MinWidth="0" MinHeight="0"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                     <Button Grid.Column="5" 
+                                             Command="{Binding $parent[UserControl].DataContext.PropertyList.DeletePropertyCommand}" 
+                                             CommandParameter="{Binding}"
+                                             Classes="Action" Padding="4" Margin="4 0 0 0" ToolTip.Tip="{DynamicResource DeleteButton}" Cursor="Hand">
+                                         <PathIcon Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}" />
+                                     </Button>
+                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -52,7 +60,8 @@
 
         <!-- EDIT/DETAILS SECTION -->
         <Border Grid.Column="1" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="12" Padding="24"
-                IsVisible="{Binding PropertyList.IsEditing}" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}">
+                IsVisible="{Binding PropertyList.IsEditing}" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
+                Width="380" Margin="24 0 0 0">
             <Grid RowDefinitions="Auto,*,Auto">
                 <TextBlock Grid.Row="0" Text="Detalles de Vivienda" FontSize="18" FontWeight="SemiBold" Margin="0 0 0 24" Foreground="{DynamicResource TextPrimaryBrush}" />
 
@@ -92,6 +101,29 @@
                     <Button Content="Guardar" Command="{Binding PropertyList.SavePropertyCommand}" Classes="Primary" />
                 </StackPanel>
             </Grid>
+        </Border>
+        </Grid>
+
+        <!-- Confirmation Overlay -->
+        <Border Background="#A0000000" IsVisible="{Binding PropertyList.IsConfirmingDeleteProperty}">
+            <Border Background="{DynamicResource CardBackgroundBrush}" 
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="320"
+                    Height="160"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <StackPanel Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="¿Confirmar eliminación?" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock Text="Esta acción no se puede deshacer." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                        <Button Content="Confirmar" Command="{Binding PropertyList.ConfirmDeletePropertyCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
+                        <Button Content="Cancelar" Command="{Binding PropertyList.CancelDeletePropertyCommand}" Classes="Action" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </UserControl>

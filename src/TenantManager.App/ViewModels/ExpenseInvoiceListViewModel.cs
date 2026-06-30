@@ -35,9 +35,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         EditInvoiceCommand = new RelayCommand(_ => EditInvoice());
         SaveInvoiceCommand = new RelayCommand(_ => SaveInvoice());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        DeleteInvoiceCommand = new RelayCommand(_ => DeleteInvoice());
+        DeleteInvoiceCommand = new RelayCommand(param => DeleteInvoice(param));
         OpenFileCommand = new RelayCommand(_ => OpenFile());
         ClearFileCommand = new RelayCommand(_ => { EditFilePath = string.Empty; EditFileContent = null; });
+        ConfirmDeleteInvoiceCommand = new RelayCommand(_ => ConfirmDeleteInvoice());
+        CancelDeleteInvoiceCommand = new RelayCommand(_ => CancelDeleteInvoice());
     }
 
     public ObservableCollection<ExpenseInvoice> Invoices { get; }
@@ -50,6 +52,8 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     public RelayCommand DeleteInvoiceCommand { get; }
     public RelayCommand OpenFileCommand { get; }
     public RelayCommand ClearFileCommand { get; }
+    public RelayCommand ConfirmDeleteInvoiceCommand { get; }
+    public RelayCommand CancelDeleteInvoiceCommand { get; }
 
     public ExpenseInvoice? SelectedInvoice
     {
@@ -58,6 +62,7 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedInvoice, value))
             {
+                IsConfirmingDeleteInvoice = false;
                 if (_selectedInvoice != null) EditInvoice();
                 OnPropertyChanged(nameof(HasSelectedInvoice));
                 OnPropertyChanged(nameof(SelectedInvoiceHasFile));
@@ -207,14 +212,47 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         IsEditing = false;
     }
 
-    private void DeleteInvoice()
+    private bool _isConfirmingDeleteInvoice;
+    public bool IsConfirmingDeleteInvoice
     {
-        if (SelectedInvoice == null) return;
+        get => _isConfirmingDeleteInvoice;
+        set => SetProperty(ref _isConfirmingDeleteInvoice, value);
+    }
 
-        _db.ExpenseInvoices.Remove(SelectedInvoice);
-        _db.SaveChanges();
-        LoadInvoices(_currentPropertyId);
-        CancelEdit();
+    private ExpenseInvoice? _invoiceToDelete;
+
+    private void DeleteInvoice(object? param)
+    {
+        if (param is ExpenseInvoice invoice)
+        {
+            _invoiceToDelete = invoice;
+            IsConfirmingDeleteInvoice = true;
+        }
+    }
+
+    private void ConfirmDeleteInvoice()
+    {
+        if (_invoiceToDelete != null)
+        {
+            _db.ExpenseInvoices.Remove(_invoiceToDelete);
+            _db.SaveChanges();
+            
+            if (SelectedInvoice?.Id == _invoiceToDelete.Id)
+            {
+                SelectedInvoice = null;
+            }
+            
+            _invoiceToDelete = null;
+            IsConfirmingDeleteInvoice = false;
+            LoadInvoices(_currentPropertyId);
+            CancelEdit();
+        }
+    }
+
+    private void CancelDeleteInvoice()
+    {
+        _invoiceToDelete = null;
+        IsConfirmingDeleteInvoice = false;
     }
 
     private void OpenFile()

@@ -17,6 +17,8 @@ public class ContractDisplayItem
     public string RoomName { get; set; } = string.Empty;
     public string FileStatus { get; set; } = string.Empty;
     public bool FileExists { get; set; }
+    public DateTimeOffset StartDate { get; set; }
+    public DateTimeOffset? EndDate { get; set; }
 }
 
 public class ContractListViewModel : ViewModelBase
@@ -53,7 +55,10 @@ public class ContractListViewModel : ViewModelBase
         SaveContractCommand = new RelayCommand(_ => SaveContract());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         OpenFileCommand = new RelayCommand(_ => OpenFile());
-        DeleteContractCommand = new RelayCommand(_ => DeleteContract());
+        DeleteContractCommand = new RelayCommand(param => DeleteContract(param));
+        SortCommand = new RelayCommand(field => Sort(field as string));
+        ConfirmDeleteContractCommand = new RelayCommand(_ => ConfirmDeleteContract());
+        CancelDeleteContractCommand = new RelayCommand(_ => CancelDeleteContract());
 
         NewExtensionCommand = new RelayCommand(_ => StartNewExtension());
         EditExtensionCommand = new RelayCommand(_ => EditExtension());
@@ -61,6 +66,8 @@ public class ContractListViewModel : ViewModelBase
         CancelExtensionCommand = new RelayCommand(_ => CancelExtension());
         DeleteExtensionCommand = new RelayCommand(_ => DeleteExtension());
         OpenFileExtensionCommand = new RelayCommand(_ => OpenFileExtension());
+        ConfirmDeleteExtensionCommand = new RelayCommand(_ => ConfirmDeleteExtension());
+        CancelDeleteExtensionCommand = new RelayCommand(_ => CancelDeleteExtension());
     }
 
     public ObservableCollection<ContractDisplayItem> Contracts { get; }
@@ -76,6 +83,9 @@ public class ContractListViewModel : ViewModelBase
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand OpenFileCommand { get; }
     public RelayCommand DeleteContractCommand { get; }
+    public RelayCommand SortCommand { get; }
+    public RelayCommand ConfirmDeleteContractCommand { get; }
+    public RelayCommand CancelDeleteContractCommand { get; }
 
     public RelayCommand NewExtensionCommand { get; }
     public RelayCommand EditExtensionCommand { get; }
@@ -83,6 +93,8 @@ public class ContractListViewModel : ViewModelBase
     public RelayCommand CancelExtensionCommand { get; }
     public RelayCommand DeleteExtensionCommand { get; }
     public RelayCommand OpenFileExtensionCommand { get; }
+    public RelayCommand ConfirmDeleteExtensionCommand { get; }
+    public RelayCommand CancelDeleteExtensionCommand { get; }
 
     public ContractDisplayItem? SelectedItem
     {
@@ -94,6 +106,7 @@ public class ContractListViewModel : ViewModelBase
                 OnPropertyChanged(nameof(HasSelectedContract));
                 LoadExtensions();
                 CancelExtension();
+                IsConfirmingDeleteExtension = false;
                 if (_selectedItem != null) EditContract();
             }
         }
@@ -155,6 +168,13 @@ public class ContractListViewModel : ViewModelBase
         set => SetProperty(ref _editDepositAmount, value);
     }
 
+    private int _editPaymentDay = 1;
+    public int EditPaymentDay
+    {
+        get => _editPaymentDay;
+        set => SetProperty(ref _editPaymentDay, value);
+    }
+
     public ExpensePaymentType EditExpensePaymentType
     {
         get => _editExpensePaymentType;
@@ -177,7 +197,13 @@ public class ContractListViewModel : ViewModelBase
     public RentalContractExtension? SelectedExtension
     {
         get => _selectedExtension;
-        set => SetProperty(ref _selectedExtension, value);
+        set
+        {
+            if (SetProperty(ref _selectedExtension, value))
+            {
+                IsConfirmingDeleteExtension = false;
+            }
+        }
     }
 
     private RentalContractExtension? _editingExtension;
@@ -249,6 +275,8 @@ public class ContractListViewModel : ViewModelBase
         _currentPropertyId = propertyId;
         if (_currentPropertyId == 0) return;
 
+        var selectedContractId = SelectedItem?.Contract?.Id;
+
         _db.ChangeTracker.Clear();
         LoadAvailableTenants();
         LoadAvailableRooms();
@@ -256,19 +284,128 @@ public class ContractListViewModel : ViewModelBase
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
         var roomLookup = _db.Rooms.ToDictionary(r => r.Id, r => r.Name);
 
-        Contracts.Clear();
-        foreach (var contract in _db.RentalContracts.Where(c => c.PropertyId == propertyId).AsEnumerable().OrderBy(c => c.StartDate))
+        var contractIds = _db.RentalContracts.Where(c => c.PropertyId == propertyId).Select(c => c.Id).ToList();
+        var extensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
+
+        var items = new List<ContractDisplayItem>();
+        foreach (var contract in _db.RentalContracts.Where(c => c.PropertyId == propertyId).AsEnumerable())
         {
             var exists = contract.FileContent != null || (!string.IsNullOrWhiteSpace(contract.FilePath) && File.Exists(contract.FilePath));
-            Contracts.Add(new ContractDisplayItem
+            
+            var contractExtensions = extensions.Where(e => e.RentalContractId == contract.Id).ToList();
+            var displayEndDate = contract.EndDate;
+            if (contractExtensions.Any())
+            {
+                var latestExtension = contractExtensions.OrderByDescending(e => e.StartDate).First();
+                displayEndDate = latestExtension.EndDate;
+            }
+
+            items.Add(new ContractDisplayItem
             {
                 Contract = contract,
                 TenantName = tenantLookup.TryGetValue(contract.TenantId, out var name) ? name : $"(id={contract.TenantId})",
                 RoomName = roomLookup.TryGetValue(contract.RoomId, out var rName) ? rName : $"(id={contract.RoomId})",
                 FileExists = exists,
-                FileStatus = exists ? "Yes" : "No"
+                FileStatus = exists ? "Yes" : "No",
+                StartDate = contract.StartDate,
+                EndDate = displayEndDate
             });
         }
+
+        Contracts.Clear();
+        IEnumerable<ContractDisplayItem> sorted;
+        if (CurrentSortField == "StartDate")
+        {
+            sorted = IsSortAscending 
+                ? items.OrderBy(i => i.StartDate) 
+                : items.OrderByDescending(i => i.StartDate);
+        }
+        else if (CurrentSortField == "EndDate")
+        {
+            sorted = IsSortAscending 
+                ? items.OrderBy(i => i.EndDate ?? DateTimeOffset.MaxValue) 
+                : items.OrderByDescending(i => i.EndDate ?? DateTimeOffset.MinValue);
+        }
+        else
+        {
+            sorted = IsSortAscending 
+                ? items.OrderBy(i => i.TenantName) 
+                : items.OrderByDescending(i => i.TenantName);
+        }
+
+        foreach (var item in sorted)
+        {
+            Contracts.Add(item);
+        }
+
+        if (selectedContractId.HasValue)
+        {
+            var itemToSelect = Contracts.FirstOrDefault(c => c.Contract.Id == selectedContractId.Value);
+            if (itemToSelect != null)
+            {
+                SelectedItem = itemToSelect;
+            }
+        }
+    }
+
+    private string _currentSortField = "Tenant";
+    public string CurrentSortField
+    {
+        get => _currentSortField;
+        set 
+        {
+            if (SetProperty(ref _currentSortField, value))
+            {
+                NotifySortIndicators();
+            }
+        }
+    }
+
+    private bool _isSortAscending = true;
+    public bool IsSortAscending
+    {
+        get => _isSortAscending;
+        set
+        {
+            if (SetProperty(ref _isSortAscending, value))
+            {
+                NotifySortIndicators();
+            }
+        }
+    }
+
+    public string TenantSortIndicator => GetSortIndicator("Tenant");
+    public string StartDateSortIndicator => GetSortIndicator("StartDate");
+    public string EndDateSortIndicator => GetSortIndicator("EndDate");
+
+    private string GetSortIndicator(string field)
+    {
+        if (CurrentSortField != field) return string.Empty;
+        return IsSortAscending ? " ▲" : " ▼";
+    }
+
+    private void NotifySortIndicators()
+    {
+        OnPropertyChanged(nameof(TenantSortIndicator));
+        OnPropertyChanged(nameof(StartDateSortIndicator));
+        OnPropertyChanged(nameof(EndDateSortIndicator));
+    }
+
+    public void Sort(string? field)
+    {
+        if (string.IsNullOrEmpty(field)) return;
+        
+        if (CurrentSortField == field)
+        {
+            IsSortAscending = !IsSortAscending;
+        }
+        else
+        {
+            CurrentSortField = field;
+            IsSortAscending = true;
+        }
+        
+        LoadContracts(_currentPropertyId);
     }
 
     private void LoadAvailableTenants()
@@ -325,6 +462,7 @@ public class ContractListViewModel : ViewModelBase
             : null;
         EditMonthlyRent = _editingContract.MonthlyRent;
         EditDepositAmount = _editingContract.DepositAmount;
+        EditPaymentDay = _editingContract.PaymentDay;
         EditExpensePaymentType = _editingContract.ExpensePaymentType;
         EditFixedExpenseAmount = _editingContract.FixedExpenseAmount;
         EditNotes = _editingContract.Notes;
@@ -333,7 +471,7 @@ public class ContractListViewModel : ViewModelBase
 
     private void SaveContract()
     {
-        if (EditSelectedTenant == null || EditSelectedRoom == null)
+        if (EditSelectedTenant == null || EditSelectedRoom == null || EditEndDate == null)
             return;
 
         if (_editingContract == null)
@@ -349,6 +487,7 @@ public class ContractListViewModel : ViewModelBase
                 EndDate = EditEndDate,
                 MonthlyRent = EditMonthlyRent,
                 DepositAmount = EditDepositAmount,
+                PaymentDay = EditPaymentDay,
                 ExpensePaymentType = EditExpensePaymentType,
                 FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0,
                 Notes = EditNotes?.Trim()
@@ -365,6 +504,7 @@ public class ContractListViewModel : ViewModelBase
             _editingContract.EndDate = EditEndDate;
             _editingContract.MonthlyRent = EditMonthlyRent;
             _editingContract.DepositAmount = EditDepositAmount;
+            _editingContract.PaymentDay = EditPaymentDay;
             _editingContract.ExpensePaymentType = EditExpensePaymentType;
             _editingContract.FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0;
             _editingContract.Notes = EditNotes?.Trim();
@@ -424,14 +564,45 @@ public class ContractListViewModel : ViewModelBase
         }
     }
 
-    private void DeleteContract()
+    private ContractDisplayItem? _contractToDelete;
+    private bool _isConfirmingDeleteContract;
+    public bool IsConfirmingDeleteContract
     {
-        if (SelectedItem == null)
-            return;
+        get => _isConfirmingDeleteContract;
+        set => SetProperty(ref _isConfirmingDeleteContract, value);
+    }
 
-        _db.RentalContracts.Remove(SelectedItem.Contract);
-        _db.SaveChanges();
-        LoadContracts(_currentPropertyId);
+    private void DeleteContract(object? param)
+    {
+        if (param is ContractDisplayItem item)
+        {
+            _contractToDelete = item;
+            IsConfirmingDeleteContract = true;
+        }
+    }
+
+    private void ConfirmDeleteContract()
+    {
+        if (_contractToDelete != null)
+        {
+            _db.RentalContracts.Remove(_contractToDelete.Contract);
+            _db.SaveChanges();
+            
+            if (SelectedItem?.Contract?.Id == _contractToDelete.Contract.Id)
+            {
+                SelectedItem = null;
+            }
+            
+            _contractToDelete = null;
+            IsConfirmingDeleteContract = false;
+            LoadContracts(_currentPropertyId);
+        }
+    }
+
+    private void CancelDeleteContract()
+    {
+        _contractToDelete = null;
+        IsConfirmingDeleteContract = false;
     }
 
     private void LoadExtensions()
@@ -531,14 +702,33 @@ public class ContractListViewModel : ViewModelBase
         IsEditingExtension = false;
     }
 
+    private bool _isConfirmingDeleteExtension;
+    public bool IsConfirmingDeleteExtension
+    {
+        get => _isConfirmingDeleteExtension;
+        set => SetProperty(ref _isConfirmingDeleteExtension, value);
+    }
+
     private void DeleteExtension()
+    {
+        if (SelectedExtension == null) return;
+        IsConfirmingDeleteExtension = true;
+    }
+
+    private void ConfirmDeleteExtension()
     {
         if (SelectedExtension == null) return;
 
         _db.RentalContractExtensions.Remove(SelectedExtension);
         _db.SaveChanges();
+        IsConfirmingDeleteExtension = false;
         LoadExtensions();
         LoadContracts(_currentPropertyId);
+    }
+
+    private void CancelDeleteExtension()
+    {
+        IsConfirmingDeleteExtension = false;
     }
 
     private void OpenFileExtension()

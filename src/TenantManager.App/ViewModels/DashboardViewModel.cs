@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,33 @@ public class MissingContractItem
     public string FilePath { get; set; } = string.Empty;
 }
 
+public class MonthlyBarChartItem
+{
+    public string MonthName { get; set; } = string.Empty;
+    public decimal Income { get; set; }
+    public decimal Expenses { get; set; }
+    public double IncomeHeight { get; set; }
+    public double ExpenseHeight { get; set; }
+    public string IncomeString => Income.ToString("C0");
+    public string ExpenseString => Expenses.ToString("C0");
+}
+
+public class IntervalOption
+{
+    public string DisplayText { get; set; } = string.Empty;
+    public int Value { get; set; }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is IntervalOption other && Value == other.Value;
+    }
+
+    public override int GetHashCode()
+    {
+        return Value.GetHashCode();
+    }
+}
+
 public class DashboardViewModel : ViewModelBase
 {
     private readonly AppDbContext _db;
@@ -48,8 +76,6 @@ public class DashboardViewModel : ViewModelBase
 
     private int _paidPaymentsCount;
     private int _partialPaymentsCount;
-    private int _latePaymentsCount;
-    private int _waivedPaymentsCount;
     private int _totalPaymentsCount;
 
     private double _paidStartAngle;
@@ -58,12 +84,13 @@ public class DashboardViewModel : ViewModelBase
     private double _pendingSweepAngle;
     private double _partialStartAngle;
     private double _partialSweepAngle;
-    private double _lateStartAngle;
-    private double _lateSweepAngle;
-    private double _waivedStartAngle;
-    private double _waivedSweepAngle;
     private double _occupancySweepAngle;
     private double _incomeSweepAngle;
+
+    private IntervalOption _selectedInterval = null!;
+    private decimal _totalPeriodIncome;
+    private decimal _totalPeriodExpenses;
+    private decimal _periodProfit;
 
     public DashboardViewModel()
     {
@@ -72,6 +99,16 @@ public class DashboardViewModel : ViewModelBase
         PendingPayments = new ObservableCollection<PendingPaymentItem>();
         AvailableRooms = new ObservableCollection<AvailableRoomItem>();
         MissingContracts = new ObservableCollection<MissingContractItem>();
+        MonthlyBarChartItems = new ObservableCollection<MonthlyBarChartItem>();
+
+        AvailableIntervals = new ObservableCollection<IntervalOption>
+        {
+            new() { DisplayText = "3 meses", Value = 3 },
+            new() { DisplayText = "6 meses", Value = 6 },
+            new() { DisplayText = "12 meses", Value = 12 },
+            new() { DisplayText = "Desde el inicio", Value = -1 }
+        };
+        _selectedInterval = AvailableIntervals[1]; // default 6 months
 
         RefreshCommand = new RelayCommand(_ => Refresh(_currentPropertyId));
     }
@@ -82,6 +119,8 @@ public class DashboardViewModel : ViewModelBase
     public ObservableCollection<PendingPaymentItem> PendingPayments { get; }
     public ObservableCollection<AvailableRoomItem> AvailableRooms { get; }
     public ObservableCollection<MissingContractItem> MissingContracts { get; }
+    public ObservableCollection<MonthlyBarChartItem> MonthlyBarChartItems { get; }
+    public ObservableCollection<IntervalOption> AvailableIntervals { get; }
 
     public bool HasNoPendingPayments => PendingPayments.Count == 0;
     public bool HasNoAvailableRooms => AvailableRooms.Count == 0;
@@ -113,6 +152,13 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _pendingPaymentsCount, value);
     }
 
+    private decimal _estimatedNextMonthIncome;
+    public decimal EstimatedNextMonthIncome
+    {
+        get => _estimatedNextMonthIncome;
+        set => SetProperty(ref _estimatedNextMonthIncome, value);
+    }
+
     public int AvailableRoomsCount
     {
         get => _availableRoomsCount;
@@ -131,6 +177,36 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _collectedIncome, value);
     }
 
+    public IntervalOption SelectedInterval
+    {
+        get => _selectedInterval;
+        set
+        {
+            if (SetProperty(ref _selectedInterval, value))
+            {
+                Refresh(_currentPropertyId);
+            }
+        }
+    }
+
+    public decimal TotalPeriodIncome
+    {
+        get => _totalPeriodIncome;
+        set => SetProperty(ref _totalPeriodIncome, value);
+    }
+
+    public decimal TotalPeriodExpenses
+    {
+        get => _totalPeriodExpenses;
+        set => SetProperty(ref _totalPeriodExpenses, value);
+    }
+
+    public decimal PeriodProfit
+    {
+        get => _periodProfit;
+        set => SetProperty(ref _periodProfit, value);
+    }
+
     public int PaidPaymentsCount
     {
         get => _paidPaymentsCount;
@@ -141,18 +217,6 @@ public class DashboardViewModel : ViewModelBase
     {
         get => _partialPaymentsCount;
         set => SetProperty(ref _partialPaymentsCount, value);
-    }
-
-    public int LatePaymentsCount
-    {
-        get => _latePaymentsCount;
-        set => SetProperty(ref _latePaymentsCount, value);
-    }
-
-    public int WaivedPaymentsCount
-    {
-        get => _waivedPaymentsCount;
-        set => SetProperty(ref _waivedPaymentsCount, value);
     }
 
     public int TotalPaymentsCount
@@ -197,30 +261,6 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _partialSweepAngle, value);
     }
 
-    public double LateStartAngle
-    {
-        get => _lateStartAngle;
-        set => SetProperty(ref _lateStartAngle, value);
-    }
-
-    public double LateSweepAngle
-    {
-        get => _lateSweepAngle;
-        set => SetProperty(ref _lateSweepAngle, value);
-    }
-
-    public double WaivedStartAngle
-    {
-        get => _waivedStartAngle;
-        set => SetProperty(ref _waivedStartAngle, value);
-    }
-
-    public double WaivedSweepAngle
-    {
-        get => _waivedSweepAngle;
-        set => SetProperty(ref _waivedSweepAngle, value);
-    }
-
     public double OccupancySweepAngle
     {
         get => _occupancySweepAngle;
@@ -255,10 +295,15 @@ public class DashboardViewModel : ViewModelBase
         TotalRooms = rooms.Count;
         ActiveTenants = activeTenants.Count;
 
-        var activeContracts = _db.RentalContracts
-            .Where(c => c.PropertyId == propertyId)
-            .AsEnumerable()
-            .Where(c => c.StartDate <= nowOffset && (c.EndDate == null || c.EndDate >= nowOffset))
+        var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
+        var propertyContractIds = propertyContracts.Select(c => c.Id).ToList();
+        var propertyExtensions = _db.RentalContractExtensions.Where(e => propertyContractIds.Contains(e.RentalContractId)).ToList();
+
+        // Active contracts TODAY (for Occupancy and Tenant counts)
+        var activeContracts = propertyContracts
+            .Where(c => 
+                (c.StartDate <= nowOffset && (c.EndDate == null || c.EndDate >= nowOffset)) ||
+                propertyExtensions.Any(e => e.RentalContractId == c.Id && e.StartDate <= nowOffset && (e.EndDate == null || e.EndDate >= nowOffset)))
             .ToList();
 
         var occupiedRoomIds = activeContracts
@@ -269,6 +314,34 @@ public class DashboardViewModel : ViewModelBase
         OccupiedRoomsCount = occupiedRoomIds.Count;
 
         AvailableRoomsCount = TotalRooms - OccupiedRoomsCount;
+
+        var nextMonthDate = now.AddMonths(1);
+        int daysInNextMonth = DateTime.DaysInMonth(nextMonthDate.Year, nextMonthDate.Month);
+
+        // Calculate Estimated Income iterating per day to perfectly prorate base and extensions
+        decimal estimatedIncome = 0;
+        foreach (var contract in propertyContracts)
+        {
+            var extensions = propertyExtensions.Where(e => e.RentalContractId == contract.Id).ToList();
+
+            for (int day = 1; day <= daysInNextMonth; day++)
+            {
+                var date = new DateTimeOffset(nextMonthDate.Year, nextMonthDate.Month, day, 12, 0, 0, TimeSpan.Zero);
+
+                var activeExt = extensions.FirstOrDefault(e => e.StartDate <= date && (e.EndDate == null || e.EndDate >= date));
+                if (activeExt != null)
+                {
+                    decimal monthlyTotal = activeExt.MonthlyRent + (activeExt.ExpensePaymentType == ExpensePaymentType.Fixed ? activeExt.FixedExpenseAmount : 0);
+                    estimatedIncome += monthlyTotal / daysInNextMonth;
+                }
+                else if (contract.StartDate <= date && (contract.EndDate == null || contract.EndDate >= date))
+                {
+                    decimal monthlyTotal = contract.MonthlyRent + (contract.ExpensePaymentType == ExpensePaymentType.Fixed ? contract.FixedExpenseAmount : 0);
+                    estimatedIncome += monthlyTotal / daysInNextMonth;
+                }
+            }
+        }
+        EstimatedNextMonthIncome = estimatedIncome;
 
         var roomLookup = rooms.ToDictionary(r => r.Id, r => r);
 
@@ -297,6 +370,24 @@ public class DashboardViewModel : ViewModelBase
 
         var allPayments = _db.MonthlyPayments.Where(p => p.PropertyId == propertyId).ToList();
 
+        // Auto-repair: If a payment is marked as Paid but PaidAmount is 0, update it to match expected amount
+        bool dbRepaired = false;
+        foreach (var payment in allPayments.Where(p => p.Status == PaymentStatus.Paid && p.PaidAmount == 0 && p.ExpectedAmount > 0))
+        {
+            payment.PaidAmount = payment.ExpectedAmount;
+            if (payment.PaidDate == null)
+            {
+                payment.PaidDate = now;
+            }
+            _db.MonthlyPayments.Update(payment);
+            dbRepaired = true;
+        }
+        if (dbRepaired)
+        {
+            _db.SaveChanges();
+            allPayments = _db.MonthlyPayments.Where(p => p.PropertyId == propertyId).ToList();
+        }
+
         var currentMonthPayments = allPayments
             .Where(p => p.Year == currentYear && p.Month == currentMonth)
             .ToList();
@@ -308,13 +399,11 @@ public class DashboardViewModel : ViewModelBase
         PendingPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Pending);
         PaidPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Paid);
         PartialPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Partial);
-        LatePaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Late);
-        WaivedPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Waived);
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
 
         PendingPayments.Clear();
-        foreach (var payment in allPayments.Where(p => p.Status == PaymentStatus.Pending || p.Status == PaymentStatus.Late).OrderBy(p => p.Year).ThenBy(p => p.Month))
+        foreach (var payment in allPayments.Where(p => p.Status == PaymentStatus.Pending).OrderBy(p => p.Year).ThenBy(p => p.Month))
         {
             PendingPayments.Add(new PendingPaymentItem
             {
@@ -357,26 +446,89 @@ public class DashboardViewModel : ViewModelBase
             PartialSweepAngle = (PartialPaymentsCount / total) * 360.0;
             PartialStartAngle = currentAngle;
             currentAngle += PartialSweepAngle;
-
-            LateSweepAngle = (LatePaymentsCount / total) * 360.0;
-            LateStartAngle = currentAngle;
-            currentAngle += LateSweepAngle;
-
-            WaivedSweepAngle = (WaivedPaymentsCount / total) * 360.0;
-            WaivedStartAngle = currentAngle;
-            currentAngle += WaivedSweepAngle;
         }
         else
         {
             PaidSweepAngle = 0; PaidStartAngle = -90;
             PendingSweepAngle = 0; PendingStartAngle = -90;
             PartialSweepAngle = 0; PartialStartAngle = -90;
-            LateSweepAngle = 0; LateStartAngle = -90;
-            WaivedSweepAngle = 0; WaivedStartAngle = -90;
         }
 
         OccupancySweepAngle = (TotalRooms > 0) ? ((double)OccupiedRoomsCount / TotalRooms) * 360.0 : 0.0;
         IncomeSweepAngle = (ExpectedIncome > 0) ? (double)(CollectedIncome / ExpectedIncome) * 360.0 : 0.0;
+
+        // Calculate Monthly Bar Chart items (Income vs Expenses) for SelectedInterval
+        var chartItems = new List<MonthlyBarChartItem>();
+        decimal totalIncomePeriod = 0;
+        decimal totalExpensesPeriod = 0;
+
+        int monthsToFetch = SelectedInterval.Value;
+        if (monthsToFetch == -1)
+        {
+            var earliestPayment = allPayments.Any() ? allPayments.Min(p => new DateTime(p.Year, p.Month, 1)) : now;
+            var invoiceDates = _db.ExpenseInvoices
+                .Where(exp => exp.PropertyId == propertyId)
+                .Select(exp => new { exp.Year, exp.Month })
+                .ToList();
+            
+            var earliestInvoice = invoiceDates.Any()
+                ? invoiceDates.Min(exp => new DateTime(exp.Year, exp.Month, 1))
+                : now;
+
+            var earliestDate = earliestPayment < earliestInvoice ? earliestPayment : earliestInvoice;
+            int diffMonths = ((now.Year - earliestDate.Year) * 12) + now.Month - earliestDate.Month + 1;
+            monthsToFetch = Math.Max(1, diffMonths);
+        }
+
+        for (int i = monthsToFetch - 1; i >= 0; i--)
+        {
+            var targetMonthDate = now.AddMonths(-i);
+            var yearVal = targetMonthDate.Year;
+            var monthVal = targetMonthDate.Month;
+
+            var monthPayments = allPayments
+                .Where(p => p.Year == yearVal && p.Month == monthVal)
+                .ToList();
+            
+            var monthInvoices = _db.ExpenseInvoices
+                .Where(exp => exp.PropertyId == propertyId && exp.Year == yearVal && exp.Month == monthVal)
+                .ToList();
+
+            var income = monthPayments.Sum(p => p.PaidAmount);
+            var expenses = monthInvoices.Sum(exp => exp.Amount);
+
+            totalIncomePeriod += income;
+            totalExpensesPeriod += expenses;
+
+            chartItems.Add(new MonthlyBarChartItem
+            {
+                MonthName = targetMonthDate.ToString("MMM yy"),
+                Income = income,
+                Expenses = expenses
+            });
+        }
+
+        TotalPeriodIncome = totalIncomePeriod;
+        TotalPeriodExpenses = totalExpensesPeriod;
+        PeriodProfit = totalIncomePeriod - totalExpensesPeriod;
+
+        var maxVal = chartItems.Any() 
+            ? chartItems.Max(x => Math.Max(x.Income, x.Expenses)) 
+            : 0;
+
+        if (maxVal == 0) maxVal = 100; // prevent division by zero
+
+        foreach (var item in chartItems)
+        {
+            item.IncomeHeight = (double)(item.Income / maxVal) * 140.0; // max height 140px
+            item.ExpenseHeight = (double)(item.Expenses / maxVal) * 140.0;
+        }
+
+        MonthlyBarChartItems.Clear();
+        foreach (var item in chartItems)
+        {
+            MonthlyBarChartItems.Add(item);
+        }
 
         OnPropertyChanged(nameof(OccupancyPercentageString));
         OnPropertyChanged(nameof(IncomeCollectedPercentageString));

@@ -29,6 +29,9 @@ public class RoomListViewModel : ViewModelBase
         SaveRoomCommand = new RelayCommand(_ => SaveRoom());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ToggleRoomActiveCommand = new RelayCommand(param => ToggleRoomActive(param));
+        DeleteRoomCommand = new RelayCommand(param => DeleteRoom(param));
+        ConfirmDeleteRoomCommand = new RelayCommand(_ => ConfirmDeleteRoom());
+        CancelDeleteRoomCommand = new RelayCommand(_ => CancelDeleteRoom());
     }
 
     public ObservableCollection<Room> Rooms { get; }
@@ -39,6 +42,9 @@ public class RoomListViewModel : ViewModelBase
     public RelayCommand SaveRoomCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ToggleRoomActiveCommand { get; }
+    public RelayCommand DeleteRoomCommand { get; }
+    public RelayCommand ConfirmDeleteRoomCommand { get; }
+    public RelayCommand CancelDeleteRoomCommand { get; }
 
 
 
@@ -50,6 +56,7 @@ public class RoomListViewModel : ViewModelBase
             if (SetProperty(ref _selectedRoom, value))
             {
                 OnPropertyChanged(nameof(HasSelectedRoom));
+                IsConfirmingDeleteRoom = false;
                 if (_selectedRoom != null) EditRoom();
             }
         }
@@ -163,5 +170,47 @@ public class RoomListViewModel : ViewModelBase
             _db.SaveChanges();
             LoadRooms(_currentPropertyId);
         }
+    }
+
+    private bool _isConfirmingDeleteRoom;
+    public bool IsConfirmingDeleteRoom
+    {
+        get => _isConfirmingDeleteRoom;
+        set => SetProperty(ref _isConfirmingDeleteRoom, value);
+    }
+
+    private Room? _roomToDelete;
+
+    private void DeleteRoom(object? param)
+    {
+        if (param is Room room)
+        {
+            _roomToDelete = room;
+            IsConfirmingDeleteRoom = true;
+        }
+    }
+
+    private void ConfirmDeleteRoom()
+    {
+        if (_roomToDelete != null)
+        {
+            _db.Rooms.Remove(_roomToDelete);
+            _db.SaveChanges();
+            
+            if (SelectedRoom?.Id == _roomToDelete.Id)
+            {
+                SelectedRoom = null;
+            }
+            
+            _roomToDelete = null;
+            IsConfirmingDeleteRoom = false;
+            LoadRooms(_currentPropertyId);
+        }
+    }
+
+    private void CancelDeleteRoom()
+    {
+        _roomToDelete = null;
+        IsConfirmingDeleteRoom = false;
     }
 }
