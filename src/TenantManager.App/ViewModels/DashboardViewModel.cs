@@ -419,13 +419,45 @@ public class DashboardViewModel : ViewModelBase
             {
                 if (!paidMonths.Contains((contract.TenantId, cursor.Year, cursor.Month)))
                 {
+                    // Determine which contract/extension is active this month
+                    var targetDateStart = new DateTimeOffset(new DateTime(cursor.Year, cursor.Month, 1));
+                    var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1);
+
+                    var activeExtension = contractExtensions
+                        .Where(e => e.RentalContractId == contract.Id
+                            && e.StartDate <= targetDateEnd
+                            && (!e.EndDate.HasValue || e.EndDate.Value >= targetDateStart))
+                        .OrderByDescending(e => e.StartDate)
+                        .FirstOrDefault();
+
+                    decimal rent, expense;
+                    ExpensePaymentType expenseType;
+
+                    if (activeExtension != null)
+                    {
+                        rent = activeExtension.MonthlyRent;
+                        expenseType = activeExtension.ExpensePaymentType;
+                        expense = expenseType == ExpensePaymentType.Fixed
+                            ? activeExtension.FixedExpenseAmount
+                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                    }
+                    else
+                    {
+                        rent = contract.MonthlyRent;
+                        expenseType = contract.ExpensePaymentType;
+                        expense = expenseType == ExpensePaymentType.Fixed
+                            ? contract.FixedExpenseAmount
+                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                    }
+
                     pendingList.Add(new ComputedPendingPayment
                     {
                         TenantId = contract.TenantId,
                         TenantName = tenantLookup.TryGetValue(contract.TenantId, out var tn) ? tn : $"(id={contract.TenantId})",
                         Year = cursor.Year,
                         Month = cursor.Month,
-                        ExpectedRentAmount = contract.MonthlyRent,
+                        ExpectedRentAmount = rent,
+                        ExpectedExpenseAmount = expense,
                         ContractId = contract.Id
                     });
                 }
@@ -554,5 +586,29 @@ public class DashboardViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasNoPendingPayments));
         OnPropertyChanged(nameof(HasNoAvailableRooms));
         OnPropertyChanged(nameof(HasNoMissingContracts));
+    }
+
+    /// <summary>
+    /// Computes the variable expense share for a given property month by splitting
+    /// chargeable invoices across occupied rooms, matching the logic in MonthlyPaymentListViewModel.
+    /// </summary>
+    private decimal ComputeVariableExpense(int propertyId, int year, int month)
+    {
+        var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
+
+        var invoicesTotal = _db.ExpenseInvoices
+            .Where(i => i.Year == year && i.Month == month && i.PropertyId == propertyId && i.IsChargeableToTenant)
+            .ToList()
+            .Sum(i => i.Amount);
+
+        var occupiedRooms = _db.RentalContracts
+            .Where(c => c.PropertyId == propertyId)
+            .ToList()
+            .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
+            .Select(c => c.RoomId)
+            .Distinct()
+            .Count();
+
+        return occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
     }
 }
