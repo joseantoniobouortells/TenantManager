@@ -102,6 +102,9 @@
 88. **Extensión del Área de Cliente y Título Dinámico (Junio 2026):**
     - *Decisión:* Se activó `ExtendClientAreaToDecorationsHint="True"` en Avalonia, fusionando el marco de la app con la barra de título del sistema operativo. Se introdujeron márgenes estáticos para evitar el solapamiento con los botones de control de Windows/macOS. Se implementó un "breadcrumb" dinámico (ej. Vivienda Principal / Inquilinos) y se inyectó la versión compilada dinámicamente en el pie de la barra lateral.
     - *Motivo:* Proveer un diseño excepcionalmente moderno y "premium", liberando espacio vertical y otorgando un look-and-feel nativo a la altura de las aplicaciones comerciales top.
+89. **Cálculo Automático y Dinámico de Cuotas Pendientes (Julio 2026):**
+    - *Decisión:* Se eliminó el estado `Pending` de la base de datos y se quitó el flujo manual de "Generar Lote". Ahora, los pagos pendientes se calculan en tiempo real cruzando los contratos activos de cada inquilino frente a los pagos ya cobrados (`Paid` o `Partial`) registrados en BD. Los gastos (fijos o variables calculados a partir de facturas imputables) se computan dinámicamente mes a mes.
+    - *Motivo:* Evitar que el propietario tenga que generar manualmente lotes de cuotas cada mes. Ahora las cuotas pendientes aparecen de forma reactiva y automática en el Dashboard y en la sección superior de Pagos con un botón directo para "Cobrar".
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.
