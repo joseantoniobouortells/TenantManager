@@ -75,7 +75,15 @@ public class SettingsViewModel : ViewModelBase
     }
 
     public string DbPath => DatabasePath.FullPath;
-    public string AppVersion => "1.0.0-MVP";
+
+    public string AppVersion
+    {
+        get
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return version != null ? $"v{version.Major}.{version.Minor}.{version.Build}" : "v1.0.2";
+        }
+    }
 
     public bool IsLight
     {
