@@ -108,7 +108,7 @@ public class DomainTests : IDisposable
             Year = 2026,
             Month = 6,
             ExpectedRentAmount = 500,
-            Status = PaymentStatus.Pending
+            Status = PaymentStatus.Paid
         };
         db.MonthlyPayments.Add(payment);
         db.SaveChanges();
@@ -126,7 +126,7 @@ public class DomainTests : IDisposable
             Year = 2026,
             Month = 6,
             ExpectedRentAmount = 500,
-            Status = PaymentStatus.Pending
+            Status = PaymentStatus.Paid
         };
         db.MonthlyPayments.Add(payment1);
         db.SaveChanges();
@@ -137,28 +137,28 @@ public class DomainTests : IDisposable
             Year = 2026,
             Month = 6,
             ExpectedRentAmount = 500,
-            Status = PaymentStatus.Pending
+            Status = PaymentStatus.Paid
         };
         db.MonthlyPayments.Add(payment2);
         Assert.Throws<DbUpdateException>(() => db.SaveChanges());
     }
 
     [Fact]
-    public void QueryPendingPayments_ShouldReturnExpected()
+    public void QueryPaidPayments_ShouldReturnExpected()
     {
         using var db = CreateContext();
         db.MonthlyPayments.AddRange(
-            new MonthlyPayment { TenantId = 1, Year = 2026, Month = 6, ExpectedRentAmount = 500, Status = PaymentStatus.Pending },
-            new MonthlyPayment { TenantId = 2, Year = 2026, Month = 6, ExpectedRentAmount = 600, Status = PaymentStatus.Paid },
-            new MonthlyPayment { TenantId = 3, Year = 2026, Month = 6, ExpectedRentAmount = 700, Status = PaymentStatus.Pending }
+            new MonthlyPayment { TenantId = 1, Year = 2026, Month = 6, ExpectedRentAmount = 500, Status = PaymentStatus.Paid },
+            new MonthlyPayment { TenantId = 2, Year = 2026, Month = 6, ExpectedRentAmount = 600, Status = PaymentStatus.Partial },
+            new MonthlyPayment { TenantId = 3, Year = 2026, Month = 7, ExpectedRentAmount = 700, Status = PaymentStatus.Paid }
         );
         db.SaveChanges();
 
-        var pending = db.MonthlyPayments
-            .Where(p => p.Year == 2026 && p.Month == 6 && p.Status == PaymentStatus.Pending)
+        var paid = db.MonthlyPayments
+            .Where(p => p.Year == 2026 && p.Month == 6 && p.Status == PaymentStatus.Paid)
             .ToList();
 
-        Assert.Equal(2, pending.Count);
+        Assert.Single(paid);
     }
 
     [Fact]
@@ -171,7 +171,8 @@ public class DomainTests : IDisposable
             Year = 2026,
             Month = 6,
             ExpectedRentAmount = 500,
-            Status = PaymentStatus.Pending
+            Status = PaymentStatus.Partial,
+            PaidAmount = 250
         };
         db.MonthlyPayments.Add(payment);
         db.SaveChanges();
@@ -265,10 +266,10 @@ public class DomainTests : IDisposable
     }
 
     [Fact]
-    public void GenerateBatchPayments_ShouldCreatePayments()
+    public void ComputedPendingPayments_ShouldDetectUnpaidMonths()
     {
         using var db = CreateContext();
-        
+
         var property = new Property { Name = "Prop 1" };
         db.Properties.Add(property);
         db.SaveChanges();
@@ -281,13 +282,14 @@ public class DomainTests : IDisposable
         db.Tenants.Add(tenant);
         db.SaveChanges();
 
+        // Contract covers Jan-Mar 2026
         var contract = new RentalContract
         {
             PropertyId = property.Id,
             TenantId = tenant.Id,
             RoomId = room.Id,
             StartDate = new DateTimeOffset(new DateTime(2026, 1, 1)),
-            EndDate = new DateTimeOffset(new DateTime(2026, 12, 31)),
+            EndDate = new DateTimeOffset(new DateTime(2026, 3, 31)),
             MonthlyRent = 500,
             ExpensePaymentType = ExpensePaymentType.Fixed,
             FixedExpenseAmount = 40
@@ -295,30 +297,29 @@ public class DomainTests : IDisposable
         db.RentalContracts.Add(contract);
         db.SaveChanges();
 
+        // Register Jan as Paid — Feb and Mar should be computed as pending
+        db.MonthlyPayments.Add(new MonthlyPayment
+        {
+            PropertyId = property.Id,
+            TenantId = tenant.Id,
+            Year = 2026, Month = 1,
+            ExpectedRentAmount = 500,
+            ExpectedExpenseAmount = 40,
+            PaidAmount = 540,
+            Status = PaymentStatus.Paid,
+            PaidDate = DateTime.Today
+        });
+        db.SaveChanges();
+
         var vm = new TenantManager.App.ViewModels.MonthlyPaymentListViewModel(db);
         vm.LoadPayments(property.Id);
 
-        vm.StartBatchCommand.Execute(null);
-
-        var alice = vm.AvailableTenants.FirstOrDefault(t => t.Id == tenant.Id);
-        Assert.NotNull(alice);
-        vm.BatchSelectedTenant = alice;
-        vm.BatchStartYear = 2026;
-        vm.BatchStartMonth = 1;
-        vm.BatchEndYear = 2026;
-        vm.BatchEndMonth = 3;
-        vm.BatchDefaultStatus = PaymentStatus.Pending;
-
-        vm.GenerateBatchCommand.Execute(null);
-
-        var payments = db.MonthlyPayments.Where(p => p.TenantId == tenant.Id && p.PropertyId == property.Id).ToList();
-        Assert.Equal(3, payments.Count);
-        
-        var p1 = payments.FirstOrDefault(p => p.Month == 1);
-        Assert.NotNull(p1);
-        Assert.Equal(500, p1.ExpectedRentAmount);
-        Assert.Equal(40, p1.ExpectedExpenseAmount);
-        Assert.Equal(PaymentStatus.Pending, p1.Status);
+        // 2 months (Feb + Mar) should be computed as pending
+        Assert.Equal(2, vm.PendingPayments.Count);
+        Assert.Contains(vm.PendingPayments, p => p.Month == 2 && p.Year == 2026);
+        Assert.Contains(vm.PendingPayments, p => p.Month == 3 && p.Year == 2026);
+        // Jan is paid — should NOT appear
+        Assert.DoesNotContain(vm.PendingPayments, p => p.Month == 1);
     }
 
     [Fact]

@@ -2,7 +2,6 @@ namespace TenantManager.App.Domain;
 
 public enum PaymentStatus
 {
-    Pending,
-    Paid,
-    Partial
+    Paid = 1,
+    Partial = 2
 }

@@ -14,14 +14,7 @@ public class RoomOccupancyItem
     public string TenantName { get; set; } = string.Empty;
 }
 
-public class PendingPaymentItem
-{
-    public string TenantName { get; set; } = string.Empty;
-    public int Year { get; set; }
-    public int Month { get; set; }
-    public decimal ExpectedAmount { get; set; }
-    public string Status { get; set; } = string.Empty;
-}
+
 
 public class AvailableRoomItem
 {
@@ -68,7 +61,6 @@ public class DashboardViewModel : ViewModelBase
     private int _totalRooms;
     private int _occupiedRooms;
     private int _activeTenants;
-    private int _pendingPaymentsCount;
 
     private int _availableRoomsCount;
     private decimal _expectedIncome;
@@ -96,7 +88,7 @@ public class DashboardViewModel : ViewModelBase
     {
         _db = new AppDbContext();
         OccupiedRooms = new ObservableCollection<RoomOccupancyItem>();
-        PendingPayments = new ObservableCollection<PendingPaymentItem>();
+        PendingPayments = new ObservableCollection<ComputedPendingPayment>();
         AvailableRooms = new ObservableCollection<AvailableRoomItem>();
         MissingContracts = new ObservableCollection<MissingContractItem>();
         MonthlyBarChartItems = new ObservableCollection<MonthlyBarChartItem>();
@@ -116,7 +108,7 @@ public class DashboardViewModel : ViewModelBase
     private int _currentPropertyId;
 
     public ObservableCollection<RoomOccupancyItem> OccupiedRooms { get; }
-    public ObservableCollection<PendingPaymentItem> PendingPayments { get; }
+    public ObservableCollection<ComputedPendingPayment> PendingPayments { get; }
     public ObservableCollection<AvailableRoomItem> AvailableRooms { get; }
     public ObservableCollection<MissingContractItem> MissingContracts { get; }
     public ObservableCollection<MonthlyBarChartItem> MonthlyBarChartItems { get; }
@@ -144,12 +136,6 @@ public class DashboardViewModel : ViewModelBase
     {
         get => _activeTenants;
         set => SetProperty(ref _activeTenants, value);
-    }
-
-    public int PendingPaymentsCount
-    {
-        get => _pendingPaymentsCount;
-        set => SetProperty(ref _pendingPaymentsCount, value);
     }
 
     private decimal _estimatedNextMonthIncome;
@@ -396,26 +382,63 @@ public class DashboardViewModel : ViewModelBase
         CollectedIncome = currentMonthPayments.Sum(p => p.PaidAmount);
 
         TotalPaymentsCount = allPayments.Count;
-        PendingPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Pending);
         PaidPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Paid);
         PartialPaymentsCount = allPayments.Count(p => p.Status == PaymentStatus.Partial);
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
 
+        // Compute pending payments dynamically from contracts
+        var contracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
+        var contractIds = contracts.Select(c => c.Id).ToList();
+        var allExtensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
+        var paidMonths = allPayments.Select(p => (p.TenantId, p.Year, p.Month)).ToHashSet();
+
         PendingPayments.Clear();
-        foreach (var payment in allPayments.Where(p => p.Status == PaymentStatus.Pending).OrderBy(p => p.Year).ThenBy(p => p.Month))
+        var pendingList = new List<ComputedPendingPayment>();
+        foreach (var contract in contracts)
         {
-            PendingPayments.Add(new PendingPaymentItem
+            var contractExtensions = allExtensions.Where(e => e.RentalContractId == contract.Id).ToList();
+            var startDate = new DateTime(contract.StartDate.Year, contract.StartDate.Month, 1);
+
+            DateTime? effectiveEnd = null;
+            if (contract.EndDate.HasValue)
+                effectiveEnd = new DateTime(contract.EndDate.Value.Year, contract.EndDate.Value.Month, 1);
+            foreach (var ext in contractExtensions)
             {
-                TenantName = tenantLookup.TryGetValue(payment.TenantId, out var name) ? name : $"(id={payment.TenantId})",
-                Year = payment.Year,
-                Month = payment.Month,
-                ExpectedAmount = payment.ExpectedAmount,
-                Status = payment.Status.ToString()
-            });
+                if (!ext.EndDate.HasValue) { effectiveEnd = null; break; }
+                var extEnd = new DateTime(ext.EndDate.Value.Year, ext.EndDate.Value.Month, 1);
+                if (effectiveEnd == null || extEnd > effectiveEnd) effectiveEnd = extEnd;
+            }
+
+            var cutoff = effectiveEnd.HasValue
+                ? new DateTime(Math.Min(effectiveEnd.Value.Ticks, new DateTime(now.Year, now.Month, 1).Ticks))
+                : new DateTime(now.Year, now.Month, 1);
+
+            var cursor = startDate;
+            while (cursor <= cutoff)
+            {
+                if (!paidMonths.Contains((contract.TenantId, cursor.Year, cursor.Month)))
+                {
+                    pendingList.Add(new ComputedPendingPayment
+                    {
+                        TenantId = contract.TenantId,
+                        TenantName = tenantLookup.TryGetValue(contract.TenantId, out var tn) ? tn : $"(id={contract.TenantId})",
+                        Year = cursor.Year,
+                        Month = cursor.Month,
+                        ExpectedRentAmount = contract.MonthlyRent,
+                        ContractId = contract.Id
+                    });
+                }
+                cursor = cursor.AddMonths(1);
+            }
+        }
+        foreach (var item in pendingList
+            .GroupBy(p => (p.TenantId, p.Year, p.Month)).Select(g => g.First())
+            .OrderBy(p => p.Year).ThenBy(p => p.Month).ThenBy(p => p.TenantName))
+        {
+            PendingPayments.Add(item);
         }
 
-        var contracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
         MissingContracts.Clear();
         foreach (var contract in contracts)
         {
@@ -429,30 +452,25 @@ public class DashboardViewModel : ViewModelBase
             }
         }
 
-        // Donut Chart Angles calculations
-        double currentAngle = -90; // Start at 12 o'clock
+        // Donut Chart: only Paid vs Partial (no Pending in DB anymore)
+        double currentAngle = -90;
         double total = TotalPaymentsCount;
-
         if (total > 0)
         {
             PaidSweepAngle = (PaidPaymentsCount / total) * 360.0;
             PaidStartAngle = currentAngle;
             currentAngle += PaidSweepAngle;
 
-            PendingSweepAngle = (PendingPaymentsCount / total) * 360.0;
-            PendingStartAngle = currentAngle;
-            currentAngle += PendingSweepAngle;
-
             PartialSweepAngle = (PartialPaymentsCount / total) * 360.0;
             PartialStartAngle = currentAngle;
-            currentAngle += PartialSweepAngle;
         }
         else
         {
             PaidSweepAngle = 0; PaidStartAngle = -90;
-            PendingSweepAngle = 0; PendingStartAngle = -90;
             PartialSweepAngle = 0; PartialStartAngle = -90;
         }
+        // Keep Pending angles at 0 for compatibility with existing XAML bindings
+        PendingSweepAngle = 0; PendingStartAngle = -90;
 
         OccupancySweepAngle = (TotalRooms > 0) ? ((double)OccupiedRoomsCount / TotalRooms) * 360.0 : 0.0;
         IncomeSweepAngle = (ExpectedIncome > 0) ? (double)(CollectedIncome / ExpectedIncome) * 360.0 : 0.0;

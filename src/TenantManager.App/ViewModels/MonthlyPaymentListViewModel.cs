@@ -24,6 +24,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     private PaymentDisplayItem? _selectedItem;
     private MonthlyPayment? _editingPayment;
     private bool _isEditing;
+    private bool _isRegisteringPending;
     private Tenant? _editSelectedTenant;
     private decimal _editYear;
     private decimal _editMonth;
@@ -33,15 +34,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     private PaymentStatus _editStatus;
     private DateTimeOffset? _editPaidDate;
     private string? _editNotes;
-
-    private bool _isBatchGenerating;
-    private Tenant? _batchSelectedTenant;
-    private decimal _batchStartYear;
-    private decimal _batchStartMonth;
-    private decimal _batchEndYear;
-    private decimal _batchEndMonth;
-    private PaymentStatus _batchDefaultStatus;
-    private DateTimeOffset? _batchPaidDate;
+    private ComputedPendingPayment? _pendingBeingRegistered;
 
     private int _currentPropertyId;
 
@@ -55,21 +48,17 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     {
         _db = db;
         Payments = new ObservableCollection<PaymentDisplayItem>();
+        PendingPayments = new ObservableCollection<ComputedPendingPayment>();
         AvailableTenants = new ObservableCollection<Tenant>();
         AvailableStatuses = new ObservableCollection<PaymentStatus>(
             Enum.GetValues<PaymentStatus>());
 
         LoadPaymentsCommand = new RelayCommand(_ => LoadPayments(_currentPropertyId));
         SortCommand = new RelayCommand(param => Sort(param as string));
-        NewPaymentCommand = new RelayCommand(_ => StartNewPayment());
         SavePaymentCommand = new RelayCommand(_ => SavePayment());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ClearPaidDateCommand = new RelayCommand(_ => EditPaidDate = null);
-
-        StartBatchCommand = new RelayCommand(_ => StartBatch());
-        GenerateBatchCommand = new RelayCommand(_ => GenerateBatch());
-        CancelBatchCommand = new RelayCommand(_ => CancelBatch());
-        ClearBatchPaidDateCommand = new RelayCommand(_ => BatchPaidDate = null);
+        RegisterPendingCommand = new RelayCommand(param => StartRegisterPending(param as ComputedPendingPayment));
 
         DeletePaymentCommand = new RelayCommand(param => DeletePayment(param));
         ConfirmDeletePaymentCommand = new RelayCommand(_ => ConfirmDeletePayment());
@@ -77,20 +66,16 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     }
 
     public ObservableCollection<PaymentDisplayItem> Payments { get; }
+    public ObservableCollection<ComputedPendingPayment> PendingPayments { get; }
     public ObservableCollection<Tenant> AvailableTenants { get; }
     public ObservableCollection<PaymentStatus> AvailableStatuses { get; }
 
     public RelayCommand LoadPaymentsCommand { get; }
     public RelayCommand SortCommand { get; }
-    public RelayCommand NewPaymentCommand { get; }
     public RelayCommand SavePaymentCommand { get; }
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ClearPaidDateCommand { get; }
-
-    public RelayCommand StartBatchCommand { get; }
-    public RelayCommand GenerateBatchCommand { get; }
-    public RelayCommand CancelBatchCommand { get; }
-    public RelayCommand ClearBatchPaidDateCommand { get; }
+    public RelayCommand RegisterPendingCommand { get; }
     public RelayCommand DeletePaymentCommand { get; }
     public RelayCommand ConfirmDeletePaymentCommand { get; }
     public RelayCommand CancelDeletePaymentCommand { get; }
@@ -114,11 +99,13 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         set => SetProperty(ref _isEditing, value);
     }
 
-    public bool IsBatchGenerating
+    public bool IsRegisteringPending
     {
-        get => _isBatchGenerating;
-        set => SetProperty(ref _isBatchGenerating, value);
+        get => _isRegisteringPending;
+        set => SetProperty(ref _isRegisteringPending, value);
     }
+
+    public bool HasPendingPayments => PendingPayments.Count > 0;
 
     public string SearchQuery
     {
@@ -141,50 +128,19 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     public Tenant? EditSelectedTenant
     {
         get => _editSelectedTenant;
-        set
-        {
-            if (SetProperty(ref _editSelectedTenant, value))
-            {
-                if (IsEditing && _editingPayment == null)
-                    AutoFillAmounts();
-            }
-        }
+        set => SetProperty(ref _editSelectedTenant, value);
     }
 
     public decimal EditYear
     {
         get => _editYear;
-        set 
-        {
-            if (SetProperty(ref _editYear, value))
-            {
-                if (IsEditing)
-                {
-                    // For new payments: refresh tenant list without forcing current tenant
-                    // For editing existing: keep original tenant visible (option A)
-                    LoadAvailableTenants(_editingPayment?.TenantId);
-                    if (_editingPayment == null)
-                        AutoFillAmounts();
-                }
-            }
-        }
+        set => SetProperty(ref _editYear, value);
     }
 
     public decimal EditMonth
     {
         get => _editMonth;
-        set 
-        {
-            if (SetProperty(ref _editMonth, value))
-            {
-                if (IsEditing)
-                {
-                    LoadAvailableTenants(_editingPayment?.TenantId);
-                    if (_editingPayment == null)
-                        AutoFillAmounts();
-                }
-            }
-        }
+        set => SetProperty(ref _editMonth, value);
     }
 
     public decimal EditExpectedRentAmount
@@ -216,33 +172,14 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                 {
                     EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
                     if (EditPaidDate == null)
-                    {
                         EditPaidDate = DateTimeOffset.Now;
-                    }
                 }
                 else if (value == PaymentStatus.Partial)
                 {
-                    // Keep current or default to expected if it was zero
                     if (EditPaidAmount == 0)
-                    {
                         EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
-                    }
                     if (EditPaidDate == null)
-                    {
                         EditPaidDate = DateTimeOffset.Now;
-                    }
-                }
-                else
-                {
-                    EditPaidAmount = 0;
-                    if (value == PaymentStatus.Pending)
-                    {
-                        EditPaidDate = null;
-                    }
-                    else if (EditPaidDate == null)
-                    {
-                        EditPaidDate = DateTimeOffset.Now;
-                    }
                 }
                 OnPropertyChanged(nameof(IsPaidAmountEnabled));
             }
@@ -263,47 +200,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         set => SetProperty(ref _editNotes, value);
     }
 
-    public Tenant? BatchSelectedTenant
-    {
-        get => _batchSelectedTenant;
-        set => SetProperty(ref _batchSelectedTenant, value);
-    }
-
-    public decimal BatchStartYear
-    {
-        get => _batchStartYear;
-        set => SetProperty(ref _batchStartYear, value);
-    }
-
-    public decimal BatchStartMonth
-    {
-        get => _batchStartMonth;
-        set => SetProperty(ref _batchStartMonth, value);
-    }
-
-    public decimal BatchEndYear
-    {
-        get => _batchEndYear;
-        set => SetProperty(ref _batchEndYear, value);
-    }
-
-    public decimal BatchEndMonth
-    {
-        get => _batchEndMonth;
-        set => SetProperty(ref _batchEndMonth, value);
-    }
-
-    public PaymentStatus BatchDefaultStatus
-    {
-        get => _batchDefaultStatus;
-        set => SetProperty(ref _batchDefaultStatus, value);
-    }
-
-    public DateTimeOffset? BatchPaidDate
-    {
-        get => _batchPaidDate;
-        set => SetProperty(ref _batchPaidDate, value);
-    }
+    // ─── Load ────────────────────────────────────────────────────────────────
 
     public void LoadPayments(int propertyId)
     {
@@ -311,8 +208,8 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         if (_currentPropertyId == 0) return;
 
         _db.ChangeTracker.Clear();
-        LoadAvailableTenants();
 
+        // 1. Load only Paid/Partial records from DB into the history list
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
 
         _allPayments.Clear();
@@ -326,17 +223,118 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                 TenantName = tenantLookup.TryGetValue(payment.TenantId, out var name) ? name : $"(id={payment.TenantId})"
             });
         }
+
+        // 2. Compute pending payments automatically from active contracts
+        ComputePendingPayments(tenantLookup);
+
         ApplyFiltersAndSort();
     }
+
+    /// <summary>
+    /// Computes pending payments dynamically: any contract month up to today
+    /// that has no Paid or Partial record in the DB.
+    /// </summary>
+    private void ComputePendingPayments(Dictionary<int, string> tenantLookup)
+    {
+        PendingPayments.Clear();
+
+        var today = DateTime.Today;
+        var paidMonths = _allPayments
+            .Select(p => (p.Payment.TenantId, p.Payment.Year, p.Payment.Month))
+            .ToHashSet();
+
+        var contracts = _db.RentalContracts
+            .Where(c => c.PropertyId == _currentPropertyId)
+            .ToList();
+
+        var contractIds = contracts.Select(c => c.Id).ToList();
+        var extensions = _db.RentalContractExtensions
+            .Where(e => contractIds.Contains(e.RentalContractId))
+            .ToList();
+
+        var pending = new List<ComputedPendingPayment>();
+
+        foreach (var contract in contracts)
+        {
+            var contractExtensions = extensions.Where(e => e.RentalContractId == contract.Id).ToList();
+
+            // Determine the earliest start (contract start)
+            var startDate = new DateTime(contract.StartDate.Year, contract.StartDate.Month, 1);
+
+            // Determine the latest effective end date
+            DateTime? effectiveEnd = null;
+            if (contract.EndDate.HasValue)
+                effectiveEnd = new DateTime(contract.EndDate.Value.Year, contract.EndDate.Value.Month, 1);
+
+            foreach (var ext in contractExtensions)
+            {
+                if (!ext.EndDate.HasValue)
+                {
+                    effectiveEnd = null; // open-ended extension
+                    break;
+                }
+                var extEnd = new DateTime(ext.EndDate.Value.Year, ext.EndDate.Value.Month, 1);
+                if (effectiveEnd == null || extEnd > effectiveEnd)
+                    effectiveEnd = extEnd;
+            }
+
+            // Iterate each month in the contract window up to today
+            var cursor = startDate;
+            var cutoff = effectiveEnd.HasValue
+                ? new DateTime(Math.Min(effectiveEnd.Value.Ticks, new DateTime(today.Year, today.Month, 1).Ticks))
+                : new DateTime(today.Year, today.Month, 1);
+
+            while (cursor <= cutoff)
+            {
+                var year = cursor.Year;
+                var month = cursor.Month;
+
+                // Skip months that already have a Paid/Partial record
+                if (!paidMonths.Contains((contract.TenantId, year, month)))
+                {
+                    var contractInfo = GetContractForTenantMonth(contract.TenantId, year, month, contracts, extensions);
+                    if (contractInfo.HasValue)
+                    {
+                        var (rent, expense, _) = contractInfo.Value;
+                        pending.Add(new ComputedPendingPayment
+                        {
+                            TenantId = contract.TenantId,
+                            TenantName = tenantLookup.TryGetValue(contract.TenantId, out var name) ? name : $"(id={contract.TenantId})",
+                            Year = year,
+                            Month = month,
+                            ExpectedRentAmount = rent,
+                            ExpectedExpenseAmount = expense,
+                            ContractId = contract.Id
+                        });
+                    }
+                }
+
+                cursor = cursor.AddMonths(1);
+            }
+        }
+
+        // Sort: oldest unpaid months first
+        foreach (var item in pending
+            .GroupBy(p => (p.TenantId, p.Year, p.Month)) // dedup in case of multiple contracts same tenant
+            .Select(g => g.First())
+            .OrderBy(p => p.Year)
+            .ThenBy(p => p.Month)
+            .ThenBy(p => p.TenantName))
+        {
+            PendingPayments.Add(item);
+        }
+
+        OnPropertyChanged(nameof(HasPendingPayments));
+    }
+
+    // ─── Sort & Filter ───────────────────────────────────────────────────────
 
     private void Sort(string? column)
     {
         if (string.IsNullOrWhiteSpace(column)) return;
 
         if (_sortColumn == column)
-        {
             _sortAscending = !_sortAscending;
-        }
         else
         {
             _sortColumn = column;
@@ -359,7 +357,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
             var q = SearchQuery.ToLowerInvariant();
-            filtered = filtered.Where(i => 
+            filtered = filtered.Where(i =>
                 (i.TenantName?.ToLowerInvariant().Contains(q) ?? false) ||
                 i.Payment.Year.ToString().Contains(q) ||
                 i.Payment.Month.ToString().Contains(q) ||
@@ -378,74 +376,40 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
         Payments.Clear();
         foreach (var inv in filtered)
-        {
             Payments.Add(inv);
-        }
     }
 
-    private void LoadAvailableTenants(int? includeTenantId = null)
+    // ─── Register pending payment ────────────────────────────────────────────
+
+    private void StartRegisterPending(ComputedPendingPayment? pending)
     {
-        AvailableTenants.Clear();
-        
-        // Define the target date based on what the user is currently editing (or default to current month/year)
-        var targetYear = EditYear > 2000 ? (int)EditYear : DateTime.Today.Year;
-        var targetMonth = EditMonth > 0 ? (int)EditMonth : DateTime.Today.Month;
-        var targetDateStart = new DateTimeOffset(new DateTime(targetYear, targetMonth, 1));
-        var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1); // Last day of the target month
-        
-        // Load contracts and extensions into memory first to avoid SQLite multiple active data readers exception
-        var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == _currentPropertyId).ToList();
-        var contractIds = propertyContracts.Select(c => c.Id).ToList();
-        var propertyExtensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
+        if (pending == null) return;
 
-        var activeTenantIds = propertyContracts
-            .Where(c => {
-                var extensions = propertyExtensions.Where(e => e.RentalContractId == c.Id).ToList();
-                
-                // A contract/extension is valid for the target month if it starts before the end of the month
-                // AND (it has no end date OR it ends on or after the first day of the target month).
-                bool isContractActive = c.StartDate <= targetDateEnd && (c.EndDate == null || c.EndDate >= targetDateStart);
-                bool isExtensionActive = extensions.Any(e => e.StartDate <= targetDateEnd && (e.EndDate == null || e.EndDate >= targetDateStart));
-                
-                return isContractActive || isExtensionActive;
-            })
-            .Select(c => c.TenantId)
-            .Distinct()
-            .ToHashSet();
-
-        foreach (var tenant in _db.Tenants
-            .Where(t => t.PropertyId == _currentPropertyId)
-            .ToList()
-            .Where(t => activeTenantIds.Contains(t.Id) || t.Id == includeTenantId)
-            .OrderBy(t => t.FullName))
-        {
-            AvailableTenants.Add(tenant);
-        }
-    }
-
-    private void StartNewPayment()
-    {
+        _pendingBeingRegistered = pending;
         _editingPayment = null;
-        // Set year/month BEFORE loading tenants so the filter uses correct values
-        _editYear = CurrentYear;
-        _editMonth = DateTime.Today.Month;
-        OnPropertyChanged(nameof(EditYear));
-        OnPropertyChanged(nameof(EditMonth));
-        LoadAvailableTenants();
-        EditSelectedTenant = AvailableTenants.FirstOrDefault();
-        // Amounts auto-filled by EditSelectedTenant setter via AutoFillAmounts()
-        EditStatus = PaymentStatus.Pending;
-        EditPaidDate = null;
+
+        LoadAvailableTenants(pending.TenantId);
+        EditSelectedTenant = AvailableTenants.FirstOrDefault(t => t.Id == pending.TenantId);
+        EditYear = pending.Year;
+        EditMonth = pending.Month;
+        EditExpectedRentAmount = pending.ExpectedRentAmount;
+        EditExpectedExpenseAmount = pending.ExpectedExpenseAmount;
+        EditPaidAmount = pending.TotalExpected;
+        EditStatus = PaymentStatus.Paid;
+        EditPaidDate = DateTimeOffset.Now;
         EditNotes = null;
+        IsRegisteringPending = true;
         IsEditing = true;
     }
 
+    // ─── Edit existing payment ───────────────────────────────────────────────
+
     private void EditPayment()
     {
-        if (SelectedItem == null)
-            return;
+        if (SelectedItem == null) return;
 
         _editingPayment = SelectedItem.Payment;
+        _pendingBeingRegistered = null;
         LoadAvailableTenants(_editingPayment.TenantId);
         EditSelectedTenant = AvailableTenants.FirstOrDefault(t => t.Id == _editingPayment.TenantId);
         EditYear = _editingPayment.Year;
@@ -454,28 +418,21 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditExpectedExpenseAmount = _editingPayment.ExpectedExpenseAmount;
         EditPaidAmount = _editingPayment.PaidAmount;
         EditStatus = _editingPayment.Status;
-        EditPaidDate = _editingPayment.PaidDate is DateTime pd
-            ? new DateTimeOffset(pd)
-            : null;
+        EditPaidDate = _editingPayment.PaidDate is DateTime pd ? new DateTimeOffset(pd) : null;
         EditNotes = _editingPayment.Notes;
+        IsRegisteringPending = false;
         IsEditing = true;
     }
 
+    // ─── Save ────────────────────────────────────────────────────────────────
+
     private void SavePayment()
     {
-        if (EditSelectedTenant == null)
-            return;
-
-        // Validate: tenant must have an active contract for the selected month/year
-        var contractInfo = GetContractForTenantMonth(EditSelectedTenant.Id, (int)EditYear, (int)EditMonth);
-        if (contractInfo == null)
-        {
-            Console.WriteLine($"[SavePayment] Blocked: {EditSelectedTenant.FullName} has no active contract for {EditYear}/{EditMonth}");
-            return;
-        }
+        if (EditSelectedTenant == null) return;
 
         if (_editingPayment == null)
         {
+            // New record (registering a pending payment)
             var payment = new MonthlyPayment
             {
                 PropertyId = _currentPropertyId,
@@ -493,6 +450,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         }
         else
         {
+            // Update existing record
             _editingPayment.TenantId = EditSelectedTenant.Id;
             _editingPayment.Year = (int)EditYear;
             _editingPayment.Month = (int)EditMonth;
@@ -522,107 +480,30 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     private void CancelEdit()
     {
         _editingPayment = null;
+        _pendingBeingRegistered = null;
+        SelectedItem = null;
         EditSelectedTenant = null;
         EditYear = CurrentYear;
         EditMonth = DateTime.Today.Month;
         EditExpectedRentAmount = 0;
         EditExpectedExpenseAmount = 0;
         EditPaidAmount = 0;
-        EditStatus = PaymentStatus.Pending;
+        EditStatus = PaymentStatus.Paid;
         EditPaidDate = null;
         EditNotes = null;
         IsEditing = false;
+        IsRegisteringPending = false;
     }
 
-    private void StartBatch()
-    {
-        BatchSelectedTenant = AvailableTenants.FirstOrDefault();
-        BatchStartYear = CurrentYear;
-        BatchStartMonth = 1;
-        BatchEndYear = CurrentYear;
-        BatchEndMonth = 12;
-        BatchDefaultStatus = PaymentStatus.Paid;
-        BatchPaidDate = DateTimeOffset.Now;
-        IsBatchGenerating = true;
-    }
-
-    private void CancelBatch()
-    {
-        IsBatchGenerating = false;
-        BatchSelectedTenant = null;
-    }
-
-    private void GenerateBatch()
-    {
-        Console.WriteLine($"[DEBUG Batch] Tenant: {BatchSelectedTenant?.FullName ?? "null"}, Start: {BatchStartYear}/{BatchStartMonth}, End: {BatchEndYear}/{BatchEndMonth}");
-        if (BatchSelectedTenant == null)
-        {
-            Console.WriteLine("[DEBUG Batch] Selected tenant is null");
-            return;
-        }
-        if (BatchStartYear > BatchEndYear || (BatchStartYear == BatchEndYear && BatchStartMonth > BatchEndMonth))
-        {
-            Console.WriteLine("[DEBUG Batch] Date range invalid");
-            return;
-        }
-
-        var tenantId = BatchSelectedTenant.Id;
-
-        var existingPayments = _db.MonthlyPayments
-            .Where(p => p.TenantId == tenantId && p.Year >= (int)BatchStartYear && p.Year <= (int)BatchEndYear)
-            .ToList();
-
-        var currentDate = new DateTime((int)BatchStartYear, (int)BatchStartMonth, 1);
-        var endDate = new DateTime((int)BatchEndYear, (int)BatchEndMonth, 1);
-
-        while (currentDate <= endDate)
-        {
-            var year = currentDate.Year;
-            var month = currentDate.Month;
-
-            // Check if exists
-            if (!existingPayments.Any(p => p.Year == year && p.Month == month))
-            {
-                // Only create payment if tenant has an active contract for this month
-                var contractInfo = GetContractForTenantMonth(tenantId, year, month);
-                if (contractInfo != null)
-                {
-                    var (expectedRent, expectedExpense, _) = contractInfo.Value;
-
-                    var payment = new MonthlyPayment
-                    {
-                        PropertyId = _currentPropertyId,
-                        TenantId = tenantId,
-                        Year = year,
-                        Month = month,
-                        ExpectedRentAmount = expectedRent,
-                        ExpectedExpenseAmount = expectedExpense,
-                        PaidAmount = BatchDefaultStatus == PaymentStatus.Paid ? expectedRent + expectedExpense : 0,
-                        Status = BatchDefaultStatus,
-                        PaidDate = BatchDefaultStatus == PaymentStatus.Paid ? BatchPaidDate?.DateTime : null
-                    };
-
-                    _db.MonthlyPayments.Add(payment);
-                }
-            }
-
-            currentDate = currentDate.AddMonths(1);
-        }
-
-        _db.SaveChanges();
-        LoadPayments(_currentPropertyId);
-        CancelBatch();
-    }
+    // ─── Delete ──────────────────────────────────────────────────────────────
 
     public void DeletePayments(IEnumerable<PaymentDisplayItem> itemsToDelete)
     {
-        if (itemsToDelete == null || !itemsToDelete.Any())
-            return;
+        if (itemsToDelete == null || !itemsToDelete.Any()) return;
 
         foreach (var item in itemsToDelete)
-        {
             _db.MonthlyPayments.Remove(item.Payment);
-        }
+
         _db.SaveChanges();
         LoadPayments(_currentPropertyId);
     }
@@ -651,12 +532,10 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         {
             _db.MonthlyPayments.Remove(_paymentToDelete.Payment);
             _db.SaveChanges();
-            
+
             if (SelectedItem?.Payment?.Id == _paymentToDelete.Payment.Id)
-            {
                 SelectedItem = null;
-            }
-            
+
             _paymentToDelete = null;
             IsConfirmingDeletePayment = false;
             LoadPayments(_currentPropertyId);
@@ -669,25 +548,58 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         IsConfirmingDeletePayment = false;
     }
 
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+
+    private void LoadAvailableTenants(int? includeTenantId = null)
+    {
+        AvailableTenants.Clear();
+
+        var targetYear = EditYear > 2000 ? (int)EditYear : DateTime.Today.Year;
+        var targetMonth = EditMonth > 0 ? (int)EditMonth : DateTime.Today.Month;
+        var targetDateStart = new DateTimeOffset(new DateTime(targetYear, targetMonth, 1));
+        var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1);
+
+        var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == _currentPropertyId).ToList();
+        var contractIds = propertyContracts.Select(c => c.Id).ToList();
+        var propertyExtensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
+
+        var activeTenantIds = propertyContracts
+            .Where(c => {
+                var exts = propertyExtensions.Where(e => e.RentalContractId == c.Id).ToList();
+                bool isContractActive = c.StartDate <= targetDateEnd && (c.EndDate == null || c.EndDate >= targetDateStart);
+                bool isExtensionActive = exts.Any(e => e.StartDate <= targetDateEnd && (e.EndDate == null || e.EndDate >= targetDateStart));
+                return isContractActive || isExtensionActive;
+            })
+            .Select(c => c.TenantId)
+            .Distinct()
+            .ToHashSet();
+
+        foreach (var tenant in _db.Tenants
+            .Where(t => t.PropertyId == _currentPropertyId)
+            .ToList()
+            .Where(t => activeTenantIds.Contains(t.Id) || t.Id == includeTenantId)
+            .OrderBy(t => t.FullName))
+        {
+            AvailableTenants.Add(tenant);
+        }
+    }
+
     /// <summary>
-    /// Returns the expected rent and expense for a tenant in a given month/year,
-    /// based on the active contract or extension. Returns null if no contract covers that month.
+    /// Returns the expected rent and expense for a tenant in a given month/year.
+    /// Uses pre-loaded contracts and extensions to avoid multiple DB readers.
     /// </summary>
-    private (decimal rent, decimal expense, ExpensePaymentType expenseType)? GetContractForTenantMonth(int tenantId, int year, int month)
+    private (decimal rent, decimal expense, ExpensePaymentType expenseType)? GetContractForTenantMonth(
+        int tenantId, int year, int month,
+        List<RentalContract> allContracts,
+        List<RentalContractExtension> allExtensions)
     {
         var targetDateStart = new DateTimeOffset(new DateTime(year, month, 1));
         var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1);
 
-        // Load into memory to avoid SQLite multiple active readers
-        var contracts = _db.RentalContracts
-            .Where(c => c.TenantId == tenantId && c.PropertyId == _currentPropertyId)
-            .ToList();
+        var contracts = allContracts.Where(c => c.TenantId == tenantId).ToList();
         var contractIds = contracts.Select(c => c.Id).ToList();
-        var extensions = _db.RentalContractExtensions
-            .Where(e => contractIds.Contains(e.RentalContractId))
-            .ToList();
+        var extensions = allExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
 
-        // Find a contract that overlaps with the target month
         var activeContract = contracts
             .Where(c => c.StartDate <= targetDateEnd && (!c.EndDate.HasValue || c.EndDate.Value >= targetDateStart))
             .OrderByDescending(c => c.StartDate)
@@ -695,19 +607,14 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
         if (activeContract == null)
         {
-            // Check if any extension covers this month even if the base contract doesn't
             var standaloneExtension = extensions
                 .Where(e => e.StartDate <= targetDateEnd && (!e.EndDate.HasValue || e.EndDate.Value >= targetDateStart))
                 .OrderByDescending(e => e.StartDate)
                 .FirstOrDefault();
-            if (standaloneExtension == null)
-                return null;
-
-            // Extension found — use its values
+            if (standaloneExtension == null) return null;
             return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, year, month);
         }
 
-        // Check for an extension on this contract that covers the target month
         var activeExtension = extensions
             .Where(e => e.RentalContractId == activeContract.Id && e.StartDate <= targetDateEnd && (!e.EndDate.HasValue || e.EndDate.Value >= targetDateStart))
             .OrderByDescending(e => e.StartDate)
@@ -719,13 +626,21 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, year, month);
     }
 
+    // Overload used from SavePayment for validation
+    private (decimal rent, decimal expense, ExpensePaymentType expenseType)? GetContractForTenantMonth(int tenantId, int year, int month)
+    {
+        var contracts = _db.RentalContracts.Where(c => c.TenantId == tenantId && c.PropertyId == _currentPropertyId).ToList();
+        var contractIds = contracts.Select(c => c.Id).ToList();
+        var extensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
+        return GetContractForTenantMonth(tenantId, year, month, contracts, extensions);
+    }
+
     private (decimal rent, decimal expense, ExpensePaymentType expenseType) ComputeExpense(
         decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, int year, int month)
     {
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
 
-        // Variable: split invoices among occupied rooms
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
         var invoicesTotal = _db.ExpenseInvoices
             .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && i.IsChargeableToTenant)
@@ -742,38 +657,5 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
         var expense = occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
         return (rent, expense, expenseType);
-    }
-
-    /// <summary>
-    /// Auto-fills ExpectedRentAmount and ExpectedExpenseAmount from the active contract
-    /// when creating a new payment. Also updates PaidAmount if status is Paid.
-    /// </summary>
-    private void AutoFillAmounts()
-    {
-        if (EditSelectedTenant == null || EditYear < 2000 || EditMonth < 1 || EditMonth > 12)
-        {
-            EditExpectedRentAmount = 0;
-            EditExpectedExpenseAmount = 0;
-            EditPaidAmount = 0;
-            return;
-        }
-
-        var contractInfo = GetContractForTenantMonth(EditSelectedTenant.Id, (int)EditYear, (int)EditMonth);
-        if (contractInfo == null)
-        {
-            EditExpectedRentAmount = 0;
-            EditExpectedExpenseAmount = 0;
-            EditPaidAmount = 0;
-            return;
-        }
-
-        var (rent, expense, _) = contractInfo.Value;
-        EditExpectedRentAmount = rent;
-        EditExpectedExpenseAmount = expense;
-
-        if (EditStatus == PaymentStatus.Paid)
-            EditPaidAmount = rent + expense;
-        else if (EditStatus == PaymentStatus.Pending)
-            EditPaidAmount = 0;
     }
 }

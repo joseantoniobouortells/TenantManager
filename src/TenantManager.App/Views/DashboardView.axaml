@@ -169,19 +169,25 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Column 1: Pending/Late Payments -->
+                    <!-- Column 1: Pending Payments -->
                     <Border Classes="Card" Grid.Column="1" Margin="0" MinHeight="360">
                         <DockPanel>
-                            <TextBlock Classes="H2" Text="{DynamicResource PendingLatePaymentsLabel}" DockPanel.Dock="Top" Margin="0 0 0 16" />
-                            <TextBlock Text="{DynamicResource NoPendingPaymentsMsg}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoPendingPayments}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 80 0 0"/>
-                            
+                            <TextBlock Classes="H2" Text="Cuotas Pendientes" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <TextBlock Text="✅ Sin cuotas pendientes" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoPendingPayments}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 80 0 0"/>
+
                             <ListBox Classes="Table" ItemsSource="{Binding Dashboard.PendingPayments}" IsVisible="{Binding !Dashboard.HasNoPendingPayments}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 4">
-                                            <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                            <TextBlock Grid.Column="1" Text="{Binding Status}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8 0" VerticalAlignment="Center" FontSize="11" />
-                                            <TextBlock Grid.Column="2" Text="{Binding ExpectedAmount, StringFormat='{}{0:C}'}" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding TenantName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding MonthLabel}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="{DynamicResource DangerBrush}" CornerRadius="4" Padding="6 2" Margin="8 0" VerticalAlignment="Center"
+                                                    IsVisible="{Binding IsOverdue}">
+                                                <TextBlock Text="Atrasado" FontSize="10" FontWeight="Bold" Foreground="White" />
+                                            </Border>
+                                            <TextBlock Grid.Column="2" Text="{Binding TotalExpected, StringFormat='{}{0:C}'}" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" VerticalAlignment="Center" />
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
