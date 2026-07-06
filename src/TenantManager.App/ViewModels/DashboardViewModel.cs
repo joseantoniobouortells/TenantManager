@@ -586,7 +586,17 @@ public class DashboardViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasNoPendingPayments));
         OnPropertyChanged(nameof(HasNoAvailableRooms));
         OnPropertyChanged(nameof(HasNoMissingContracts));
+
+        if (PendingPayments.Count > 0 && (DateTime.Now - _lastNotificationTime).TotalHours > 12)
+        {
+            _lastNotificationTime = DateTime.Now;
+            TenantManager.App.Services.NativeNotificationService.ShowNotification(
+                "Alquileres Pendientes", 
+                $"Tienes {PendingPayments.Count} cuota(s) pendiente(s) de cobro.");
+        }
     }
+
+    private static DateTime _lastNotificationTime = DateTime.MinValue;
 
     /// <summary>
     /// Computes the variable expense share for a given property month by splitting

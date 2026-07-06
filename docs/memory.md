@@ -108,6 +108,9 @@
 90. **Indicador Visual LED de Estado de Contratos (Julio 2026):**
     - *Decisión:* Se añadió una propiedad computada `IsActive` en el modelo de vista de contratos y un indicador visual LED interactivo en la lista de contratos (verde para contratos activos, rojo para contratos vencidos/inactivos) usando `RadialGradientBrush` y `BoxShadow`.
     - *Motivo:* Mejorar la UX proporcionando retroalimentación visual instantánea y clara sobre la validez del contrato al momento de consultar el listado.
+91. **Notificaciones Nativas Cross-Platform (Julio 2026):**
+    - *Decisión:* Se implementó `NativeNotificationService` utilizando llamadas directas sin dependencias al sistema operativo (`osascript` en macOS, `notify-send` en Linux y un script `PowerShell` inyectado para WinRT en Windows). 
+    - *Motivo:* Proveer notificaciones nativas de escritorio (al arrancar la app y de forma periódica con enfriamiento de 12 horas) cuando existen cobros pendientes, evitando dependencias de terceros desactualizadas incompatibles con Avalonia 12.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.
