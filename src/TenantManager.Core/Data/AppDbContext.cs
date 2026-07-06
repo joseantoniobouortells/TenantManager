@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<MonthlyPayment> MonthlyPayments => Set<MonthlyPayment>();
     public DbSet<RentalContractExtension> RentalContractExtensions => Set<RentalContractExtension>();
     public DbSet<ExpenseInvoice> ExpenseInvoices => Set<ExpenseInvoice>();
+    public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {

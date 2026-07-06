@@ -123,7 +123,37 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,Auto">
-                                    <TextBlock Grid.Column="0" Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                                        <Border Width="10" Height="10" CornerRadius="5" Tag="{Binding IsActive}" VerticalAlignment="Center">
+                                            <Border.Styles>
+                                                <!-- LED Activo (Verde) -->
+                                                <Style Selector="Border[Tag=True]">
+                                                    <Setter Property="Background">
+                                                        <RadialGradientBrush Center="30%,30%">
+                                                            <GradientStop Offset="0.0" Color="#A7F3D0" />
+                                                            <GradientStop Offset="0.3" Color="#10B981" />
+                                                            <GradientStop Offset="1.0" Color="#047857" />
+                                                        </RadialGradientBrush>
+                                                    </Setter>
+                                                    <Setter Property="BoxShadow" Value="0 0 6 1 #3010B981" />
+                                                    <Setter Property="ToolTip.Tip" Value="Contrato Activo" />
+                                                </Style>
+                                                <!-- LED Inactivo (Rojo) -->
+                                                <Style Selector="Border[Tag=False]">
+                                                    <Setter Property="Background">
+                                                        <RadialGradientBrush Center="30%,30%">
+                                                            <GradientStop Offset="0.0" Color="#FEE2E2" />
+                                                            <GradientStop Offset="0.3" Color="#EF4444" />
+                                                            <GradientStop Offset="1.0" Color="#B91C1C" />
+                                                        </RadialGradientBrush>
+                                                    </Setter>
+                                                    <Setter Property="BoxShadow" Value="0 0 6 1 #30EF4444" />
+                                                    <Setter Property="ToolTip.Tip" Value="Contrato Vencido" />
+                                                </Style>
+                                            </Border.Styles>
+                                        </Border>
+                                        <TextBlock Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
+                                    </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding RoomName}" FontWeight="Medium" VerticalAlignment="Center" />
                                     <TextBlock Grid.Column="2" Text="{Binding Contract.FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
                                     <TextBlock Grid.Column="3" Text="{Binding FileExists, Converter={StaticResource YesNoConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />

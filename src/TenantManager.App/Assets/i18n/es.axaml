@@ -22,6 +22,18 @@
 
     <!-- Dashboard -->
     <system:String x:Key="DashboardTitle">Panel de Control</system:String>
+    <system:String x:Key="FinancialAnalysisTitle">Análisis Financiero</system:String>
+    <system:String x:Key="IntervalLabel">Intervalo:</system:String>
+    <system:String x:Key="TotalIncomeLabel">Ingresos</system:String>
+    <system:String x:Key="TotalExpensesLabel">Gastos</system:String>
+    <system:String x:Key="NetProfitLabel">Neto</system:String>
+    <system:String x:Key="ExpensesByCategoryTitle">Gastos por Categoría</system:String>
+    <system:String x:Key="NoExpensesInPeriodMsg">No hay gastos en este periodo</system:String>
+    <system:String x:Key="PendingPaymentsTitle">Cuotas Pendientes</system:String>
+    <system:String x:Key="AllUpToDateMsg">✅ Todo al día</system:String>
+    <system:String x:Key="TotalText">Total</system:String>
+    <system:String x:Key="EstimatedIncomeTitle">Ingresos Previstos</system:String>
+    <system:String x:Key="NextMonthText">Próximo Mes</system:String>
     <system:String x:Key="RefreshButton">Actualizar</system:String>
     <system:String x:Key="TotalRoomsLabel">Total de Habitaciones</system:String>
     <system:String x:Key="ActiveTenantsLabel">Inquilinos Activos</system:String>

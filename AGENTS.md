@@ -12,6 +12,8 @@ Local-first desktop app for property owners to manage rooms, tenants, rental con
 3. **UI:** Preserve ViewModel-per-tab pattern in `MainWindow.axaml`. Default to `x:CompileBindings="False"`.
 4. **Testing:** Domain tests use strictly in-memory SQLite (`SqliteConnection("Data Source=:memory:")`). No UI automation.
 5. **Zero-Leak Policy:** NEVER commit PII (names/contacts), local DB files (`.db*`, `.sqlite*`), real contract documents, or `bin`/`obj` folders.
+6. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation first.
+7. **Documentos y Planes:** Cualquier plan de implementación, especificación (`*_plan.md`, `*_spec.md`) o archivo generado para revisión humana DEBE guardarse SIEMPRE dentro de la carpeta `docs/specs/` (no en la raíz ni en los artefactos temporales).
 
 ## Validation Pipeline
 Run after changes:

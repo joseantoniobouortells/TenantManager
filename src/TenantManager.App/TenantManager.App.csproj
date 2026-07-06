@@ -6,13 +6,17 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\app-icon.ico" />
     <AvaloniaResource Include="Assets\app-icon.icns" />
     <AvaloniaResource Include="Assets\app-icon.png" />
+    <None Include="Native\libMacNotifier.dylib">
+      <Link>libMacNotifier.dylib</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>

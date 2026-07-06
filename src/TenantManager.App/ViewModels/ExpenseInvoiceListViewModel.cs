@@ -14,14 +14,22 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private readonly AppDbContext _db;
     private System.Collections.Generic.List<ExpenseInvoice> _allInvoices = new();
     private string _searchQuery = string.Empty;
+    private ExpenseCategory? _selectedFilterCategory;
+    private string _selectedFilterYear = "Todos los años";
     private string _sortColumn = "Year";
     private bool _sortAscending = false;
     private ExpenseInvoice? _editingInvoice;
     private ExpenseInvoice? _selectedInvoice;
     private bool _isEditing;
 
-    private string _editExpenseType = string.Empty;
-    private bool _editIsChargeableToTenant = true;
+    private ExpenseCategory? _editCategory;
+    private string _editConcept = string.Empty;
+    private bool _isManagingCategory;
+    private bool _isEditingExistingCategory;
+    private string _newCategoryName = string.Empty;
+    private bool _newCategoryIsChargeable;
+    private string _categoryErrorMessage = string.Empty;
+
     private decimal _editYear;
     private decimal _editMonth;
     private decimal _editAmount;
@@ -34,6 +42,9 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     {
         _db = new AppDbContext();
         Invoices = new ObservableCollection<ExpenseInvoice>();
+        AvailableCategories = new ObservableCollection<ExpenseCategory>();
+        FilterCategories = new ObservableCollection<ExpenseCategory>();
+        FilterYears = new ObservableCollection<string>();
 
         LoadInvoicesCommand = new RelayCommand(_ => LoadInvoices(_currentPropertyId));
         SortCommand = new RelayCommand(param => Sort(param as string));
@@ -46,9 +57,17 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         ClearFileCommand = new RelayCommand(_ => { EditFilePath = string.Empty; EditFileContent = null; });
         ConfirmDeleteInvoiceCommand = new RelayCommand(_ => ConfirmDeleteInvoice());
         CancelDeleteInvoiceCommand = new RelayCommand(_ => CancelDeleteInvoice());
+        StartNewCategoryCommand = new RelayCommand(_ => StartNewCategory());
+        StartEditCategoryCommand = new RelayCommand(_ => StartEditCategory());
+        SaveNewCategoryCommand = new RelayCommand(_ => SaveCategory());
+        CancelNewCategoryCommand = new RelayCommand(_ => { IsManagingCategory = false; });
+        DeleteCategoryCommand = new RelayCommand(_ => DeleteCategory());
     }
 
     public ObservableCollection<ExpenseInvoice> Invoices { get; }
+    public ObservableCollection<ExpenseCategory> AvailableCategories { get; }
+    public ObservableCollection<ExpenseCategory> FilterCategories { get; }
+    public ObservableCollection<string> FilterYears { get; }
 
     public RelayCommand LoadInvoicesCommand { get; }
     public RelayCommand SortCommand { get; }
@@ -61,6 +80,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     public RelayCommand ClearFileCommand { get; }
     public RelayCommand ConfirmDeleteInvoiceCommand { get; }
     public RelayCommand CancelDeleteInvoiceCommand { get; }
+    public RelayCommand StartNewCategoryCommand { get; }
+    public RelayCommand StartEditCategoryCommand { get; }
+    public RelayCommand SaveNewCategoryCommand { get; }
+    public RelayCommand CancelNewCategoryCommand { get; }
+    public RelayCommand DeleteCategoryCommand { get; }
 
     public ExpenseInvoice? SelectedInvoice
     {
@@ -95,22 +119,72 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         }
     }
 
-    public string TypeSortIndicator => _sortColumn == "ExpenseType" ? (_sortAscending ? "▲" : "▼") : "";
+    public ExpenseCategory? SelectedFilterCategory
+    {
+        get => _selectedFilterCategory;
+        set
+        {
+            if (SetProperty(ref _selectedFilterCategory, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public string SelectedFilterYear
+    {
+        get => _selectedFilterYear;
+        set
+        {
+            if (SetProperty(ref _selectedFilterYear, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public string ConceptSortIndicator => _sortColumn == "Concept" ? (_sortAscending ? "▲" : "▼") : "";
+    public string CategorySortIndicator => _sortColumn == "CategoryName" ? (_sortAscending ? "▲" : "▼") : "";
     public string YearSortIndicator => _sortColumn == "Year" ? (_sortAscending ? "▲" : "▼") : "";
     public string MonthSortIndicator => _sortColumn == "Month" ? (_sortAscending ? "▲" : "▼") : "";
     public string AmountSortIndicator => _sortColumn == "Amount" ? (_sortAscending ? "▲" : "▼") : "";
-    public string ChargeableSortIndicator => _sortColumn == "IsChargeableToTenant" ? (_sortAscending ? "▲" : "▼") : "";
 
-    public bool EditIsChargeableToTenant
+    public ExpenseCategory? EditCategory
     {
-        get => _editIsChargeableToTenant;
-        set => SetProperty(ref _editIsChargeableToTenant, value);
+        get => _editCategory;
+        set => SetProperty(ref _editCategory, value);
     }
 
-    public string EditExpenseType
+    public string EditConcept
     {
-        get => _editExpenseType;
-        set => SetProperty(ref _editExpenseType, value);
+        get => _editConcept;
+        set => SetProperty(ref _editConcept, value);
+    }
+
+    public bool IsManagingCategory
+    {
+        get => _isManagingCategory;
+        set => SetProperty(ref _isManagingCategory, value);
+    }
+
+    public string CategoryOverlayTitle => _isEditingExistingCategory ? "Editar Categoría" : "Añadir Categoría de Gasto";
+
+    public string NewCategoryName
+    {
+        get => _newCategoryName;
+        set => SetProperty(ref _newCategoryName, value);
+    }
+
+    public bool NewCategoryIsChargeable
+    {
+        get => _newCategoryIsChargeable;
+        set => SetProperty(ref _newCategoryIsChargeable, value);
+    }
+
+    public string CategoryErrorMessage
+    {
+        get => _categoryErrorMessage;
+        set => SetProperty(ref _categoryErrorMessage, value);
     }
 
     public decimal EditYear
@@ -159,7 +233,36 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         if (_currentPropertyId == 0) return;
 
         _db.ChangeTracker.Clear();
+        
+        var categories = _db.ExpenseCategories.OrderBy(c => c.Name).ToList();
+        AvailableCategories.Clear();
+        foreach (var c in categories) AvailableCategories.Add(c);
+
+        // Update filters
+        FilterCategories.Clear();
+        FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+        foreach (var c in categories) FilterCategories.Add(c);
+        SelectedFilterCategory = FilterCategories.FirstOrDefault();
+
         _allInvoices = _db.ExpenseInvoices.Where(i => i.PropertyId == propertyId).ToList();
+        
+        FilterYears.Clear();
+        FilterYears.Add("Todos los años");
+        var distinctYears = _allInvoices.Select(i => i.Year).Distinct().OrderByDescending(y => y).ToList();
+        foreach (var y in distinctYears) FilterYears.Add(y.ToString());
+        SelectedFilterYear = "Todos los años";
+
+        // Map category UI properties
+        foreach (var inv in _allInvoices)
+        {
+            var cat = categories.FirstOrDefault(c => c.Id == inv.CategoryId);
+            if (cat != null)
+            {
+                inv.CategoryName = cat.Name;
+                inv.IsChargeableToTenant = cat.IsChargeable;
+            }
+        }
+        
         ApplyFiltersAndSort();
     }
 
@@ -177,11 +280,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
             _sortAscending = true;
         }
 
-        OnPropertyChanged(nameof(TypeSortIndicator));
+        OnPropertyChanged(nameof(ConceptSortIndicator));
+        OnPropertyChanged(nameof(CategorySortIndicator));
         OnPropertyChanged(nameof(YearSortIndicator));
         OnPropertyChanged(nameof(MonthSortIndicator));
         OnPropertyChanged(nameof(AmountSortIndicator));
-        OnPropertyChanged(nameof(ChargeableSortIndicator));
 
         ApplyFiltersAndSort();
     }
@@ -190,22 +293,33 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     {
         var filtered = _allInvoices.AsEnumerable();
 
+        if (SelectedFilterCategory != null && SelectedFilterCategory.Id > 0)
+        {
+            filtered = filtered.Where(i => i.CategoryId == SelectedFilterCategory.Id);
+        }
+
+        if (SelectedFilterYear != "Todos los años")
+        {
+            filtered = filtered.Where(i => i.Year.ToString() == SelectedFilterYear);
+        }
+
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
             var q = SearchQuery.ToLowerInvariant();
             filtered = filtered.Where(i => 
-                (i.ExpenseType?.ToLowerInvariant().Contains(q) ?? false) ||
+                (i.Concept?.ToLowerInvariant().Contains(q) ?? false) ||
+                (i.CategoryName?.ToLowerInvariant().Contains(q) ?? false) ||
                 i.Year.ToString().Contains(q) ||
                 i.Month.ToString().Contains(q));
         }
 
         filtered = _sortColumn switch
         {
-            "ExpenseType" => _sortAscending ? filtered.OrderBy(i => i.ExpenseType) : filtered.OrderByDescending(i => i.ExpenseType),
+            "Concept" => _sortAscending ? filtered.OrderBy(i => i.Concept) : filtered.OrderByDescending(i => i.Concept),
+            "CategoryName" => _sortAscending ? filtered.OrderBy(i => i.CategoryName) : filtered.OrderByDescending(i => i.CategoryName),
             "Year" => _sortAscending ? filtered.OrderBy(i => i.Year).ThenBy(i => i.Month) : filtered.OrderByDescending(i => i.Year).ThenByDescending(i => i.Month),
             "Month" => _sortAscending ? filtered.OrderBy(i => i.Month) : filtered.OrderByDescending(i => i.Month),
             "Amount" => _sortAscending ? filtered.OrderBy(i => i.Amount) : filtered.OrderByDescending(i => i.Amount),
-            "IsChargeableToTenant" => _sortAscending ? filtered.OrderBy(i => i.IsChargeableToTenant) : filtered.OrderByDescending(i => i.IsChargeableToTenant),
             _ => filtered.OrderByDescending(i => i.Year).ThenByDescending(i => i.Month)
         };
 
@@ -219,8 +333,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private void StartNewInvoice()
     {
         _editingInvoice = null;
-        EditExpenseType = string.Empty;
-        EditIsChargeableToTenant = true;
+        EditConcept = string.Empty;
+        EditCategory = AvailableCategories.FirstOrDefault();
+        IsManagingCategory = false;
+        NewCategoryName = string.Empty;
+        NewCategoryIsChargeable = false;
         EditYear = DateTime.Today.Year;
         EditMonth = DateTime.Today.Month;
         EditAmount = 0;
@@ -235,8 +352,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         if (SelectedInvoice == null) return;
 
         _editingInvoice = SelectedInvoice;
-        EditExpenseType = _editingInvoice.ExpenseType;
-        EditIsChargeableToTenant = _editingInvoice.IsChargeableToTenant;
+        EditConcept = _editingInvoice.Concept;
+        EditCategory = AvailableCategories.FirstOrDefault(c => c.Id == _editingInvoice.CategoryId);
+        IsManagingCategory = false;
+        NewCategoryName = string.Empty;
+        NewCategoryIsChargeable = false;
         EditYear = _editingInvoice.Year;
         EditMonth = _editingInvoice.Month;
         EditAmount = _editingInvoice.Amount;
@@ -246,40 +366,166 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         IsEditing = true;
     }
 
+    private void StartNewCategory()
+    {
+        _isEditingExistingCategory = false;
+        OnPropertyChanged(nameof(CategoryOverlayTitle));
+        NewCategoryName = string.Empty;
+        NewCategoryIsChargeable = false;
+        CategoryErrorMessage = string.Empty;
+        IsManagingCategory = true;
+    }
+
+    private void StartEditCategory()
+    {
+        if (EditCategory == null) return;
+        _isEditingExistingCategory = true;
+        OnPropertyChanged(nameof(CategoryOverlayTitle));
+        NewCategoryName = EditCategory.Name;
+        NewCategoryIsChargeable = EditCategory.IsChargeable;
+        CategoryErrorMessage = string.Empty;
+        IsManagingCategory = true;
+    }
+
+    private void DeleteCategory()
+    {
+        if (EditCategory == null) return;
+
+        int usageCount = _db.ExpenseInvoices.Count(i => i.CategoryId == EditCategory.Id);
+        if (usageCount > 0)
+        {
+            CategoryErrorMessage = $"No se puede eliminar: hay {usageCount} gastos usando esta categoría. Reasígnalos a otra categoría primero.";
+            return;
+        }
+
+        var cat = _db.ExpenseCategories.Find(EditCategory.Id);
+        if (cat != null)
+        {
+            _db.ExpenseCategories.Remove(cat);
+            _db.SaveChanges();
+
+            // Resync categories in alphabetical order
+            var sorted = _db.ExpenseCategories.OrderBy(c => c.Name).ToList();
+            AvailableCategories.Clear();
+            foreach (var c in sorted) AvailableCategories.Add(c);
+
+            // Also update FilterCategories
+            var prevFilterId = SelectedFilterCategory?.Id ?? 0;
+            FilterCategories.Clear();
+            FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+            foreach (var c in sorted) FilterCategories.Add(c);
+            SelectedFilterCategory = FilterCategories.FirstOrDefault(c => c.Id == prevFilterId) ?? FilterCategories.FirstOrDefault();
+
+            EditCategory = AvailableCategories.FirstOrDefault();
+        }
+
+        IsManagingCategory = false;
+    }
+
+    private void SaveCategory()
+    {
+        if (string.IsNullOrWhiteSpace(NewCategoryName)) return;
+
+        int selectedId = 0;
+
+        if (_isEditingExistingCategory && EditCategory != null)
+        {
+            var cat = _db.ExpenseCategories.Find(EditCategory.Id);
+            if (cat != null)
+            {
+                cat.Name = NewCategoryName.Trim();
+                cat.IsChargeable = NewCategoryIsChargeable;
+                _db.SaveChanges();
+                selectedId = cat.Id;
+
+                // Visual refresh: update historical invoices in memory so UI reflects the new name without a full reload
+                foreach (var inv in _allInvoices.Where(i => i.CategoryId == cat.Id))
+                {
+                    inv.CategoryName = cat.Name;
+                    inv.IsChargeableToTenant = cat.IsChargeable;
+                }
+                
+                // Force UI re-filter/sort to update the table immediately
+                ApplyFiltersAndSort();
+            }
+        }
+        else
+        {
+            var newCat = new ExpenseCategory { Name = NewCategoryName.Trim(), IsChargeable = NewCategoryIsChargeable };
+            _db.ExpenseCategories.Add(newCat);
+            _db.SaveChanges();
+            selectedId = newCat.Id;
+        }
+
+        // Resync categories in alphabetical order
+        var sorted = _db.ExpenseCategories.OrderBy(c => c.Name).ToList();
+        AvailableCategories.Clear();
+        foreach (var c in sorted) AvailableCategories.Add(c);
+
+        // Also update FilterCategories
+        var prevFilterId = SelectedFilterCategory?.Id ?? 0;
+        FilterCategories.Clear();
+        FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+        foreach (var c in sorted) FilterCategories.Add(c);
+        SelectedFilterCategory = FilterCategories.FirstOrDefault(c => c.Id == prevFilterId) ?? FilterCategories.FirstOrDefault();
+
+        if (selectedId > 0)
+        {
+            EditCategory = AvailableCategories.FirstOrDefault(c => c.Id == selectedId);
+        }
+
+        IsManagingCategory = false;
+    }
+
     private void SaveInvoice()
     {
-        if (string.IsNullOrWhiteSpace(EditExpenseType) || EditAmount < 0)
+        if (EditAmount < 0 || EditCategory == null || string.IsNullOrWhiteSpace(EditConcept))
             return;
+            
+        int finalCategoryId = EditCategory.Id;
 
         if (_editingInvoice == null)
         {
             var invoice = new ExpenseInvoice
             {
                 PropertyId = _currentPropertyId,
-                ExpenseType = EditExpenseType.Trim(),
+                Concept = EditConcept.Trim(),
+                CategoryId = finalCategoryId,
                 Year = (int)EditYear,
                 Month = (int)EditMonth,
                 Amount = EditAmount,
                 Notes = EditNotes?.Trim(),
                 FilePath = EditFilePath?.Trim(),
-                FileContent = EditFileContent,
-                IsChargeableToTenant = EditIsChargeableToTenant
+                FileContent = EditFileContent
             };
             _db.ExpenseInvoices.Add(invoice);
         }
         else
         {
-            _editingInvoice.ExpenseType = EditExpenseType.Trim();
+            _editingInvoice.Concept = EditConcept.Trim();
+            _editingInvoice.CategoryId = finalCategoryId;
             _editingInvoice.Year = (int)EditYear;
             _editingInvoice.Month = (int)EditMonth;
             _editingInvoice.Amount = EditAmount;
-            _editingInvoice.Notes = EditNotes?.Trim();
-            _editingInvoice.FilePath = EditFilePath?.Trim();
+            _editingInvoice.Notes = EditNotes?.Trim() ?? string.Empty;
+            _editingInvoice.FilePath = EditFilePath?.Trim() ?? string.Empty;
             _editingInvoice.FileContent = EditFileContent;
-            _editingInvoice.IsChargeableToTenant = EditIsChargeableToTenant;
         }
 
         _db.SaveChanges();
+
+        // Update FilterYears if a new year was added
+        var invoiceYearStr = ((int)EditYear).ToString();
+        if (!FilterYears.Contains(invoiceYearStr))
+        {
+            var years = FilterYears.Where(y => y != "Todos los años").Select(int.Parse).ToList();
+            years.Add((int)EditYear);
+            years = years.OrderByDescending(y => y).ToList();
+            FilterYears.Clear();
+            FilterYears.Add("Todos los años");
+            foreach (var y in years) FilterYears.Add(y.ToString());
+        }
+
         LoadInvoices(_currentPropertyId);
         CancelEdit();
     }
@@ -287,8 +533,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private void CancelEdit()
     {
         _editingInvoice = null;
-        EditExpenseType = string.Empty;
-        EditIsChargeableToTenant = true;
+        EditConcept = string.Empty;
+        EditCategory = null;
+        IsManagingCategory = false;
+        NewCategoryName = string.Empty;
+        NewCategoryIsChargeable = false;
         EditYear = DateTime.Today.Year;
         EditMonth = DateTime.Today.Month;
         EditAmount = 0;

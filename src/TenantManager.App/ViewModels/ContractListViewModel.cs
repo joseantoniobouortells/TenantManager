@@ -19,6 +19,8 @@ public class ContractDisplayItem
     public bool FileExists { get; set; }
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset? EndDate { get; set; }
+    
+    public bool IsActive => StartDate.Date <= DateTime.Today && (!EndDate.HasValue || EndDate.Value.Date >= DateTime.Today);
 }
 
 public class ContractListViewModel : ViewModelBase

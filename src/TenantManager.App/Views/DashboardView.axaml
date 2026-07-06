@@ -60,7 +60,7 @@
                                     <Arc Stroke="#2196F3" StrokeThickness="12" Width="100" Height="100"
                                          StartAngle="{Binding Dashboard.PendingStartAngle}" SweepAngle="{Binding Dashboard.PendingSweepAngle}" StrokeLineCap="Round" />
                                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                        <TextBlock Text="Total" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{DynamicResource TotalText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                                         <TextBlock Text="{Binding Dashboard.TotalPaymentsCount}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </Grid>
@@ -88,49 +88,49 @@
                     <!-- Card 3: Estimated Next Month Income -->
                     <Border Classes="Card" Grid.Column="2" Margin="16 0 0 0" Height="220">
                         <DockPanel>
-                            <TextBlock Text="Ingresos Previstos" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <TextBlock Text="{DynamicResource EstimatedIncomeTitle}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="Próximo Mes" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="14" HorizontalAlignment="Center" Margin="0 0 0 8"/>
+                                <TextBlock Text="{DynamicResource NextMonthText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="14" HorizontalAlignment="Center" Margin="0 0 0 8"/>
                                 <TextBlock Text="{Binding Dashboard.EstimatedNextMonthIncome, StringFormat='{}{0:C}'}" FontWeight="Bold" FontSize="28" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" />
                             </StackPanel>
                         </DockPanel>
                     </Border>
                 </Grid>
 
+                <!-- Period Header -->
+                <Grid Margin="0 16 0 16" ColumnDefinitions="*,Auto">
+                    <TextBlock Classes="H2" Text="{DynamicResource FinancialAnalysisTitle}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{DynamicResource IntervalLabel}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                        <ComboBox ItemsSource="{Binding Dashboard.AvailableIntervals}" SelectedItem="{Binding Dashboard.SelectedInterval}" Width="150">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayText}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
                 <!-- Lists & Charts Grid -->
-                <Grid ColumnDefinitions="2*,*">
+                <Grid ColumnDefinitions="1.5*,1.2*,1*">
                     <!-- Column 0: Monthly Income vs Expenses Bar Chart -->
                     <Border Classes="Card" Grid.Column="0" Margin="0 0 16 0" MinHeight="360">
                         <DockPanel>
-                            <!-- Header Area with selector -->
-                            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0 0 0 16">
-                                <TextBlock Grid.Column="0" Classes="H2" Text="Ingresos y Gastos" VerticalAlignment="Center" />
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <TextBlock Text="Intervalo:" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
-                                    <ComboBox ItemsSource="{Binding Dashboard.AvailableIntervals}" SelectedItem="{Binding Dashboard.SelectedInterval}" Width="150">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding DisplayText}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                </StackPanel>
-                            </Grid>
-
                             <!-- Aggregates / Summary -->
                             <Border DockPanel.Dock="Top" Background="{DynamicResource PeriodEditBackgroundBrush}" Padding="16 12" CornerRadius="8" Margin="0 0 0 24">
                                 <Grid ColumnDefinitions="*,*,*">
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Total Ingresado" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                        <TextBlock Text="{Binding Dashboard.TotalPeriodIncome, StringFormat='{}{0:C0}'}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+                                        <TextBlock Text="{DynamicResource TotalIncomeLabel}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                        <TextBlock Text="{Binding Dashboard.TotalPeriodIncome, StringFormat='{}{0:C0}'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <TextBlock Text="Total Gastado" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                        <TextBlock Text="{Binding Dashboard.TotalPeriodExpenses, StringFormat='{}{0:C0}'}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" />
+                                        <TextBlock Text="{DynamicResource TotalExpensesLabel}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                        <TextBlock Text="{Binding Dashboard.TotalPeriodExpenses, StringFormat='{}{0:C0}'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource DangerBrush}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Beneficio Neto" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                        <TextBlock Text="{Binding Dashboard.PeriodProfit, StringFormat='{}{0:C0}'}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" />
+                                        <TextBlock Text="{DynamicResource NetProfitLabel}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                        <TextBlock Text="{Binding Dashboard.PeriodProfit, StringFormat='{}{0:C0}'}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" />
                                     </StackPanel>
                                 </Grid>
                             </Border>
@@ -169,29 +169,83 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Column 1: Pending Payments -->
-                    <Border Classes="Card" Grid.Column="1" Margin="0" MinHeight="360">
+                    <!-- Column 1: Expenses by Category Donut -->
+                    <Border Classes="Card" Grid.Column="1" Margin="0 0 16 0" MinHeight="360">
                         <DockPanel>
-                            <TextBlock Classes="H2" Text="Cuotas Pendientes" DockPanel.Dock="Top" Margin="0 0 0 16" />
-                            <TextBlock Text="✅ Sin cuotas pendientes" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoPendingPayments}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 80 0 0"/>
+                            <TextBlock Classes="H2" Text="{DynamicResource ExpensesByCategoryTitle}" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <TextBlock Text="{DynamicResource NoExpensesInPeriodMsg}" Foreground="{DynamicResource TextSecondaryBrush}" 
+                                       IsVisible="{Binding !Dashboard.HasExpenseCategoryChartItems}" 
+                                       VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            
+                            <Grid IsVisible="{Binding Dashboard.HasExpenseCategoryChartItems}">
+                                <!-- Donut Graphic -->
+                                <Grid Height="140" Width="140" VerticalAlignment="Top" Margin="0 8 0 0" HorizontalAlignment="Center">
+                                    <!-- Background ring (optional, empty) -->
+                                    <Arc Stroke="{DynamicResource TableBorderBrush}" StrokeThickness="16" Width="120" Height="120" StartAngle="0" SweepAngle="360" />
+                                    <!-- Dynamic Arcs -->
+                                    <ItemsControl ItemsSource="{Binding Dashboard.ExpenseCategoryChartItems}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Grid /> <!-- Grids overlay all their children on top of each other -->
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Arc Stroke="{Binding Color}" StrokeThickness="16" Width="120" Height="120"
+                                                     StartAngle="{Binding StartAngle}" SweepAngle="{Binding SweepAngle}" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <!-- Inner Summary -->
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="{DynamicResource TotalText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{Binding Dashboard.TotalPeriodExpenses, StringFormat='{}{0:C0}'}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Grid>
+                                
+                                <!-- Legend -->
+                                <ScrollViewer VerticalAlignment="Bottom" Height="120" Margin="0 156 0 0" HorizontalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding Dashboard.ExpenseCategoryChartItems}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0 4">
+                                                    <Ellipse Grid.Column="0" Fill="{Binding Color}" Width="8" Height="8" Margin="0 0 8 0" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding CategoryName}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Grid.Column="2" Text="{Binding AmountString}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Grid>
+                        </DockPanel>
+                    </Border>
 
-                            <ListBox Classes="Table" ItemsSource="{Binding Dashboard.PendingPayments}" IsVisible="{Binding !Dashboard.HasNoPendingPayments}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0 4">
-                                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding TenantName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding MonthLabel}" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                            </StackPanel>
-                                            <Border Grid.Column="1" Background="{DynamicResource DangerBrush}" CornerRadius="4" Padding="6 2" Margin="8 0" VerticalAlignment="Center"
-                                                    IsVisible="{Binding IsOverdue}">
-                                                <TextBlock Text="Atrasado" FontSize="10" FontWeight="Bold" Foreground="White" />
-                                            </Border>
-                                            <TextBlock Grid.Column="2" Text="{Binding TotalExpected, StringFormat='{}{0:C}'}" Foreground="{DynamicResource DangerBrush}" FontWeight="Bold" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
+                    <!-- Column 2: Pending Payments (Ultra-Compact) -->
+                    <Border Classes="Card" Grid.Column="2" Margin="0" MinHeight="360">
+                        <DockPanel>
+                            <TextBlock Classes="H2" Text="{DynamicResource PendingPaymentsTitle}" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <TextBlock Text="{DynamicResource AllUpToDateMsg}" Foreground="{DynamicResource TextSecondaryBrush}" IsVisible="{Binding Dashboard.HasNoPendingPayments}" VerticalAlignment="Center" HorizontalAlignment="Center" DockPanel.Dock="Top" Margin="0 80 0 0"/>
+
+                            <ScrollViewer IsVisible="{Binding !Dashboard.HasNoPendingPayments}">
+                                <ItemsControl ItemsSource="{Binding Dashboard.PendingPayments}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0 6">
+                                                <!-- Red Dot for overdue -->
+                                                <TextBlock Grid.Column="0" Text="•" Foreground="{DynamicResource DangerBrush}" FontSize="18" Margin="0 -4 6 0" VerticalAlignment="Center" IsVisible="{Binding IsOverdue}" />
+                                                
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding TenantName}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding MonthLabel}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                                
+                                                <TextBlock Grid.Column="2" Text="{Binding TotalExpected, StringFormat='{}{0:C}'}" Foreground="{DynamicResource DangerBrush}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Margin="8 0 0 0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
                         </DockPanel>
                     </Border>
                 </Grid>
