@@ -56,31 +56,32 @@ $Toast = [Windows.UI.Notifications.ToastNotification]::new($ToastXml);
 
     private static void ShowMacNotification(string title, string message)
     {
-        var escapedTitle = title.Replace("\"", "\\\"");
-        var escapedMessage = message.Replace("\"", "\\\"");
-        var script = $"display notification \"{escapedMessage}\" with title \"{escapedTitle}\"";
+        var script = $"display notification \"{message}\" with title \"{title}\"";
         
-        Process.Start(new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = "osascript",
-            Arguments = $"-e '{script}'",
             UseShellExecute = false,
             CreateNoWindow = true
-        });
+        };
+        startInfo.ArgumentList.Add("-e");
+        startInfo.ArgumentList.Add(script);
+        
+        Process.Start(startInfo);
     }
 
     private static void ShowLinuxNotification(string title, string message)
     {
-        var escapedTitle = title.Replace("\"", "\\\"");
-        var escapedMessage = message.Replace("\"", "\\\"");
-        
-        Process.Start(new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
             FileName = "notify-send",
-            Arguments = $"\"{escapedTitle}\" \"{escapedMessage}\"",
             UseShellExecute = false,
             CreateNoWindow = true
-        });
+        };
+        startInfo.ArgumentList.Add(title);
+        startInfo.ArgumentList.Add(message);
+        
+        Process.Start(startInfo);
     }
 }
 
