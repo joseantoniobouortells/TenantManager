@@ -105,6 +105,9 @@
 89. **Cálculo Automático y Dinámico de Cuotas Pendientes (Julio 2026):**
     - *Decisión:* Se eliminó el estado `Pending` de la base de datos y se quitó el flujo manual de "Generar Lote". Ahora, los pagos pendientes se calculan en tiempo real cruzando los contratos activos de cada inquilino frente a los pagos ya cobrados (`Paid` o `Partial`) registrados en BD. Los gastos (fijos o variables calculados a partir de facturas imputables) se computan dinámicamente mes a mes.
     - *Motivo:* Evitar que el propietario tenga que generar manualmente lotes de cuotas cada mes. Ahora las cuotas pendientes aparecen de forma reactiva y automática en el Dashboard y en la sección superior de Pagos con un botón directo para "Cobrar".
+90. **Indicador Visual LED de Estado de Contratos (Julio 2026):**
+    - *Decisión:* Se añadió una propiedad computada `IsActive` en el modelo de vista de contratos y un indicador visual LED interactivo en la lista de contratos (verde para contratos activos, rojo para contratos vencidos/inactivos) usando `RadialGradientBrush` y `BoxShadow`.
+    - *Motivo:* Mejorar la UX proporcionando retroalimentación visual instantánea y clara sobre la validez del contrato al momento de consultar el listado.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.
