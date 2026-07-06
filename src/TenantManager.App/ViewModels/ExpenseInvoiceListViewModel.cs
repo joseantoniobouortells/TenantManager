@@ -28,6 +28,7 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private bool _isEditingExistingCategory;
     private string _newCategoryName = string.Empty;
     private bool _newCategoryIsChargeable;
+    private string _categoryErrorMessage = string.Empty;
 
     private decimal _editYear;
     private decimal _editMonth;
@@ -60,6 +61,7 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         StartEditCategoryCommand = new RelayCommand(_ => StartEditCategory());
         SaveNewCategoryCommand = new RelayCommand(_ => SaveCategory());
         CancelNewCategoryCommand = new RelayCommand(_ => { IsManagingCategory = false; });
+        DeleteCategoryCommand = new RelayCommand(_ => DeleteCategory());
     }
 
     public ObservableCollection<ExpenseInvoice> Invoices { get; }
@@ -82,6 +84,7 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     public RelayCommand StartEditCategoryCommand { get; }
     public RelayCommand SaveNewCategoryCommand { get; }
     public RelayCommand CancelNewCategoryCommand { get; }
+    public RelayCommand DeleteCategoryCommand { get; }
 
     public ExpenseInvoice? SelectedInvoice
     {
@@ -178,6 +181,11 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         set => SetProperty(ref _newCategoryIsChargeable, value);
     }
 
+    public string CategoryErrorMessage
+    {
+        get => _categoryErrorMessage;
+        set => SetProperty(ref _categoryErrorMessage, value);
+    }
 
     public decimal EditYear
     {
@@ -364,6 +372,7 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         OnPropertyChanged(nameof(CategoryOverlayTitle));
         NewCategoryName = string.Empty;
         NewCategoryIsChargeable = false;
+        CategoryErrorMessage = string.Empty;
         IsManagingCategory = true;
     }
 
@@ -374,7 +383,43 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         OnPropertyChanged(nameof(CategoryOverlayTitle));
         NewCategoryName = EditCategory.Name;
         NewCategoryIsChargeable = EditCategory.IsChargeable;
+        CategoryErrorMessage = string.Empty;
         IsManagingCategory = true;
+    }
+
+    private void DeleteCategory()
+    {
+        if (EditCategory == null) return;
+
+        int usageCount = _db.ExpenseInvoices.Count(i => i.CategoryId == EditCategory.Id);
+        if (usageCount > 0)
+        {
+            CategoryErrorMessage = $"No se puede eliminar: hay {usageCount} gastos usando esta categoría. Reasígnalos a otra categoría primero.";
+            return;
+        }
+
+        var cat = _db.ExpenseCategories.Find(EditCategory.Id);
+        if (cat != null)
+        {
+            _db.ExpenseCategories.Remove(cat);
+            _db.SaveChanges();
+
+            // Resync categories in alphabetical order
+            var sorted = _db.ExpenseCategories.OrderBy(c => c.Name).ToList();
+            AvailableCategories.Clear();
+            foreach (var c in sorted) AvailableCategories.Add(c);
+
+            // Also update FilterCategories
+            var prevFilterId = SelectedFilterCategory?.Id ?? 0;
+            FilterCategories.Clear();
+            FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+            foreach (var c in sorted) FilterCategories.Add(c);
+            SelectedFilterCategory = FilterCategories.FirstOrDefault(c => c.Id == prevFilterId) ?? FilterCategories.FirstOrDefault();
+
+            EditCategory = AvailableCategories.FirstOrDefault();
+        }
+
+        IsManagingCategory = false;
     }
 
     private void SaveCategory()

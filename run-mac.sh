@@ -41,5 +41,9 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
 </plist>
 EOF
 
+echo "Firmando binarios (Ad-hoc) para macOS..."
+xattr -cr "$APP_DIR"
+codesign --force --deep --sign - "$APP_DIR"
+
 echo "Abriendo TenantManager.app..."
 open "$APP_DIR"

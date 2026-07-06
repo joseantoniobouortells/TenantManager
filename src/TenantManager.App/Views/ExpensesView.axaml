@@ -226,10 +226,23 @@
                         <ToggleSwitch IsChecked="{Binding ExpenseList.NewCategoryIsChargeable}" OnContent="{DynamicResource YesLabel}" OffContent="{DynamicResource NoLabel}" />
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0 16 0 0">
-                        <Button Content="{DynamicResource CancelButton}" Command="{Binding ExpenseList.CancelNewCategoryCommand}" Classes="Action" />
-                        <Button Content="Guardar Categoría" Command="{Binding ExpenseList.SaveNewCategoryCommand}" Classes="Primary" />
-                    </StackPanel>
+                    <TextBlock Text="{Binding ExpenseList.CategoryErrorMessage}" 
+                               Foreground="{DynamicResource DangerBrush}" 
+                               TextWrapping="Wrap" 
+                               FontSize="12" 
+                               IsVisible="{Binding ExpenseList.CategoryErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                    <Grid ColumnDefinitions="Auto, *, Auto" Margin="0 8 0 0">
+                        <Button Grid.Column="0" Content="🗑️ Eliminar" 
+                                Command="{Binding ExpenseList.DeleteCategoryCommand}" 
+                                IsVisible="{Binding ExpenseList.IsEditingExistingCategory}" 
+                                Classes="Action" Foreground="{DynamicResource DangerBrush}" />
+
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12">
+                            <Button Content="{DynamicResource CancelButton}" Command="{Binding ExpenseList.CancelNewCategoryCommand}" Classes="Action" />
+                            <Button Content="Guardar Categoría" Command="{Binding ExpenseList.SaveNewCategoryCommand}" Classes="Primary" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
         </Border>
