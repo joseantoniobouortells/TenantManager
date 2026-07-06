@@ -29,6 +29,8 @@ public partial class App : Application
             db.Database.Migrate();
         }
 
+        TenantManager.App.Services.NativeNotificationService.Initialize();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = new MainWindow();

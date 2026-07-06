@@ -10,6 +10,24 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = new MainViewModel();
+
+        TenantManager.App.Services.NativeNotificationService.OnNotificationClicked += () =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                var tabControl = this.FindControl<TabControl>("MainTabControl");
+                if (tabControl != null)
+                {
+                    tabControl.SelectedIndex = 5; // Payments tab index
+                }
+                
+                // Bring the window to the foreground
+                this.Show();
+                this.Activate();
+                this.Topmost = true;
+                this.Topmost = false;
+            });
+        };
     }
 
     private void TabControl_SelectionChanged(object? sender, SelectionChangedEventArgs e)

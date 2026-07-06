@@ -6,6 +6,40 @@ namespace TenantManager.App.Services;
 
 public static class NativeNotificationService
 {
+    public static Action? OnNotificationClicked;
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    public delegate void NotificationClickedCallback();
+
+    private static NotificationClickedCallback? _macCallbackDelegate;
+
+    [DllImport("MacNotifier", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void show_mac_notification(string title, string body);
+
+    [DllImport("MacNotifier", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void init_mac_notifier(NotificationClickedCallback callback);
+
+    public static void Initialize()
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            // Keep the delegate alive to prevent GC collection
+            _macCallbackDelegate = () => 
+            {
+                OnNotificationClicked?.Invoke();
+            };
+            
+            try
+            {
+                init_mac_notifier(_macCallbackDelegate);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NOTIFICATIONS] Failed to init mac notifier callback: {ex.Message}");
+            }
+        }
+    }
+
     public static void ShowNotification(string title, string message)
     {
         try
@@ -16,7 +50,9 @@ public static class NativeNotificationService
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                ShowMacNotification(title, message);
+                Console.WriteLine($"[NOTIF] Calling show_mac_notification: {title}");
+                show_mac_notification(title, message);
+                Console.WriteLine("[NOTIF] show_mac_notification returned OK");
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -25,7 +61,8 @@ public static class NativeNotificationService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error showing notification: {ex.Message}");
+            Console.WriteLine($"[NOTIFICATIONS] Error showing notification: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
         }
     }
 
@@ -52,22 +89,6 @@ $Toast = [Windows.UI.Notifications.ToastNotification]::new($ToastXml);
             UseShellExecute = false,
             CreateNoWindow = true
         });
-    }
-
-    private static void ShowMacNotification(string title, string message)
-    {
-        var script = $"display notification \"{message}\" with title \"{title}\"";
-        
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "osascript",
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        startInfo.ArgumentList.Add("-e");
-        startInfo.ArgumentList.Add(script);
-        
-        Process.Start(startInfo);
     }
 
     private static void ShowLinuxNotification(string title, string message)

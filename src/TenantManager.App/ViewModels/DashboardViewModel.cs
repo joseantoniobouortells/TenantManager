@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using TenantManager.App.Data;
 using TenantManager.App.Domain;
@@ -101,6 +102,7 @@ public class DashboardViewModel : ViewModelBase
             new() { DisplayText = "Desde el inicio", Value = -1 }
         };
         _selectedInterval = AvailableIntervals[1]; // default 6 months
+        _lastNotificationTime = DateTime.MinValue;
 
         RefreshCommand = new RelayCommand(_ => Refresh(_currentPropertyId));
     }
@@ -587,12 +589,28 @@ public class DashboardViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasNoAvailableRooms));
         OnPropertyChanged(nameof(HasNoMissingContracts));
 
+        Console.WriteLine($"[DASH] Refresh complete. PendingPayments={PendingPayments.Count}, TimeSinceLastNotif={(DateTime.Now - _lastNotificationTime).TotalHours:F1}h");
+
         if (PendingPayments.Count > 0 && (DateTime.Now - _lastNotificationTime).TotalHours > 12)
         {
             _lastNotificationTime = DateTime.Now;
-            TenantManager.App.Services.NativeNotificationService.ShowNotification(
-                "Alquileres Pendientes", 
-                $"Tienes {PendingPayments.Count} cuota(s) pendiente(s) de cobro.");
+            var paymentsToNotify = PendingPayments.ToList();
+            Console.WriteLine($"[DASH] Scheduling {paymentsToNotify.Count} notification(s) in 2s...");
+            // Delay so macOS NSRunLoop is fully started before delivering notifications
+            _ = Task.Delay(2000).ContinueWith(_ =>
+            {
+                foreach (var payment in paymentsToNotify)
+                {
+                    Console.WriteLine($"[DASH] Firing notification for {payment.TenantName}");
+                    TenantManager.App.Services.NativeNotificationService.ShowNotification(
+                        "Alquiler Pendiente",
+                        $"{payment.TenantName} tiene pendiente el mes de {payment.MonthLabel}.");
+                }
+            });
+        }
+        else
+        {
+            Console.WriteLine("[DASH] Skipping notifications (no pending or cooldown active).");
         }
     }
 

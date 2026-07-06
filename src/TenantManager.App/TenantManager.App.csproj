@@ -13,6 +13,10 @@
     <AvaloniaResource Include="Assets\app-icon.ico" />
     <AvaloniaResource Include="Assets\app-icon.icns" />
     <AvaloniaResource Include="Assets\app-icon.png" />
+    <None Include="Native\libMacNotifier.dylib">
+      <Link>libMacNotifier.dylib</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
