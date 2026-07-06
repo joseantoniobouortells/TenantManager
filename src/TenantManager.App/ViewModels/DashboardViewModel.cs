@@ -99,6 +99,7 @@ public class DashboardViewModel : ViewModelBase
             new() { DisplayText = "3 meses", Value = 3 },
             new() { DisplayText = "6 meses", Value = 6 },
             new() { DisplayText = "12 meses", Value = 12 },
+            new() { DisplayText = "Este año", Value = -2 },
             new() { DisplayText = "Desde el inicio", Value = -1 }
         };
         _selectedInterval = AvailableIntervals[1]; // default 6 months
@@ -113,10 +114,12 @@ public class DashboardViewModel : ViewModelBase
     public ObservableCollection<ComputedPendingPayment> PendingPayments { get; }
     public ObservableCollection<AvailableRoomItem> AvailableRooms { get; }
     public ObservableCollection<MissingContractItem> MissingContracts { get; }
-    public ObservableCollection<MonthlyBarChartItem> MonthlyBarChartItems { get; }
+    public ObservableCollection<MonthlyBarChartItem> MonthlyBarChartItems { get; } = new();
+    public ObservableCollection<CategoryDonutItem> ExpenseCategoryChartItems { get; } = new();
     public ObservableCollection<IntervalOption> AvailableIntervals { get; }
 
     public bool HasNoPendingPayments => PendingPayments.Count == 0;
+    public bool HasExpenseCategoryChartItems => ExpenseCategoryChartItems.Count > 0;
     public bool HasNoAvailableRooms => AvailableRooms.Count == 0;
     public bool HasNoMissingContracts => MissingContracts.Count == 0;
 
@@ -511,8 +514,9 @@ public class DashboardViewModel : ViewModelBase
 
         // Calculate Monthly Bar Chart items (Income vs Expenses) for SelectedInterval
         var chartItems = new List<MonthlyBarChartItem>();
-        decimal totalIncomePeriod = 0;
-        decimal totalExpensesPeriod = 0;
+        decimal totalIncome = 0;
+        decimal totalExpenses = 0;
+        var expensesInPeriod = new List<ExpenseInvoice>();
 
         int monthsToFetch = SelectedInterval.Value;
         if (monthsToFetch == -1)
@@ -528,8 +532,12 @@ public class DashboardViewModel : ViewModelBase
                 : now;
 
             var earliestDate = earliestPayment < earliestInvoice ? earliestPayment : earliestInvoice;
-            int diffMonths = ((now.Year - earliestDate.Year) * 12) + now.Month - earliestDate.Month + 1;
+            int diffMonths = ((DateTime.Today.Year - earliestDate.Year) * 12) + DateTime.Today.Month - earliestDate.Month + 1;
             monthsToFetch = Math.Max(1, diffMonths);
+        }
+        else if (monthsToFetch == -2)
+        {
+            monthsToFetch = DateTime.Today.Month; // Enero hasta el mes actual
         }
 
         for (int i = monthsToFetch - 1; i >= 0; i--)
@@ -549,8 +557,9 @@ public class DashboardViewModel : ViewModelBase
             var income = monthPayments.Sum(p => p.PaidAmount);
             var expenses = monthInvoices.Sum(exp => exp.Amount);
 
-            totalIncomePeriod += income;
-            totalExpensesPeriod += expenses;
+            totalIncome += income;
+            totalExpenses += expenses;
+            expensesInPeriod.AddRange(monthInvoices);
 
             chartItems.Add(new MonthlyBarChartItem
             {
@@ -560,9 +569,52 @@ public class DashboardViewModel : ViewModelBase
             });
         }
 
-        TotalPeriodIncome = totalIncomePeriod;
-        TotalPeriodExpenses = totalExpensesPeriod;
-        PeriodProfit = totalIncomePeriod - totalExpensesPeriod;
+        TotalPeriodIncome = totalIncome;
+        TotalPeriodExpenses = totalExpenses;
+        PeriodProfit = totalIncome - totalExpenses;
+
+        // --- 4. Gastos por Categoría (Donut) ---
+        ExpenseCategoryChartItems.Clear();
+        var categoryGroups = expensesInPeriod
+            .GroupBy(e => e.CategoryId)
+            .Select(g => new { 
+                CategoryId = g.Key, 
+                Total = g.Sum(e => e.Amount) 
+            })
+            .Where(g => g.Total > 0)
+            .OrderByDescending(g => g.Total)
+            .ToList();
+
+        if (categoryGroups.Any())
+        {
+            var categoriesDb = _db.ExpenseCategories.ToDictionary(c => c.Id, c => c.Name);
+            double donutAngle = -90; // Start at top
+            var totalExpensesAmount = (double)categoryGroups.Sum(g => g.Total);
+            int colorIdx = 0;
+            string[] palette = { "#3F51B5", "#E91E63", "#009688", "#FF9800", "#9C27B0", "#4CAF50", "#FF5722", "#00BCD4" };
+
+            foreach (var group in categoryGroups)
+            {
+                var name = categoriesDb.ContainsKey(group.CategoryId) ? categoriesDb[group.CategoryId] : "Desconocido";
+                double sweep = ((double)group.Total / totalExpensesAmount) * 360.0;
+                double pct = ((double)group.Total / totalExpensesAmount) * 100.0;
+                
+                ExpenseCategoryChartItems.Add(new CategoryDonutItem
+                {
+                    CategoryName = name,
+                    Amount = group.Total,
+                    Percentage = pct,
+                    StartAngle = donutAngle,
+                    SweepAngle = sweep,
+                    Color = palette[colorIdx % palette.Length]
+                });
+                
+                donutAngle += sweep;
+                colorIdx++;
+            }
+        }
+        
+        OnPropertyChanged(nameof(HasExpenseCategoryChartItems));
 
         var maxVal = chartItems.Any() 
             ? chartItems.Max(x => Math.Max(x.Income, x.Expenses)) 
@@ -599,13 +651,16 @@ public class DashboardViewModel : ViewModelBase
             // Delay so macOS NSRunLoop is fully started before delivering notifications
             _ = Task.Delay(2000).ContinueWith(_ =>
             {
-                foreach (var payment in paymentsToNotify)
+                Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    Console.WriteLine($"[DASH] Firing notification for {payment.TenantName}");
-                    TenantManager.App.Services.NativeNotificationService.ShowNotification(
-                        "Alquiler Pendiente",
-                        $"{payment.TenantName} tiene pendiente el mes de {payment.MonthLabel}.");
-                }
+                    foreach (var payment in paymentsToNotify)
+                    {
+                        Console.WriteLine($"[DASH] Firing notification for {payment.TenantName}");
+                        TenantManager.App.Services.NativeNotificationService.ShowNotification(
+                            "Alquiler Pendiente",
+                            $"{payment.TenantName} tiene pendiente el mes de {payment.MonthLabel}.");
+                    }
+                });
             });
         }
         else
@@ -640,4 +695,16 @@ public class DashboardViewModel : ViewModelBase
 
         return occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
     }
+}
+
+public class CategoryDonutItem
+{
+    public string CategoryName { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string AmountString => $"{Amount:C0}";
+    public double Percentage { get; set; }
+    public string PercentageString => $"{Percentage:0.1}%";
+    public double StartAngle { get; set; }
+    public double SweepAngle { get; set; }
+    public string Color { get; set; } = string.Empty;
 }

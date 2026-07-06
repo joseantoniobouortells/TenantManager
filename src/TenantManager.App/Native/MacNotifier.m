@@ -29,29 +29,33 @@ void init_mac_notifier(NotificationCallback callback) {
 
 __attribute__((visibility("default")))
 void show_mac_notification(const char* title, const char* body) {
-    @autoreleasepool {
+    NSString *nsTitle = [NSString stringWithUTF8String:title];
+    NSString *nsBody = [NSString stringWithUTF8String:body];
 
-        NSUserNotification *notification = [[NSUserNotification alloc] init];
-        // Unique identifier prevents macOS from deduplicating across launches
-        notification.identifier = [[NSUUID UUID] UUIDString];
-        notification.title = [NSString stringWithUTF8String:title];
-        notification.informativeText = [NSString stringWithUTF8String:body];
-        notification.soundName = NSUserNotificationDefaultSoundName;
-        notification.hasActionButton = YES;
-        notification.actionButtonTitle = @"Mostrar";
-        // Force delivery date to now so macOS treats it as a fresh notification
-        notification.deliveryDate = [NSDate date];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        @autoreleasepool {
+            NSUserNotification *notification = [[NSUserNotification alloc] init];
+            // Unique identifier prevents macOS from deduplicating across launches
+            notification.identifier = [[NSUUID UUID] UUIDString];
+            notification.title = nsTitle;
+            notification.informativeText = nsBody;
+            notification.soundName = NSUserNotificationDefaultSoundName;
+            notification.hasActionButton = YES;
+            notification.actionButtonTitle = @"Mostrar";
+            // Force delivery date to now so macOS treats it as a fresh notification
+            notification.deliveryDate = [NSDate date];
 
-        NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
+            NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
 
-        static NotifierDelegate *delegate = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            delegate = [[NotifierDelegate alloc] init];
-            center.delegate = delegate;
-        });
+            static NotifierDelegate *delegate = nil;
+            static dispatch_once_t onceToken;
+            dispatch_once(&onceToken, ^{
+                delegate = [[NotifierDelegate alloc] init];
+                center.delegate = delegate;
+            });
 
-        [center deliverNotification:notification];
-    }
+            [center deliverNotification:notification];
+        }
+    });
 }
 

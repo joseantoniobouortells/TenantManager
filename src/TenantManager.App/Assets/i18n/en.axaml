@@ -22,6 +22,18 @@
 
     <!-- Dashboard -->
     <system:String x:Key="DashboardTitle">Dashboard</system:String>
+    <system:String x:Key="FinancialAnalysisTitle">Financial Analysis</system:String>
+    <system:String x:Key="IntervalLabel">Interval:</system:String>
+    <system:String x:Key="TotalIncomeLabel">Income</system:String>
+    <system:String x:Key="TotalExpensesLabel">Expenses</system:String>
+    <system:String x:Key="NetProfitLabel">Net</system:String>
+    <system:String x:Key="ExpensesByCategoryTitle">Expenses by Category</system:String>
+    <system:String x:Key="NoExpensesInPeriodMsg">No expenses in this period</system:String>
+    <system:String x:Key="PendingPaymentsTitle">Pending Payments</system:String>
+    <system:String x:Key="AllUpToDateMsg">✅ All up to date</system:String>
+    <system:String x:Key="TotalText">Total</system:String>
+    <system:String x:Key="EstimatedIncomeTitle">Estimated Income</system:String>
+    <system:String x:Key="NextMonthText">Next Month</system:String>
     <system:String x:Key="RefreshButton">Refresh</system:String>
     <system:String x:Key="TotalRoomsLabel">Total Rooms</system:String>
     <system:String x:Key="ActiveTenantsLabel">Active Tenants</system:String>
