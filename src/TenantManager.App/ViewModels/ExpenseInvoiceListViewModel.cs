@@ -14,6 +14,8 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private readonly AppDbContext _db;
     private System.Collections.Generic.List<ExpenseInvoice> _allInvoices = new();
     private string _searchQuery = string.Empty;
+    private ExpenseCategory? _selectedFilterCategory;
+    private string _selectedFilterYear = "Todos los años";
     private string _sortColumn = "Year";
     private bool _sortAscending = false;
     private ExpenseInvoice? _editingInvoice;
@@ -40,6 +42,8 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         _db = new AppDbContext();
         Invoices = new ObservableCollection<ExpenseInvoice>();
         AvailableCategories = new ObservableCollection<ExpenseCategory>();
+        FilterCategories = new ObservableCollection<ExpenseCategory>();
+        FilterYears = new ObservableCollection<string>();
 
         LoadInvoicesCommand = new RelayCommand(_ => LoadInvoices(_currentPropertyId));
         SortCommand = new RelayCommand(param => Sort(param as string));
@@ -60,6 +64,8 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
 
     public ObservableCollection<ExpenseInvoice> Invoices { get; }
     public ObservableCollection<ExpenseCategory> AvailableCategories { get; }
+    public ObservableCollection<ExpenseCategory> FilterCategories { get; }
+    public ObservableCollection<string> FilterYears { get; }
 
     public RelayCommand LoadInvoicesCommand { get; }
     public RelayCommand SortCommand { get; }
@@ -104,6 +110,30 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         set
         {
             if (SetProperty(ref _searchQuery, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public ExpenseCategory? SelectedFilterCategory
+    {
+        get => _selectedFilterCategory;
+        set
+        {
+            if (SetProperty(ref _selectedFilterCategory, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
+
+    public string SelectedFilterYear
+    {
+        get => _selectedFilterYear;
+        set
+        {
+            if (SetProperty(ref _selectedFilterYear, value))
             {
                 ApplyFiltersAndSort();
             }
@@ -200,8 +230,20 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         AvailableCategories.Clear();
         foreach (var c in categories) AvailableCategories.Add(c);
 
+        // Update filters
+        FilterCategories.Clear();
+        FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+        foreach (var c in categories) FilterCategories.Add(c);
+        SelectedFilterCategory = FilterCategories.FirstOrDefault();
+
         _allInvoices = _db.ExpenseInvoices.Where(i => i.PropertyId == propertyId).ToList();
         
+        FilterYears.Clear();
+        FilterYears.Add("Todos los años");
+        var distinctYears = _allInvoices.Select(i => i.Year).Distinct().OrderByDescending(y => y).ToList();
+        foreach (var y in distinctYears) FilterYears.Add(y.ToString());
+        SelectedFilterYear = "Todos los años";
+
         // Map category UI properties
         foreach (var inv in _allInvoices)
         {
@@ -242,6 +284,16 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
     private void ApplyFiltersAndSort()
     {
         var filtered = _allInvoices.AsEnumerable();
+
+        if (SelectedFilterCategory != null && SelectedFilterCategory.Id > 0)
+        {
+            filtered = filtered.Where(i => i.CategoryId == SelectedFilterCategory.Id);
+        }
+
+        if (SelectedFilterYear != "Todos los años")
+        {
+            filtered = filtered.Where(i => i.Year.ToString() == SelectedFilterYear);
+        }
 
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
@@ -365,6 +417,13 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
         AvailableCategories.Clear();
         foreach (var c in sorted) AvailableCategories.Add(c);
 
+        // Also update FilterCategories
+        var prevFilterId = SelectedFilterCategory?.Id ?? 0;
+        FilterCategories.Clear();
+        FilterCategories.Add(new ExpenseCategory { Id = 0, Name = "Todas las categorías" });
+        foreach (var c in sorted) FilterCategories.Add(c);
+        SelectedFilterCategory = FilterCategories.FirstOrDefault(c => c.Id == prevFilterId) ?? FilterCategories.FirstOrDefault();
+
         if (selectedId > 0)
         {
             EditCategory = AvailableCategories.FirstOrDefault(c => c.Id == selectedId);
@@ -403,12 +462,25 @@ public class ExpenseInvoiceListViewModel : ViewModelBase
             _editingInvoice.Year = (int)EditYear;
             _editingInvoice.Month = (int)EditMonth;
             _editingInvoice.Amount = EditAmount;
-            _editingInvoice.Notes = EditNotes?.Trim();
-            _editingInvoice.FilePath = EditFilePath?.Trim();
+            _editingInvoice.Notes = EditNotes?.Trim() ?? string.Empty;
+            _editingInvoice.FilePath = EditFilePath?.Trim() ?? string.Empty;
             _editingInvoice.FileContent = EditFileContent;
         }
 
         _db.SaveChanges();
+
+        // Update FilterYears if a new year was added
+        var invoiceYearStr = ((int)EditYear).ToString();
+        if (!FilterYears.Contains(invoiceYearStr))
+        {
+            var years = FilterYears.Where(y => y != "Todos los años").Select(int.Parse).ToList();
+            years.Add((int)EditYear);
+            years = years.OrderByDescending(y => y).ToList();
+            FilterYears.Clear();
+            FilterYears.Add("Todos los años");
+            foreach (var y in years) FilterYears.Add(y.ToString());
+        }
+
         LoadInvoices(_currentPropertyId);
         CancelEdit();
     }
