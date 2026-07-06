@@ -116,6 +116,10 @@
 91. **Notificaciones Nativas Cross-Platform (Julio 2026):**
     - *Decisión:* Se implementó `NativeNotificationService` utilizando llamadas directas sin dependencias al sistema operativo (`osascript` en macOS, `notify-send` en Linux y un script `PowerShell` inyectado para WinRT en Windows). 
     - *Motivo:* Proveer notificaciones nativas de escritorio (al arrancar la app y de forma periódica con enfriamiento de 12 horas) cuando existen cobros pendientes, evitando dependencias de terceros desactualizadas incompatibles con Avalonia 12.
+92. **Separación de Concepto y Categoría en Gastos (Julio 2026):**
+    - *Decisión:* Tras un intento de fusionar el texto libre en las categorías, se rectificó el diseño para separar el **Concepto** (texto libre, ej. "Factura luz de agosto") de la **Categoría** (entidad relacional `ExpenseCategory`, ej. "Suministros").
+    - *Migración de Recuperación:* Se utilizó SQL Raw inyectado en la migración `FixExpenseConceptAndCategory` para extraer el concepto desde la tabla contaminada de categorías, crear 4 categorías estándar nuevas (Suministros, Mantenimiento, Seguros, Otros), y vincular las facturas automáticamente dependiendo de si su flag original de `IsChargeableToTenant` era verdadero o falso.
+    - *Interfaz (UI):* Se eliminó el botón inline confuso para crear categorías y se implementó un *Overlay / Dialog* moderno (un grid transparente sobre el UserControl) para gestionar la creación "al vuelo" de agrupaciones.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.

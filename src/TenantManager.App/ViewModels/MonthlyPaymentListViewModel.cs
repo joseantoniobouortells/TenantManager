@@ -641,12 +641,13 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
 
-        var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
-        var invoicesTotal = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && i.IsChargeableToTenant)
-            .ToList()
+        // Suma todos los gastos del piso en ese mes que sean imputables
+        var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
+        var totalExpense = _db.ExpenseInvoices
+            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
             .Sum(i => i.Amount);
 
+        var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
         var occupiedRooms = _db.RentalContracts
             .Where(c => c.PropertyId == _currentPropertyId)
             .ToList()
@@ -655,7 +656,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             .Distinct()
             .Count();
 
-        var expense = occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
-        return (rent, expense, expenseType);
+        var variableExpense = occupiedRooms > 0 ? totalExpense / occupiedRooms : 0m;
+        return (rent, fixedExpenseAmount + variableExpense, expenseType);
     }
 }

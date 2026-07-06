@@ -624,8 +624,9 @@ public class DashboardViewModel : ViewModelBase
     {
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
 
+        var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
         var invoicesTotal = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == propertyId && i.IsChargeableToTenant)
+            .Where(i => i.Year == year && i.Month == month && i.PropertyId == propertyId && chargeableCategories.Contains(i.CategoryId))
             .ToList()
             .Sum(i => i.Amount);
 
