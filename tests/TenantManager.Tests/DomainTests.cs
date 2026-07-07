@@ -329,7 +329,7 @@ public class DomainTests : IDisposable
         var invoice = new ExpenseInvoice
         {
             PropertyId = 1,
-            ExpenseType = "Electricity",
+            Concept = "Electricity",
             Year = 2026,
             Month = 6,
             Amount = 120.50m,
@@ -343,7 +343,7 @@ public class DomainTests : IDisposable
         Assert.NotEqual(0, invoice.Id);
         var loaded = db.ExpenseInvoices.Find(invoice.Id);
         Assert.NotNull(loaded);
-        Assert.Equal("Electricity", loaded.ExpenseType);
+        Assert.Equal("Electricity", loaded.Concept);
         Assert.Equal("/tmp/invoice.pdf", loaded.FilePath);
         Assert.NotNull(loaded.FileContent);
         Assert.Equal(4, loaded.FileContent.Length);
