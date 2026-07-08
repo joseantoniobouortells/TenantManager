@@ -8,7 +8,7 @@
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="750"
         x:Class="TenantManager.App.MainWindow"
         x:CompileBindings="False"
-        Title="Tenant Manager"
+        Title=""
         Icon="avares://TenantManager.App/Assets/app-icon.ico"
         Background="{DynamicResource AppBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
