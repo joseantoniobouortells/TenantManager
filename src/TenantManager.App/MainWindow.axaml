@@ -19,6 +19,46 @@
             <Setter Property="TabStripPlacement" Value="Left" />
             <Setter Property="Padding" Value="32" />
             <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Background="{TemplateBinding Background}">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <!-- Left Sidebar Container -->
+                            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto" Background="{DynamicResource AppBackgroundBrush}">
+                                <!-- Property selector on top of sidebar (Now inside TabControl visual tree to avoid breaking views) -->
+                                <StackPanel Grid.Row="0" Margin="12,24,12,16" Spacing="8">
+                                    <TextBlock Text="Vivienda Activa" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="8,0,0,0" LetterSpacing="0.5" />
+                                    <ComboBox ItemsSource="{Binding DataContext.Properties, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                              SelectedItem="{Binding DataContext.SelectedProperty, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                              HorizontalAlignment="Stretch" Height="36">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+
+                                <!-- Navigation Tab Items List -->
+                                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <ItemsPresenter Name="PART_ItemsPresenter"
+                                                    ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                </ScrollViewer>
+                            </Grid>
+
+                            <!-- Content Presenter Area -->
+                            <ContentPresenter Grid.Column="1"
+                                              Name="PART_SelectedContentHost"
+                                              Margin="{TemplateBinding Padding}"
+                                              Content="{TemplateBinding SelectedContent}"
+                                              ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
         </Style>
         <Style Selector="TabItem">
             <Setter Property="FontSize" Value="15" />
@@ -56,21 +96,14 @@
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,*">
-        <!-- TOP BAR (Integrated with Window Title Bar) -->
+        <!-- TOP BAR (Integrated with Window Title Bar - Pure Text, Safe for Click Dragging) -->
         <Border Grid.Row="0" Background="{DynamicResource CardBackgroundBrush}" Padding="80,16,140,16" BorderThickness="0 0 0 1" BorderBrush="{DynamicResource TableBorderBrush}" PointerPressed="TopBar_PointerPressed">
-            <Grid ColumnDefinitions="Auto,*,Auto">
-                <!-- ACTIVE PROPERTY SELECTOR + NAVIGATION BREADCRUMB (Left) -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <ComboBox ItemsSource="{Binding Properties}" SelectedItem="{Binding SelectedProperty}" Width="200" Height="34">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" />
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    
-                    <TextBlock Text="/" Foreground="{DynamicResource TableBorderBrush}" FontWeight="Medium" FontSize="15" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding CurrentPageTitle}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" />
+            <Grid>
+                <!-- DYNAMIC CONTEXT TITLE (Left) -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" HorizontalAlignment="Left" IsHitTestVisible="False">
+                    <TextBlock Text="{Binding SelectedProperty.Name, FallbackValue='Tenant Manager'}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" FontSize="15" />
+                    <TextBlock Text="/" Foreground="{DynamicResource TableBorderBrush}" FontWeight="Medium" FontSize="15" Margin="4,0" />
+                    <TextBlock Text="{Binding CurrentPageTitle}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" FontSize="15" />
                 </StackPanel>
             </Grid>
         </Border>
