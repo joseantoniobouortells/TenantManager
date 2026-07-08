@@ -30,9 +30,9 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <key>CFBundleIconFile</key>
     <string>app-icon.icns</string>
     <key>CFBundleVersion</key>
-    <string>1.0.4</string>
+    <string>1.0.5</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.4</string>
+    <string>1.0.5</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSUserNotificationAlertStyle</key>
