@@ -30,9 +30,9 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
     <key>CFBundleIconFile</key>
     <string>app-icon.icns</string>
     <key>CFBundleVersion</key>
-    <string>1.0.5</string>
+    <string>1.0.6</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.5</string>
+    <string>1.0.6</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
     <key>NSUserNotificationAlertStyle</key>
@@ -58,6 +58,9 @@ cat > "$APP_DIR/Contents/Entitlements.plist" << EOF
 EOF
 
 echo "Firmando binarios (Ad-hoc) para macOS..."
+# Limpiar archivos residuales que macOS genera automáticamente (.DS_Store y AppleDouble)
+find "$APP_DIR" -type f -name "._*" -delete
+find "$APP_DIR" -type f -name ".DS_Store" -delete
 xattr -cr "$APP_DIR"
 codesign --force --deep --sign - --entitlements "$APP_DIR/Contents/Entitlements.plist" --options runtime "$APP_DIR"
 
