@@ -1,0 +1,16 @@
+#!/bin/bash
+# postinstall
+# Este script se ejecuta con permisos elevados tras copiar la app a /Applications
+
+APP_PATH="/Applications/TenantManager.app"
+
+if [ -d "$APP_PATH" ]; then
+    # Limpiar atributos de cuarentena que macOS asigna a descargas
+    xattr -cr "$APP_PATH" || true
+    xattr -rd com.apple.quarantine "$APP_PATH" || true
+    
+    # Asegurar permisos correctos
+    chmod -R 755 "$APP_PATH"
+fi
+
+exit 0

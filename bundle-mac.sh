@@ -37,31 +37,37 @@ cp "assets/TenantManager.icns" "${APP_BUNDLE}/Contents/Resources/TenantManager.i
 echo "▶ Setting executable permission..."
 chmod +x "${APP_BUNDLE}/Contents/MacOS/${APP_NAME}.App"
 
-echo "▶ Packaging as DMG..."
-DMG_NAME="dist/${APP_NAME}-${RUNTIME}.dmg"
-TEMP_DMG="dist/temp.dmg"
+echo "▶ Packaging as PKG..."
+PKG_NAME="dist/${APP_NAME}-${RUNTIME}.pkg"
 
-rm -f "$DMG_NAME" "$TEMP_DMG"
-# Create a temporary empty DMG (e.g. 250MB should be plenty for the self-contained .NET app)
-hdiutil create -size 250m -fs HFS+ -volname "Tenant Manager" "$TEMP_DMG"
+rm -f "$PKG_NAME"
 
-# Mount it and get the device name
-DEVICE=$(hdiutil attach -noverify -noautoopen "$TEMP_DMG" | egrep '^/dev/' | sed 1q | awk '{print $1}')
+# We must sign the app ad-hoc first to satisfy pkgbuild requirements
+# and clean up detritus.
+echo "▶ Removing detritus and signing ad-hoc..."
+find "$APP_BUNDLE" -type f -name "._*" -delete
+find "$APP_BUNDLE" -type f -name ".DS_Store" -delete
+xattr -cr "$APP_BUNDLE"
+codesign --force --deep --sign - "$APP_BUNDLE"
 
-# Copy the .app into the mounted DMG and create the Applications symlink
-cp -R "$APP_BUNDLE" "/Volumes/Tenant Manager/"
-ln -s /Applications "/Volumes/Tenant Manager/Applications"
+# pkgbuild requires a payload directory
+PAYLOAD_DIR="dist/payload"
+rm -rf "$PAYLOAD_DIR"
+mkdir -p "$PAYLOAD_DIR"
+cp -r "$APP_BUNDLE" "$PAYLOAD_DIR/"
 
-# Detach (unmount)
-hdiutil detach "$DEVICE"
+pkgbuild --root "$PAYLOAD_DIR" \
+         --identifier com.tenantmanager.app \
+         --version 1.0.6 \
+         --install-location /Applications \
+         --scripts installer/macos/scripts \
+         "$PKG_NAME"
 
-# Compress into the final DMG
-hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_NAME"
-rm -f "$TEMP_DMG"
+rm -rf "$PAYLOAD_DIR"
 
 echo ""
 echo "✅ Bundle created at: ${APP_BUNDLE}"
-echo "📦 DMG generated at: ${DMG_NAME}"
+echo "📦 PKG generated at: ${PKG_NAME}"
 echo ""
 echo "To run:  open ${APP_BUNDLE}"
 echo "To install: cp -r ${APP_BUNDLE} /Applications/"

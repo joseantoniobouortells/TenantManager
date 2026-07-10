@@ -69,7 +69,7 @@ jobs:
         run: |
           chmod +x bundle-mac.sh
           ./bundle-mac.sh Release ${{ matrix.runtime }}
-          mv dist/TenantManager-${{ matrix.runtime }}.dmg ${{ matrix.artifact_name }}.dmg
+          mv dist/TenantManager-${{ matrix.runtime }}.pkg ${{ matrix.artifact_name }}.pkg
 
       - name: Upload Artifacts (Windows)
         if: matrix.os == 'windows-latest'
@@ -90,7 +90,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}.dmg
+          path: ${{ matrix.artifact_name }}.pkg
 
   release:
     name: Create GitHub Release

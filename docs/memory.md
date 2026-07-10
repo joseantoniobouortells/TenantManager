@@ -138,3 +138,6 @@
 95. **Internacionalización (i18n) en Vistas y Notificaciones (Julio 2026):**
     - *Decisión:* Se auditaron todas las vistas (`.axaml`) y se extrajeron las cadenas literales estáticas sustituyéndolas por `DynamicResource`, apoyándose en diccionarios de recursos dinámicos (`en.axaml` y `es.axaml`). 
     - *Notificaciones:* Se actualizó el puente nativo `MacNotifier.m` y el servicio `NativeNotificationService` para aceptar y resolver dinámicamente las cadenas traducidas desde Avalonia (título, cuerpo y botón de acción) mediante `Avalonia.Application.Current.TryGetResource`, garantizando que la notificación del sistema operativo concuerde con el idioma seleccionado en la interfaz.
+96. **Migración de DMG a PKG en macOS (Julio 2026):**
+    - *Decisión:* Se reemplazó la generación de instaladores `.dmg` por paquetes `.pkg` en `bundle-mac.sh` y el workflow de GitHub Actions.
+    - *Motivo:* Proveer un script de Apple `postinstall` oculto en el `.pkg` que elimina automáticamente el atributo de cuarentena (`com.apple.quarantine`) y los archivos temporales (`._*`, `.DS_Store`) usando `xattr -cr` de la aplicación una vez extraída en `/Applications`. De esta forma, el usuario final ya no necesita usar la terminal para autorizar la ejecución en macOS tras la descarga.
