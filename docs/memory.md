@@ -123,9 +123,14 @@
 93. **Ajuste de Cabecera para Windows y Bump de Versión 1.0.4 (Julio 2026):**
     - *Decisión:* Se incrementó el padding derecho de la barra de título superior (`Border`) de `140` a `220` en `MainWindow.axaml`. Además, se corrigieron errores de compilación en `DomainTests.cs` (usando `Concept` en lugar del antiguo `ExpenseType`) y se actualizó la versión de la aplicación a `1.0.4` en el `.csproj` y `run-mac.sh`.
     - *Motivo:* Evitar que los botones de control nativos de maximizar/minimizar de la ventana de Windows se solaparan visualmente con el selector desplegable de vivienda activa cuando `ExtendClientAreaToDecorationsHint` está activo.
+94. **Corrección de Cálculo de Ingresos Previstos (Julio 2026):**
+    - *Bug:* El bucle de prorrateo diario usaba `new DateTimeOffset(..., TimeSpan.Zero)` (mediodía UTC) para comparar contra las fechas de los contratos. Algunas fechas se almacenan sin offset (p.ej. `2026-08-31 00:00:00`) y SQLite las trata como UTC medianoche. Al ser medianoche < mediodía UTC, la comparación `EndDate >= date` fallaba en el último día, excluyéndolo del prorrateo y produciendo un resultado ~1/31 más bajo de lo correcto (ej. 543€ en vez de 550€ en agosto).
+    - *Solución:* Se reemplazó la comparación `DateTimeOffset` por comparaciones de `DateTime.Date` (componente fecha sin hora ni timezone). Se extraen `contract.StartDate.Date` y `contract.EndDate?.Date` fuera del bucle y se construye `dayDate = new DateTime(year, month, day)` para comparar, eliminando por completo el problema de zona horaria.
+    - *Validación:* La simulación con datos reales de la BD para agosto 2026 (Erik Pradas 210€ + Erik Artigas 340€) produce exactamente **550€**, coincidiendo con el cálculo manual esperado.
 
 ## ⚠️ 3. Deuda Técnica y "Gotchas" (¡Cuidado!)
 * **Pérdida de datos en migraciones con SQLite:** Al pasar propiedades de `Tenant` a `Contract`, la migración generada por EF Core recreó la tabla, perdiendo la relación Inquilino-Habitación de los datos en producción que no tenían un contrato asociado. *Regla aprendida:* Si hay refactorizaciones de DB destructivas en SQLite (donde el DROP COLUMN no es nativo y requiere recrear la tabla), avisar explícitamente y preparar scripts de migración de datos si es necesario.
+* **Fechas sin timezone en SQLite:** Algunas fechas persisten sin sufijo de offset (ej. `2026-08-31 00:00:00`) porque se insertaron antes de que la aplicación normalizara todos los `DateTimeOffset`. Siempre usar `.Date` para comparaciones de fechas en el ViewModel, nunca comparar directamente `DateTimeOffset` raw contra otro con timezone diferente.
 
 ## 🚀 4. Roadmap / Próximos Pasos Pendientes
 * **[ ] Extracción a Librería Compartida:** Queda pendiente ejecutar el plan de `library_refactor_spec.md` para separar la lógica Core en una librería agnóstica reutilizable, permitiendo en un futuro integraciones con Web o Mobile.
