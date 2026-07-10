@@ -27,7 +27,7 @@
                             <TextBox Text="{Binding RoomList.EditName}" />
                         </StackPanel>
                         <StackPanel>
-                            <TextBlock Text="Precio Base (Alquiler)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBlock Text="{DynamicResource BaseRentLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                             <NumericUpDown Value="{Binding RoomList.EditBaseRent}" Minimum="0" FormatString="0.00" />
                         </StackPanel>
                         <StackPanel>
@@ -47,7 +47,7 @@
 
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*,Auto" Margin="16 0 16 8">
                      <TextBlock Grid.Column="0" Text="{DynamicResource NameHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                     <TextBlock Grid.Column="1" Text="Precio Base" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="1" Text="{DynamicResource BaseRentHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                      <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                      <TextBlock Grid.Column="3" Text="{DynamicResource NotesHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                      <TextBlock Grid.Column="4" Text="" Width="40" />
@@ -95,11 +95,11 @@
                     HorizontalAlignment="Center"
                     Padding="20">
                 <StackPanel Spacing="16" VerticalAlignment="Center">
-                    <TextBlock Text="¿Confirmar eliminación?" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
-                    <TextBlock Text="Esta acción no se puede deshacer." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource ConfirmDeleteTitle}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource CannotUndoMsg}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
-                        <Button Content="Confirmar" Command="{Binding RoomList.ConfirmDeleteRoomCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
-                        <Button Content="Cancelar" Command="{Binding RoomList.CancelDeleteRoomCommand}" Classes="Action" />
+                        <Button Content="{DynamicResource ConfirmButton}" Command="{Binding RoomList.ConfirmDeleteRoomCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
+                        <Button Content="{DynamicResource CancelButton}" Command="{Binding RoomList.CancelDeleteRoomCommand}" Classes="Action" />
                     </StackPanel>
                 </StackPanel>
             </Border>

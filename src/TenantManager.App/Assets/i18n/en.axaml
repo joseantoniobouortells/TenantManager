@@ -12,13 +12,22 @@
     <system:String x:Key="InformationLabel">Information</system:String>
     <system:String x:Key="DatabasePathLabel">Database Path:</system:String>
     <system:String x:Key="AppVersionLabel">App Version:</system:String>
-    
+
+    <!-- Navigation tabs -->
     <system:String x:Key="DashboardTab">Dashboard</system:String>
     <system:String x:Key="RoomsTab">Rooms</system:String>
     <system:String x:Key="TenantsTab">Tenants</system:String>
     <system:String x:Key="ContractsTab">Contracts</system:String>
     <system:String x:Key="PaymentsTab">Payments</system:String>
     <system:String x:Key="SettingsTab">Settings</system:String>
+    <system:String x:Key="PropertiesTab">Properties</system:String>
+    <system:String x:Key="ExpensesTab">Expenses</system:String>
+
+    <!-- Global dialogs -->
+    <system:String x:Key="ConfirmDeleteTitle">Confirm Deletion</system:String>
+    <system:String x:Key="CannotUndoMsg">This action cannot be undone.</system:String>
+    <system:String x:Key="ConfirmButton">Confirm</system:String>
+    <system:String x:Key="ActivePropertyLabel">Active Property</system:String>
 
     <!-- Dashboard -->
     <system:String x:Key="DashboardTitle">Dashboard</system:String>
@@ -30,7 +39,7 @@
     <system:String x:Key="ExpensesByCategoryTitle">Expenses by Category</system:String>
     <system:String x:Key="NoExpensesInPeriodMsg">No expenses in this period</system:String>
     <system:String x:Key="PendingPaymentsTitle">Pending Payments</system:String>
-    <system:String x:Key="AllUpToDateMsg">✅ All up to date</system:String>
+    <system:String x:Key="AllUpToDateMsg">All up to date</system:String>
     <system:String x:Key="TotalText">Total</system:String>
     <system:String x:Key="EstimatedIncomeTitle">Estimated Income</system:String>
     <system:String x:Key="NextMonthText">Next Month</system:String>
@@ -41,26 +50,20 @@
     <system:String x:Key="ActiveRoomsLabel">Active Rooms</system:String>
     <system:String x:Key="ExpectedIncomeLabel">Expected Income</system:String>
     <system:String x:Key="CollectedIncomeLabel">Collected Income</system:String>
-    
     <system:String x:Key="RoomOccupancyLabel">Room Occupancy</system:String>
     <system:String x:Key="OccupiedText">Occupied: </system:String>
     <system:String x:Key="AvailableText">Available: </system:String>
-    
     <system:String x:Key="IncomeCollectionLabel">Income Collection</system:String>
     <system:String x:Key="PaidText">Paid: </system:String>
     <system:String x:Key="ExpectedText">Expected: </system:String>
-    
     <system:String x:Key="PaymentStatusLabel">Payment Status</system:String>
     <system:String x:Key="PaidStatus">Paid</system:String>
     <system:String x:Key="PendingStatus">Pending</system:String>
     <system:String x:Key="PartialStatus">Partial</system:String>
-    
     <system:String x:Key="PendingLatePaymentsLabel">Pending/Late Payments</system:String>
     <system:String x:Key="NoPendingPaymentsMsg">No pending payments.</system:String>
-    
     <system:String x:Key="AvailableRoomsLabel">Available Rooms</system:String>
     <system:String x:Key="NoAvailableRoomsMsg">No available rooms.</system:String>
-    
     <system:String x:Key="MissingContractFilesLabel">Missing Contract Files</system:String>
     <system:String x:Key="AllContractsValidMsg">All active contracts have valid paths.</system:String>
     <system:String x:Key="ActiveBadge">Active</system:String>
@@ -82,7 +85,9 @@
     <system:String x:Key="RentHeader">Rent</system:String>
     <system:String x:Key="StatusHeader">Status</system:String>
     <system:String x:Key="NotesHeader">Notes</system:String>
-    
+    <system:String x:Key="BaseRentLabel">Base Rent</system:String>
+    <system:String x:Key="BaseRentHeader">Base Rent</system:String>
+
     <!-- Rent History -->
     <system:String x:Key="RentHistoryTitle">Rent History</system:String>
     <system:String x:Key="NewPeriodButton">+ New Period</system:String>
@@ -111,6 +116,7 @@
     <system:String x:Key="MoveInHeader">Move-in</system:String>
     <system:String x:Key="MoveOutHeader">Move-out</system:String>
     <system:String x:Key="DepositHeader">Deposit</system:String>
+    <system:String x:Key="SearchTenantPlaceholder">Search tenant...</system:String>
 
     <!-- Contracts View -->
     <system:String x:Key="ContractsTitle">Contracts</system:String>
@@ -125,6 +131,22 @@
     <system:String x:Key="FileStatusHeader">File Status</system:String>
     <system:String x:Key="YesLabel">Yes</system:String>
     <system:String x:Key="NoLabel">No</system:String>
+    <system:String x:Key="ExtensionsTitle">Extensions</system:String>
+    <system:String x:Key="NewExtensionButton">+ New Extension</system:String>
+    <system:String x:Key="SearchContractPlaceholder">Search contract...</system:String>
+    <system:String x:Key="RoomLabel">Room</system:String>
+    <system:String x:Key="RoomHeader">Room</system:String>
+    <system:String x:Key="MonthlyRentAmountLabel">Monthly Rent</system:String>
+    <system:String x:Key="DepositLabel">Deposit</system:String>
+    <system:String x:Key="PaymentDayLabel">Payment Day</system:String>
+    <system:String x:Key="ExpenseTypeLabel">Expense Type</system:String>
+    <system:String x:Key="FixedExpensesLabel">Fixed Expenses</system:String>
+    <system:String x:Key="ActiveContractTooltip">Active Contract</system:String>
+    <system:String x:Key="ExpiredContractTooltip">Expired Contract</system:String>
+    <system:String x:Key="DeleteExtensionPrompt">Delete extension?</system:String>
+    <system:String x:Key="RentLabel">Rent</system:String>
+    <system:String x:Key="ExpensesLabel">Expenses</system:String>
+    <system:String x:Key="FixedLabel">Fixed</system:String>
 
     <!-- Payments View -->
     <system:String x:Key="PaymentsTitle">Payments</system:String>
@@ -146,11 +168,68 @@
     <system:String x:Key="ToYearLabel">To Year</system:String>
     <system:String x:Key="ToMonthLabel">To Month</system:String>
     <system:String x:Key="GenerateButton">Generate</system:String>
-    
+    <system:String x:Key="SearchPaymentPlaceholder">Search history...</system:String>
+    <system:String x:Key="RentAmountLabel">Rent Amount</system:String>
+    <system:String x:Key="ExpenseAmountLabel">Expense Amount</system:String>
+    <system:String x:Key="ClearDateTooltip">Clear date</system:String>
+    <system:String x:Key="PendingPaymentsSectionTitle">⚠️ Pending Payments</system:String>
+    <system:String x:Key="CollectButton">Collect</system:String>
+    <system:String x:Key="ExpectedRentHeader">Expected Rent</system:String>
+    <system:String x:Key="ExpectedExpHeader">Expected Exp.</system:String>
+
     <!-- Expenses View -->
     <system:String x:Key="ExpensesTitle">Expenses</system:String>
     <system:String x:Key="NewExpenseButton">New Expense</system:String>
     <system:String x:Key="ViewPdfButton">View PDF</system:String>
     <system:String x:Key="IsChargeableLabel">Chargeable to tenants?</system:String>
     <system:String x:Key="ChargeableColumnHeader">Chargeable</system:String>
+    <system:String x:Key="SearchExpensePlaceholder">Search concept...</system:String>
+    <system:String x:Key="FilterByCategoryTooltip">Filter by category</system:String>
+    <system:String x:Key="FilterByYearTooltip">Filter by year</system:String>
+    <system:String x:Key="EditInvoiceTitle">Edit Invoice</system:String>
+    <system:String x:Key="ConceptLabel">Concept</system:String>
+    <system:String x:Key="CategoryLabel">Category</system:String>
+    <system:String x:Key="NewCategoryButton">[+ New Category]</system:String>
+    <system:String x:Key="EditCategoryTooltip">Edit category</system:String>
+    <system:String x:Key="ChargeableIndicator">(Chargeable)</system:String>
+    <system:String x:Key="AmountLabel">Amount</system:String>
+    <system:String x:Key="PdfInvoiceLabel">PDF Invoice</system:String>
+    <system:String x:Key="ClearFileTooltip">Clear file</system:String>
+    <system:String x:Key="DeleteInvoiceButton">Delete Invoice</system:String>
+    <system:String x:Key="SaveInvoiceButton">Save Invoice</system:String>
+    <system:String x:Key="ConceptHeader">Concept</system:String>
+    <system:String x:Key="CategoryHeader">Category</system:String>
+    <system:String x:Key="AmountHeader">Amount</system:String>
+    <system:String x:Key="PdfInvoiceHeader">PDF Invoice</system:String>
+    <system:String x:Key="DeleteInvoiceConfirm">Are you sure you want to delete this invoice?</system:String>
+    <system:String x:Key="CategoryNameLabel">Category name</system:String>
+    <system:String x:Key="CategoryNamePlaceholder">E.g.: Repairs &amp; Maintenance</system:String>
+    <system:String x:Key="ChargeableToggleLabel">Chargeable to tenant</system:String>
+    <system:String x:Key="DeleteCategoryButton">&#x1F5D1;&#xFE0F; Delete</system:String>
+    <system:String x:Key="SaveCategoryButton">Save Category</system:String>
+
+    <!-- Properties View -->
+    <system:String x:Key="PropertiesTitle">Properties</system:String>
+    <system:String x:Key="NewPropertyButton">New Property</system:String>
+    <system:String x:Key="PropertyNameHeader">Name</system:String>
+    <system:String x:Key="PropertyStreetHeader">Street</system:String>
+    <system:String x:Key="PropertyCityHeader">City</system:String>
+    <system:String x:Key="PropertyPostalCodeHeader">P.C.</system:String>
+    <system:String x:Key="PropertyStatusHeader">Status</system:String>
+    <system:String x:Key="PropertyDetailsTitle">Property Details</system:String>
+    <system:String x:Key="PropertyNameLabel">Name</system:String>
+    <system:String x:Key="PropertyNamePlaceholder">E.g. City Centre Flat</system:String>
+    <system:String x:Key="PropertyStreetLabel">Street / Address</system:String>
+    <system:String x:Key="PropertyStreetPlaceholder">E.g. Main St 12, 3A</system:String>
+    <system:String x:Key="PropertyCityLabel">City</system:String>
+    <system:String x:Key="PropertyCityPlaceholder">London</system:String>
+    <system:String x:Key="PropertyPostalCodeLabel">Postal Code</system:String>
+    <system:String x:Key="PropertyPostalCodePlaceholder">SW1A 1AA</system:String>
+    <system:String x:Key="PropertyNotesLabel">Additional Notes</system:String>
+    <system:String x:Key="PropertyNotesPlaceholder">Points of interest, etc.</system:String>
+
+    <!-- Native Notifications -->
+    <system:String x:Key="NotificationPendingTitle">Pending Rent</system:String>
+    <system:String x:Key="NotificationPendingBody">{0} has a pending payment for {1}.</system:String>
+    <system:String x:Key="NotificationActionButton">Show</system:String>
 </ResourceDictionary>

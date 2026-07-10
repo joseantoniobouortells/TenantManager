@@ -664,9 +664,21 @@ public class DashboardViewModel : ViewModelBase
                     foreach (var payment in paymentsToNotify)
                     {
                         Console.WriteLine($"[DASH] Firing notification for {payment.TenantName}");
+                        
+                        string titleStr = "Pending Rent";
+                        string bodyFormatStr = "{0} has a pending payment for {1}.";
+                        
+                        if (Avalonia.Application.Current != null)
+                        {
+                            if (Avalonia.Application.Current.TryGetResource("NotificationPendingTitle", Avalonia.Styling.ThemeVariant.Default, out var titleRes) && titleRes is string t) 
+                                titleStr = t;
+                            if (Avalonia.Application.Current.TryGetResource("NotificationPendingBody", Avalonia.Styling.ThemeVariant.Default, out var bodyRes) && bodyRes is string b) 
+                                bodyFormatStr = b;
+                        }
+
                         TenantManager.App.Services.NativeNotificationService.ShowNotification(
-                            "Alquiler Pendiente",
-                            $"{payment.TenantName} tiene pendiente el mes de {payment.MonthLabel}.");
+                            titleStr,
+                            string.Format(bodyFormatStr, payment.TenantName, payment.MonthLabel));
                     }
                 });
             });

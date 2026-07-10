@@ -135,3 +135,6 @@
 ## 🚀 4. Roadmap / Próximos Pasos Pendientes
 * **[ ] Extracción a Librería Compartida:** Queda pendiente ejecutar el plan de `library_refactor_spec.md` para separar la lógica Core en una librería agnóstica reutilizable, permitiendo en un futuro integraciones con Web o Mobile.
 * **[ ] (Añadir futuros hitos aquí...)**
+95. **Internacionalización (i18n) en Vistas y Notificaciones (Julio 2026):**
+    - *Decisión:* Se auditaron todas las vistas (`.axaml`) y se extrajeron las cadenas literales estáticas sustituyéndolas por `DynamicResource`, apoyándose en diccionarios de recursos dinámicos (`en.axaml` y `es.axaml`). 
+    - *Notificaciones:* Se actualizó el puente nativo `MacNotifier.m` y el servicio `NativeNotificationService` para aceptar y resolver dinámicamente las cadenas traducidas desde Avalonia (título, cuerpo y botón de acción) mediante `Avalonia.Application.Current.TryGetResource`, garantizando que la notificación del sistema operativo concuerde con el idioma seleccionado en la interfaz.

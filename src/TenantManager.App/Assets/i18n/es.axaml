@@ -12,13 +12,22 @@
     <system:String x:Key="InformationLabel">Información</system:String>
     <system:String x:Key="DatabasePathLabel">Ruta Base de Datos:</system:String>
     <system:String x:Key="AppVersionLabel">Versión de App:</system:String>
-    
+
+    <!-- Tabs de navegación -->
     <system:String x:Key="DashboardTab">Panel</system:String>
     <system:String x:Key="RoomsTab">Habitaciones</system:String>
     <system:String x:Key="TenantsTab">Inquilinos</system:String>
     <system:String x:Key="ContractsTab">Contratos</system:String>
     <system:String x:Key="PaymentsTab">Pagos</system:String>
     <system:String x:Key="SettingsTab">Ajustes</system:String>
+    <system:String x:Key="PropertiesTab">Viviendas</system:String>
+    <system:String x:Key="ExpensesTab">Gastos</system:String>
+
+    <!-- Diálogos globales -->
+    <system:String x:Key="ConfirmDeleteTitle">¿Confirmar eliminación?</system:String>
+    <system:String x:Key="CannotUndoMsg">Esta acción no se puede deshacer.</system:String>
+    <system:String x:Key="ConfirmButton">Confirmar</system:String>
+    <system:String x:Key="ActivePropertyLabel">Vivienda Activa</system:String>
 
     <!-- Dashboard -->
     <system:String x:Key="DashboardTitle">Panel de Control</system:String>
@@ -41,32 +50,26 @@
     <system:String x:Key="ActiveRoomsLabel">Habitaciones Activas</system:String>
     <system:String x:Key="ExpectedIncomeLabel">Ingresos Esperados</system:String>
     <system:String x:Key="CollectedIncomeLabel">Ingresos Cobrados</system:String>
-    
     <system:String x:Key="RoomOccupancyLabel">Ocupación de Habitaciones</system:String>
     <system:String x:Key="OccupiedText">Ocupadas: </system:String>
     <system:String x:Key="AvailableText">Disponibles: </system:String>
-    
     <system:String x:Key="IncomeCollectionLabel">Cobro de Ingresos</system:String>
     <system:String x:Key="PaidText">Pagado: </system:String>
     <system:String x:Key="ExpectedText">Esperado: </system:String>
-    
     <system:String x:Key="PaymentStatusLabel">Estado de Pagos</system:String>
     <system:String x:Key="PaidStatus">Pagados</system:String>
     <system:String x:Key="PendingStatus">Pendientes</system:String>
     <system:String x:Key="PartialStatus">Parciales</system:String>
-    
     <system:String x:Key="PendingLatePaymentsLabel">Pagos Pendientes/Atrasados</system:String>
     <system:String x:Key="NoPendingPaymentsMsg">No hay pagos pendientes.</system:String>
-    
     <system:String x:Key="AvailableRoomsLabel">Habitaciones Disponibles</system:String>
     <system:String x:Key="NoAvailableRoomsMsg">No hay habitaciones disponibles.</system:String>
-    
     <system:String x:Key="MissingContractFilesLabel">Archivos de Contrato Faltantes</system:String>
     <system:String x:Key="AllContractsValidMsg">Todos los contratos activos tienen rutas válidas.</system:String>
     <system:String x:Key="ActiveBadge">Activo</system:String>
     <system:String x:Key="InactiveBadge">Inactivo</system:String>
 
-    <!-- Rooms View -->
+    <!-- Vista Habitaciones -->
     <system:String x:Key="RoomsTitle">Habitaciones</system:String>
     <system:String x:Key="NewRoomButton">+ Nueva Habitación</system:String>
     <system:String x:Key="EditRoomTitle">Editar Habitación</system:String>
@@ -82,8 +85,10 @@
     <system:String x:Key="RentHeader">Alquiler</system:String>
     <system:String x:Key="StatusHeader">Estado</system:String>
     <system:String x:Key="NotesHeader">Notas</system:String>
-    
-    <!-- Rent History -->
+    <system:String x:Key="BaseRentLabel">Precio Base (Alquiler)</system:String>
+    <system:String x:Key="BaseRentHeader">Precio Base</system:String>
+
+    <!-- Historial de Alquiler -->
     <system:String x:Key="RentHistoryTitle">Historial de Alquiler</system:String>
     <system:String x:Key="NewPeriodButton">+ Nuevo Periodo</system:String>
     <system:String x:Key="DeleteButton">Eliminar</system:String>
@@ -95,7 +100,7 @@
     <system:String x:Key="FromLabel">Desde: </system:String>
     <system:String x:Key="ToLabel">Hasta: </system:String>
 
-    <!-- Tenants View -->
+    <!-- Vista Inquilinos -->
     <system:String x:Key="TenantsTitle">Inquilinos</system:String>
     <system:String x:Key="NewTenantButton">+ Nuevo Inquilino</system:String>
     <system:String x:Key="EditTenantTitle">Editar Inquilino</system:String>
@@ -111,8 +116,9 @@
     <system:String x:Key="MoveInHeader">Entrada</system:String>
     <system:String x:Key="MoveOutHeader">Salida</system:String>
     <system:String x:Key="DepositHeader">Depósito</system:String>
+    <system:String x:Key="SearchTenantPlaceholder">Buscar inquilino...</system:String>
 
-    <!-- Contracts View -->
+    <!-- Vista Contratos -->
     <system:String x:Key="ContractsTitle">Contratos</system:String>
     <system:String x:Key="NewContractButton">+ Nuevo Contrato</system:String>
     <system:String x:Key="EditContractTitle">Editar Contrato</system:String>
@@ -127,8 +133,22 @@
     <system:String x:Key="NoLabel">No</system:String>
     <system:String x:Key="ExtensionsTitle">Prórrogas</system:String>
     <system:String x:Key="NewExtensionButton">Nueva Prórroga</system:String>
+    <system:String x:Key="SearchContractPlaceholder">Buscar contrato...</system:String>
+    <system:String x:Key="RoomLabel">Habitación</system:String>
+    <system:String x:Key="RoomHeader">Habitación</system:String>
+    <system:String x:Key="MonthlyRentAmountLabel">Cuota de Alquiler</system:String>
+    <system:String x:Key="DepositLabel">Fianza</system:String>
+    <system:String x:Key="PaymentDayLabel">Día de Pago</system:String>
+    <system:String x:Key="ExpenseTypeLabel">Tipo de Gastos</system:String>
+    <system:String x:Key="FixedExpensesLabel">Gastos Fijos</system:String>
+    <system:String x:Key="ActiveContractTooltip">Contrato Activo</system:String>
+    <system:String x:Key="ExpiredContractTooltip">Contrato Vencido</system:String>
+    <system:String x:Key="DeleteExtensionPrompt">¿Eliminar prórroga?</system:String>
+    <system:String x:Key="RentLabel">Alquiler</system:String>
+    <system:String x:Key="ExpensesLabel">Gastos</system:String>
+    <system:String x:Key="FixedLabel">Fijo</system:String>
 
-    <!-- Payments View -->
+    <!-- Vista Pagos -->
     <system:String x:Key="PaymentsTitle">Pagos</system:String>
     <system:String x:Key="NewPaymentButton">+ Nuevo Pago</system:String>
     <system:String x:Key="EditPaymentTitle">Editar Pago</system:String>
@@ -148,11 +168,68 @@
     <system:String x:Key="ToYearLabel">Hasta Año</system:String>
     <system:String x:Key="ToMonthLabel">Hasta Mes</system:String>
     <system:String x:Key="GenerateButton">Generar</system:String>
-    
-    <!-- Expenses View -->
+    <system:String x:Key="SearchPaymentPlaceholder">Buscar en historial...</system:String>
+    <system:String x:Key="RentAmountLabel">Cuota de Alquiler</system:String>
+    <system:String x:Key="ExpenseAmountLabel">Importe de Gastos</system:String>
+    <system:String x:Key="ClearDateTooltip">Limpiar fecha</system:String>
+    <system:String x:Key="PendingPaymentsSectionTitle">⚠️ Cuotas Pendientes</system:String>
+    <system:String x:Key="CollectButton">Cobrar</system:String>
+    <system:String x:Key="ExpectedRentHeader">Alquiler Esperado</system:String>
+    <system:String x:Key="ExpectedExpHeader">Gastos Esp.</system:String>
+
+    <!-- Vista Gastos -->
     <system:String x:Key="ExpensesTitle">Gastos</system:String>
     <system:String x:Key="NewExpenseButton">Nuevo Gasto</system:String>
     <system:String x:Key="ViewPdfButton">Ver Factura PDF</system:String>
     <system:String x:Key="IsChargeableLabel">¿Repercutible a inquilinos?</system:String>
     <system:String x:Key="ChargeableColumnHeader">Repercutible</system:String>
+    <system:String x:Key="SearchExpensePlaceholder">Buscar concepto...</system:String>
+    <system:String x:Key="FilterByCategoryTooltip">Filtrar por categoría</system:String>
+    <system:String x:Key="FilterByYearTooltip">Filtrar por año</system:String>
+    <system:String x:Key="EditInvoiceTitle">Editar Factura</system:String>
+    <system:String x:Key="ConceptLabel">Concepto</system:String>
+    <system:String x:Key="CategoryLabel">Categoría</system:String>
+    <system:String x:Key="NewCategoryButton">[+ Nueva Categoría]</system:String>
+    <system:String x:Key="EditCategoryTooltip">Editar Categoría</system:String>
+    <system:String x:Key="ChargeableIndicator">(Repercutible)</system:String>
+    <system:String x:Key="AmountLabel">Importe</system:String>
+    <system:String x:Key="PdfInvoiceLabel">Factura PDF</system:String>
+    <system:String x:Key="ClearFileTooltip">Limpiar archivo</system:String>
+    <system:String x:Key="DeleteInvoiceButton">Eliminar Factura</system:String>
+    <system:String x:Key="SaveInvoiceButton">Guardar Factura</system:String>
+    <system:String x:Key="ConceptHeader">Concepto</system:String>
+    <system:String x:Key="CategoryHeader">Categoría</system:String>
+    <system:String x:Key="AmountHeader">Importe</system:String>
+    <system:String x:Key="PdfInvoiceHeader">Factura PDF</system:String>
+    <system:String x:Key="DeleteInvoiceConfirm">¿Seguro que quieres eliminar esta factura?</system:String>
+    <system:String x:Key="CategoryNameLabel">Nombre de la categoría</system:String>
+    <system:String x:Key="CategoryNamePlaceholder">Ej: Reformas y Mantenimiento</system:String>
+    <system:String x:Key="ChargeableToggleLabel">Repercutible al inquilino</system:String>
+    <system:String x:Key="DeleteCategoryButton">&#x1F5D1;&#xFE0F; Eliminar</system:String>
+    <system:String x:Key="SaveCategoryButton">Guardar Categoría</system:String>
+
+    <!-- Vista Viviendas -->
+    <system:String x:Key="PropertiesTitle">Viviendas</system:String>
+    <system:String x:Key="NewPropertyButton">Nueva Vivienda</system:String>
+    <system:String x:Key="PropertyNameHeader">Nombre</system:String>
+    <system:String x:Key="PropertyStreetHeader">Calle</system:String>
+    <system:String x:Key="PropertyCityHeader">Localidad</system:String>
+    <system:String x:Key="PropertyPostalCodeHeader">C.P.</system:String>
+    <system:String x:Key="PropertyStatusHeader">Estado</system:String>
+    <system:String x:Key="PropertyDetailsTitle">Detalles de Vivienda</system:String>
+    <system:String x:Key="PropertyNameLabel">Nombre</system:String>
+    <system:String x:Key="PropertyNamePlaceholder">P. ej. Piso Centro</system:String>
+    <system:String x:Key="PropertyStreetLabel">Calle / Dirección</system:String>
+    <system:String x:Key="PropertyStreetPlaceholder">P. ej. Calle Mayor 12, 3ºA</system:String>
+    <system:String x:Key="PropertyCityLabel">Localidad</system:String>
+    <system:String x:Key="PropertyCityPlaceholder">Madrid</system:String>
+    <system:String x:Key="PropertyPostalCodeLabel">Código Postal</system:String>
+    <system:String x:Key="PropertyPostalCodePlaceholder">28001</system:String>
+    <system:String x:Key="PropertyNotesLabel">Notas Adicionales</system:String>
+    <system:String x:Key="PropertyNotesPlaceholder">Información de interés, etc.</system:String>
+
+    <!-- Notificaciones nativas -->
+    <system:String x:Key="NotificationPendingTitle">Alquiler Pendiente</system:String>
+    <system:String x:Key="NotificationPendingBody">{0} tiene pendiente el mes de {1}.</system:String>
+    <system:String x:Key="NotificationActionButton">Mostrar</system:String>
 </ResourceDictionary>

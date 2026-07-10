@@ -14,7 +14,7 @@ public static class NativeNotificationService
     private static NotificationClickedCallback? _macCallbackDelegate;
 
     [DllImport("MacNotifier", CallingConvention = CallingConvention.Cdecl)]
-    private static extern void show_mac_notification(string title, string body);
+    private static extern void show_mac_notification(string title, string body, string actionButtonTitle);
 
     [DllImport("MacNotifier", CallingConvention = CallingConvention.Cdecl)]
     private static extern void init_mac_notifier(NotificationClickedCallback callback);
@@ -51,7 +51,14 @@ public static class NativeNotificationService
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 Console.WriteLine($"[NOTIF] Calling show_mac_notification: {title}");
-                show_mac_notification(title, message);
+                string btnStr = "Show";
+                if (Avalonia.Application.Current != null && 
+                    Avalonia.Application.Current.TryGetResource("NotificationActionButton", Avalonia.Styling.ThemeVariant.Default, out var btnObj) &&
+                    btnObj is string s)
+                {
+                    btnStr = s;
+                }
+                show_mac_notification(title, message, btnStr);
                 Console.WriteLine("[NOTIF] show_mac_notification returned OK");
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
