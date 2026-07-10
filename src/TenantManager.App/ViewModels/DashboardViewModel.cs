@@ -309,23 +309,31 @@ public class DashboardViewModel : ViewModelBase
         var nextMonthDate = now.AddMonths(1);
         int daysInNextMonth = DateTime.DaysInMonth(nextMonthDate.Year, nextMonthDate.Month);
 
-        // Calculate Estimated Income iterating per day to perfectly prorate base and extensions
+        // Calculate Estimated Income iterating per day.
+        // IMPORTANT: Compare using .Date (strips timezone offset) to avoid last-day exclusion bugs
+        // caused by dates stored without offset (e.g. "2026-08-31 00:00:00") being treated as UTC
+        // midnight, which is LESS than the previously used UTC-noon DateTimeOffset, dropping the
+        // last day from the proration silently.
         decimal estimatedIncome = 0;
         foreach (var contract in propertyContracts)
         {
             var extensions = propertyExtensions.Where(e => e.RentalContractId == contract.Id).ToList();
+            var contractStart = contract.StartDate.Date;
+            var contractEnd = contract.EndDate?.Date;
 
             for (int day = 1; day <= daysInNextMonth; day++)
             {
-                var date = new DateTimeOffset(nextMonthDate.Year, nextMonthDate.Month, day, 12, 0, 0, TimeSpan.Zero);
+                var dayDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, day);
 
-                var activeExt = extensions.FirstOrDefault(e => e.StartDate <= date && (e.EndDate == null || e.EndDate >= date));
+                var activeExt = extensions.FirstOrDefault(e =>
+                    e.StartDate.Date <= dayDate && (e.EndDate == null || e.EndDate.Value.Date >= dayDate));
+
                 if (activeExt != null)
                 {
                     decimal monthlyTotal = activeExt.MonthlyRent + (activeExt.ExpensePaymentType == ExpensePaymentType.Fixed ? activeExt.FixedExpenseAmount : 0);
                     estimatedIncome += monthlyTotal / daysInNextMonth;
                 }
-                else if (contract.StartDate <= date && (contract.EndDate == null || contract.EndDate >= date))
+                else if (contractStart <= dayDate && (contractEnd == null || contractEnd.Value >= dayDate))
                 {
                     decimal monthlyTotal = contract.MonthlyRent + (contract.ExpensePaymentType == ExpensePaymentType.Fixed ? contract.FixedExpenseAmount : 0);
                     estimatedIncome += monthlyTotal / daysInNextMonth;
@@ -656,9 +664,21 @@ public class DashboardViewModel : ViewModelBase
                     foreach (var payment in paymentsToNotify)
                     {
                         Console.WriteLine($"[DASH] Firing notification for {payment.TenantName}");
+                        
+                        string titleStr = "Pending Rent";
+                        string bodyFormatStr = "{0} has a pending payment for {1}.";
+                        
+                        if (Avalonia.Application.Current != null)
+                        {
+                            if (Avalonia.Application.Current.TryGetResource("NotificationPendingTitle", Avalonia.Styling.ThemeVariant.Default, out var titleRes) && titleRes is string t) 
+                                titleStr = t;
+                            if (Avalonia.Application.Current.TryGetResource("NotificationPendingBody", Avalonia.Styling.ThemeVariant.Default, out var bodyRes) && bodyRes is string b) 
+                                bodyFormatStr = b;
+                        }
+
                         TenantManager.App.Services.NativeNotificationService.ShowNotification(
-                            "Alquiler Pendiente",
-                            $"{payment.TenantName} tiene pendiente el mes de {payment.MonthLabel}.");
+                            titleStr,
+                            string.Format(bodyFormatStr, payment.TenantName, payment.MonthLabel));
                     }
                 });
             });

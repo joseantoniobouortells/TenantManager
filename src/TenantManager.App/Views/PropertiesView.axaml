@@ -13,18 +13,18 @@
         <!-- LIST SECTION -->
         <Grid Grid.Column="0" RowDefinitions="Auto,*" Margin="0">
             <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0 0 0 16">
-                <TextBlock Grid.Column="0" Text="Viviendas" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Content="Nueva Vivienda" Command="{Binding PropertyList.NewPropertyCommand}" Classes="Primary" />
+                <TextBlock Grid.Column="0" Text="{DynamicResource PropertiesTitle}" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="{DynamicResource NewPropertyButton}" Command="{Binding PropertyList.NewPropertyCommand}" Classes="Primary" />
             </Grid>
 
             <Border Grid.Row="1" Background="{DynamicResource CardBackgroundBrush}" CornerRadius="12" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}">
                 <Grid RowDefinitions="Auto,*">
                      <Grid Grid.Row="0" ColumnDefinitions="2*,1.8*,1*,0.8*,1.2*,Auto" Margin="16 12">
-                         <TextBlock Grid.Column="0" Text="Nombre" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                         <TextBlock Grid.Column="1" Text="Calle" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                         <TextBlock Grid.Column="2" Text="Localidad" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                         <TextBlock Grid.Column="3" Text="C.P." FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                         <TextBlock Grid.Column="4" Text="Estado" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                         <TextBlock Grid.Column="0" Text="{DynamicResource PropertyNameLabel}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="1" Text="{DynamicResource PropertyStreetHeader}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="2" Text="{DynamicResource PropertyCityHeader}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="3" Text="{DynamicResource PropertyPostalCodeHeader}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                         <TextBlock Grid.Column="4" Text="{DynamicResource PropertyStatusHeader}" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                          <TextBlock Grid.Column="5" Text="" Width="40" />
                      </Grid>
                     
@@ -63,42 +63,42 @@
                 IsVisible="{Binding PropertyList.IsEditing}" BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
                 Width="380" Margin="24 0 0 0">
             <Grid RowDefinitions="Auto,*,Auto">
-                <TextBlock Grid.Row="0" Text="Detalles de Vivienda" FontSize="18" FontWeight="SemiBold" Margin="0 0 0 24" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Grid.Row="0" Text="{DynamicResource PropertyDetailsTitle}" FontSize="18" FontWeight="SemiBold" Margin="0 0 0 24" Foreground="{DynamicResource TextPrimaryBrush}" />
 
                 <ScrollViewer Grid.Row="1">
                     <StackPanel Spacing="16">
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Nombre" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            <TextBox Text="{Binding PropertyList.EditName}" PlaceholderText="P. ej. Piso Centro" />
+                            <TextBlock Text="{DynamicResource PropertyNameHeader}" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox Text="{Binding PropertyList.EditName}" PlaceholderText="{DynamicResource PropertyNamePlaceholder}" />
                         </StackPanel>
 
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Calle / Dirección" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            <TextBox Text="{Binding PropertyList.EditAddress}" PlaceholderText="P. ej. Calle Mayor 12, 3ºA" />
+                            <TextBlock Text="{DynamicResource PropertyStreetLabel}" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox Text="{Binding PropertyList.EditAddress}" PlaceholderText="{DynamicResource PropertyStreetPlaceholder}" />
                         </StackPanel>
                         
                         <Grid ColumnDefinitions="*,*">
                             <StackPanel Grid.Column="0" Spacing="8" Margin="0 0 8 0">
-                                <TextBlock Text="Localidad" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                <TextBox Text="{Binding PropertyList.EditCity}" PlaceholderText="Madrid" />
+                                <TextBlock Text="{DynamicResource PropertyCityLabel}" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBox Text="{Binding PropertyList.EditCity}" PlaceholderText="{DynamicResource PropertyCityPlaceholder}" />
                             </StackPanel>
                             
                             <StackPanel Grid.Column="1" Spacing="8" Margin="8 0 0 0">
-                                <TextBlock Text="Código Postal" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                <TextBox Text="{Binding PropertyList.EditPostalCode}" PlaceholderText="28001" />
+                                <TextBlock Text="{DynamicResource PropertyPostalCodeLabel}" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <TextBox Text="{Binding PropertyList.EditPostalCode}" PlaceholderText="{DynamicResource PropertyPostalCodePlaceholder}" />
                             </StackPanel>
                         </Grid>
 
                         <StackPanel Spacing="8">
-                            <TextBlock Text="Notas Adicionales" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            <TextBox Text="{Binding PropertyList.EditNotes}" AcceptsReturn="True" Height="100" PlaceholderText="Información de interés, etc." />
+                            <TextBlock Text="{DynamicResource PropertyNotesLabel}" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBox Text="{Binding PropertyList.EditNotes}" AcceptsReturn="True" Height="100" PlaceholderText="{DynamicResource PropertyNotesPlaceholder}" />
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 
                 <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" Margin="0 24 0 0">
-                    <Button Content="Cancelar" Command="{Binding PropertyList.CancelEditCommand}" />
-                    <Button Content="Guardar" Command="{Binding PropertyList.SavePropertyCommand}" Classes="Primary" />
+                    <Button Content="{DynamicResource CancelButton}" Command="{Binding PropertyList.CancelEditCommand}" />
+                    <Button Content="{DynamicResource SaveButton}" Command="{Binding PropertyList.SavePropertyCommand}" Classes="Primary" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -116,11 +116,11 @@
                     HorizontalAlignment="Center"
                     Padding="20">
                 <StackPanel Spacing="16" VerticalAlignment="Center">
-                    <TextBlock Text="¿Confirmar eliminación?" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
-                    <TextBlock Text="Esta acción no se puede deshacer." FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource ConfirmDeleteTitle}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource CannotUndoMsg}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
                     <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
-                        <Button Content="Confirmar" Command="{Binding PropertyList.ConfirmDeletePropertyCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
-                        <Button Content="Cancelar" Command="{Binding PropertyList.CancelDeletePropertyCommand}" Classes="Action" />
+                        <Button Content="{DynamicResource ConfirmButton}" Command="{Binding PropertyList.ConfirmDeletePropertyCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
+                        <Button Content="{DynamicResource CancelButton}" Command="{Binding PropertyList.CancelDeletePropertyCommand}" Classes="Action" />
                     </StackPanel>
                 </StackPanel>
             </Border>

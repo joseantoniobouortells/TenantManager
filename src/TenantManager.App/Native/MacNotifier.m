@@ -28,9 +28,10 @@ void init_mac_notifier(NotificationCallback callback) {
 @end
 
 __attribute__((visibility("default")))
-void show_mac_notification(const char* title, const char* body) {
+void show_mac_notification(const char* title, const char* body, const char* actionButtonTitle) {
     NSString *nsTitle = [NSString stringWithUTF8String:title];
     NSString *nsBody = [NSString stringWithUTF8String:body];
+    NSString *nsActionButton = actionButtonTitle ? [NSString stringWithUTF8String:actionButtonTitle] : @"Show";
 
     dispatch_async(dispatch_get_main_queue(), ^{
         @autoreleasepool {
@@ -41,7 +42,7 @@ void show_mac_notification(const char* title, const char* body) {
             notification.informativeText = nsBody;
             notification.soundName = NSUserNotificationDefaultSoundName;
             notification.hasActionButton = YES;
-            notification.actionButtonTitle = @"Mostrar";
+            notification.actionButtonTitle = nsActionButton;
             // Force delivery date to now so macOS treats it as a fresh notification
             notification.deliveryDate = [NSDate date];
 
