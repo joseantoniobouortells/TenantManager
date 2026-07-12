@@ -18,34 +18,32 @@ public class AssistantViewModel : ViewModelBase
 {
     private string _inputText = string.Empty;
     private bool _isLoading;
-    
-    // AI Services
+
+    // AI services
     private readonly AiQueryService _queryService;
-    private readonly LocalAiClient _aiClient;
+
+    // Conversation state — lives in the session, not persisted to DB
+    private readonly AssistantContext _conversationContext = new();
 
     public ObservableCollection<ChatMessageViewModel> Messages { get; } = new();
 
     public string InputText
     {
         get => _inputText;
-        set 
+        set
         {
             if (SetProperty(ref _inputText, value))
-            {
                 (SendCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
         }
     }
 
     public bool IsLoading
     {
         get => _isLoading;
-        set 
+        set
         {
             if (SetProperty(ref _isLoading, value))
-            {
                 (SendCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
         }
     }
 
@@ -62,9 +60,11 @@ public class AssistantViewModel : ViewModelBase
 
     public AssistantViewModel()
     {
-        // For DI, in a real app these would be injected. We instantiate directly for now.
-        _aiClient = new LocalAiClient();
-        _queryService = new AiQueryService(new AppDbContext(), _aiClient);
+        var aiClient = new LocalAiClient();
+        _queryService = new AiQueryService(new AppDbContext(), aiClient);
+
+        // Default conversation language to Spanish (app UI language)
+        _conversationContext.LastLanguage = "es";
 
         SendCommand = new RelayCommand(
             _ => { _ = SendMessageAsync(); },
@@ -85,16 +85,18 @@ public class AssistantViewModel : ViewModelBase
         InputText = string.Empty;
 
         Messages.Add(new ChatMessageViewModel { Role = "user", Content = userText });
-        
-        var lowerMsg = userText.ToLowerInvariant();
-        bool isSpanish = lowerMsg.Contains("cuando") || lowerMsg.Contains("qué") || lowerMsg.Contains("habitación") || lowerMsg.Contains("cuánt") || lowerMsg.Contains("estado") || lowerMsg.Contains("pago") || lowerMsg.Contains("deja") || lowerMsg.Contains("se va") || lowerMsg.Contains("quién") || lowerMsg.Contains("quien");
+
+        // Determine current language from context (default = Spanish per app UI)
+        bool isSpanish = _conversationContext.LastLanguage == "es";
 
         if (!IsAiEnabled)
         {
-            Messages.Add(new ChatMessageViewModel 
-            { 
-                Role = "assistant", 
-                Content = isSpanish ? "El asistente de IA está desactivado en la configuración." : "AI Assistant is disabled." 
+            Messages.Add(new ChatMessageViewModel
+            {
+                Role = "assistant",
+                Content = isSpanish
+                    ? "El asistente de IA está desactivado en la configuración."
+                    : "AI Assistant is disabled."
             });
             return;
         }
@@ -103,30 +105,36 @@ public class AssistantViewModel : ViewModelBase
 
         try
         {
-            // 1. Deterministic Intent & Data Resolution
-            var (finalAnswer, isEs) = await _queryService.ResolveIntentAndGetDataAsync(userText);
-            isSpanish = isEs;
+            var (finalAnswer, answerIsSpanish) =
+                await _queryService.ResolveIntentAndGetDataAsync(userText, _conversationContext);
+
+            // Update conversation language from detected language
+            isSpanish = answerIsSpanish;
 
             string finalResponse;
-
             if (!string.IsNullOrWhiteSpace(finalAnswer))
             {
-                // We got a deterministic answer or clarification
                 finalResponse = finalAnswer;
             }
             else
             {
-                // Fallback for unhandled intents or empty results
-                finalResponse = isSpanish 
-                    ? "Solo puedo responder preguntas específicas sobre los datos, como la fecha de salida de un inquilino."
-                    : "I can only answer specific questions about the data, such as a tenant's move-out date.";
+                // Unsupported intent fallback — use conversation language
+                finalResponse = isSpanish
+                    ? "Puedo responder preguntas concretas sobre los datos, por ejemplo la fecha de salida de un inquilino, su habitación, pagos pendientes o habitaciones disponibles."
+                    : "I can answer specific questions about the data, such as a tenant's move-out date, current room, pending payments, or available rooms.";
             }
 
             Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });
         }
         catch (Exception ex)
         {
-            Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = $"Error processing request: {ex.Message}" });
+            Messages.Add(new ChatMessageViewModel
+            {
+                Role = "assistant",
+                Content = isSpanish
+                    ? $"Error al procesar la consulta: {ex.Message}"
+                    : $"Error processing request: {ex.Message}"
+            });
         }
         finally
         {

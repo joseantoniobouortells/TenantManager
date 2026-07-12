@@ -11,60 +11,88 @@ using Xunit;
 
 namespace TenantManager.Tests;
 
+// ---------------------------------------------------------------------------
+// Mock HTTP handler — simulates the LLM returning an extraction JSON
+// ---------------------------------------------------------------------------
 public class MockHttpMessageHandler : HttpMessageHandler
 {
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        var responseContent = @"{
-            ""choices"": [
-                {
-                    ""message"": {
-                        ""content"": ""{\""language\"": \""en\"", \""intent\"": \""tenant_move_out_date\"", \""confidence\"": 0.95, \""entities\"": { \""tenantName\"": \""Erik Artigas\"" }}""
-                    }
-                }
-            ]
-        }";
+    private readonly string _responseJson;
 
+    public MockHttpMessageHandler(string? responseJson = null)
+    {
+        // Default: valid extraction for "Erik Artigas", English, move-out intent
+        _responseJson = responseJson ?? BuildChoicesJson(
+            "{\"language\":\"en\",\"intent\":\"tenant_move_out_date\",\"confidence\":0.95,\"entities\":{\"tenantName\":\"Erik Artigas\"}}");
+    }
+
+    public static string BuildChoicesJson(string innerContent)
+    {
+        // Wrap the content inside the expected OpenAI-compatible response shape.
+        // innerContent must NOT contain embedded double quotes — caller is responsible.
+        return "{\"choices\":[{\"message\":{\"content\":\"" +
+               innerContent.Replace("\"", "\\\"") +
+               "\"}}]}";
+    }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent(responseContent)
+            Content = new StringContent(_responseJson)
         };
         return Task.FromResult(response);
     }
 }
 
+// ---------------------------------------------------------------------------
+// Helpers for constructing LLM responses in tests
+// ---------------------------------------------------------------------------
+internal static class LlmJson
+{
+    public static string MoveOut(string tenantName, string lang = "en") =>
+        MockHttpMessageHandler.BuildChoicesJson(
+            $"{{\"language\":\"{lang}\",\"intent\":\"tenant_move_out_date\",\"confidence\":0.95,\"entities\":{{\"tenantName\":\"{tenantName}\"}}}}");
+
+    public static string Unknown(string lang = "es") =>
+        MockHttpMessageHandler.BuildChoicesJson(
+            $"{{\"language\":\"{lang}\",\"intent\":\"unknown\",\"confidence\":0.1,\"entities\":{{}}}}");
+}
+
+// ---------------------------------------------------------------------------
+// AiQueryService Tests
+// ---------------------------------------------------------------------------
 public class AiQueryServiceTests
 {
-    private AppDbContext GetMemoryDbContext()
+    private static AppDbContext GetMemoryDbContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite("DataSource=:memory:")
             .Options;
-
         var db = new AppDbContext(options);
         db.Database.OpenConnection();
         db.Database.EnsureCreated();
         return db;
     }
 
-    [Fact]
-    public async Task ResolveIntentAndGetDataAsync_MoveOutDate_ReturnsContextStringWithoutThrowing()
+    private static (AiQueryService service, AppDbContext db) BuildService(string? llmJson = null)
     {
-        // Arrange
-        using var db = GetMemoryDbContext();
-        
-        var httpClient = new HttpClient(new MockHttpMessageHandler());
+        var db = GetMemoryDbContext();
+        var httpClient = new HttpClient(new MockHttpMessageHandler(llmJson));
         var aiClient = new LocalAiClient(httpClient);
-        var service = new AiQueryService(db, aiClient);
-
-        // Mock Settings
-        var tempSettingsPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "settings.json");
-        // We assume IsAiEnabled = true because the mock handler doesn't read the file directly, but LocalAiClient does.
-        // If settings disable it, ExtractIntentAsync returns null.
-        // For testing, we ensure settings are enabled.
         SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = "http://mock" });
+        return (new AiQueryService(db, aiClient), db);
+    }
 
-        var property = new Property { Name = "Test Property" };
+    // -----------------------------------------------------------------------
+    // 1. Move-out date without extensions uses contract EndDate
+    // -----------------------------------------------------------------------
+    [Fact]
+    public async Task MoveOutDate_WithoutExtensions_UsesContractEndDate()
+    {
+        var (service, db) = BuildService(LlmJson.MoveOut("Erik Artigas"));
+
+        var property = new Property { Name = "P" };
         db.Properties.Add(property);
         await db.SaveChangesAsync();
 
@@ -82,29 +110,23 @@ public class AiQueryServiceTests
         db.RentalContracts.Add(contract);
         await db.SaveChangesAsync();
 
-        // Act
-        var (resultEnglish, isEs1) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
 
-        // Assert
-        Assert.NotNull(resultEnglish);
-        Assert.Contains("Erik Artigas", resultEnglish);
-        Assert.Contains("move out", resultEnglish);
-        Assert.Contains(contract.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
+        Assert.NotNull(result);
+        Assert.Contains("Erik Artigas", result);
+        Assert.Contains("move out", result);
+        Assert.Contains(contract.EndDate!.Value.ToString("yyyy-MM-dd"), result);
     }
 
+    // -----------------------------------------------------------------------
+    // 2. Move-out date with extensions uses latest extension date
+    // -----------------------------------------------------------------------
     [Fact]
-    public async Task ResolveIntentAndGetDataAsync_MoveOutDate_WithExtensions_UsesLatestExtensionDate()
+    public async Task MoveOutDate_WithExtensions_UsesLatestExtensionDate()
     {
-        // Arrange
-        using var db = GetMemoryDbContext();
-        
-        var httpClient = new HttpClient(new MockHttpMessageHandler());
-        var aiClient = new LocalAiClient(httpClient);
-        var service = new AiQueryService(db, aiClient);
+        var (service, db) = BuildService(LlmJson.MoveOut("Erik Artigas"));
 
-        SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = "http://mock" });
-
-        var property = new Property { Name = "Test Property" };
+        var property = new Property { Name = "P" };
         db.Properties.Add(property);
         await db.SaveChangesAsync();
 
@@ -122,38 +144,165 @@ public class AiQueryServiceTests
         db.RentalContracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var extension1 = new RentalContractExtension
+        db.RentalContractExtensions.Add(new RentalContractExtension
         {
             RentalContractId = contract.Id,
             StartDate = DateTimeOffset.Now.AddMonths(-6),
             EndDate = DateTimeOffset.Now.AddMonths(-1)
-        };
-        db.RentalContractExtensions.Add(extension1);
+        });
 
-        var extension2 = new RentalContractExtension
+        var latestExt = new RentalContractExtension
         {
             RentalContractId = contract.Id,
             StartDate = DateTimeOffset.Now.AddMonths(-1),
             EndDate = DateTimeOffset.Now.AddMonths(5)
         };
-        db.RentalContractExtensions.Add(extension2);
+        db.RentalContractExtensions.Add(latestExt);
         await db.SaveChangesAsync();
 
-        // Act
-        var (resultEnglish, isEs) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
 
-        // Assert
-        Assert.NotNull(resultEnglish);
-        Assert.Contains(extension2.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
-        Assert.DoesNotContain(contract.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
-        Assert.DoesNotContain(extension1.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
+        Assert.NotNull(result);
+        Assert.Contains(latestExt.EndDate!.Value.ToString("yyyy-MM-dd"), result);
+        Assert.DoesNotContain(contract.EndDate!.Value.ToString("yyyy-MM-dd"), result);
     }
 
+    // -----------------------------------------------------------------------
+    // 3. Spanish follow-up "Y Namratha?" inherits previous move-out intent
+    // -----------------------------------------------------------------------
+    [Fact]
+    public async Task FollowUp_Spanish_YNamratha_InheritsMoveOutIntent()
+    {
+        // LLM returns "unknown" for the short follow-up
+        var (service, db) = BuildService(LlmJson.Unknown("es"));
+
+        var property = new Property { Name = "P" };
+        db.Properties.Add(property);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Namratha Sharma", PropertyId = property.Id };
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        var contract = new RentalContract
+        {
+            TenantId = tenant.Id,
+            PropertyId = property.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-3),
+            EndDate = DateTimeOffset.Now.AddMonths(3)
+        };
+        db.RentalContracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var ctx = new AssistantContext
+        {
+            LastResolvedIntent = "tenant_move_out_date",
+            LastLanguage = "es",
+            LastEntityType = "tenantName"
+        };
+
+        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("Y Namratha?", ctx);
+
+        Assert.NotNull(result);
+        Assert.True(isEs, "Should respond in Spanish");
+        Assert.Contains("Namratha Sharma", result);
+        Assert.Contains("deja", result); // Spanish template
+        Assert.Contains(contract.EndDate!.Value.ToString("yyyy-MM-dd"), result);
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. English follow-up "And Namratha?" inherits previous move-out intent
+    // -----------------------------------------------------------------------
+    [Fact]
+    public async Task FollowUp_English_AndNamratha_InheritsMoveOutIntent()
+    {
+        var (service, db) = BuildService(LlmJson.Unknown("en"));
+
+        var property = new Property { Name = "P" };
+        db.Properties.Add(property);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Namratha Sharma", PropertyId = property.Id };
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        var contract = new RentalContract
+        {
+            TenantId = tenant.Id,
+            PropertyId = property.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-3),
+            EndDate = DateTimeOffset.Now.AddMonths(3)
+        };
+        db.RentalContracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var ctx = new AssistantContext
+        {
+            LastResolvedIntent = "tenant_move_out_date",
+            LastLanguage = "en"
+        };
+
+        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("And Namratha?", ctx);
+
+        Assert.NotNull(result);
+        Assert.False(isEs, "Should respond in English");
+        Assert.Contains("Namratha Sharma", result);
+        Assert.Contains("move out", result); // English template
+    }
+
+    // -----------------------------------------------------------------------
+    // 5. Context is updated after a successful answer
+    // -----------------------------------------------------------------------
+    [Fact]
+    public async Task Context_IsUpdatedAfterSuccessfulAnswer()
+    {
+        var (service, db) = BuildService(LlmJson.MoveOut("Erik Artigas"));
+
+        var property = new Property { Name = "P" };
+        db.Properties.Add(property);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Erik Artigas", PropertyId = property.Id };
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        db.RentalContracts.Add(new RentalContract
+        {
+            TenantId = tenant.Id,
+            PropertyId = property.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-1),
+            EndDate = DateTimeOffset.Now.AddMonths(5)
+        });
+        await db.SaveChangesAsync();
+
+        var ctx = new AssistantContext();
+        await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?", ctx);
+
+        Assert.Equal("tenant_move_out_date", ctx.LastResolvedIntent);
+        Assert.Equal("en", ctx.LastLanguage);
+    }
+
+    // -----------------------------------------------------------------------
+    // 6. No context — short follow-up returns null (not wrong intent)
+    // -----------------------------------------------------------------------
+    [Fact]
+    public async Task NoContext_ShortFollowUp_DoesNotInheritIntent()
+    {
+        var (service, _) = BuildService(LlmJson.Unknown("es"));
+
+        var (result, _) = await service.ResolveIntentAndGetDataAsync("Y Namratha?", null);
+
+        // Without a previous context the follow-up cannot be resolved
+        Assert.Null(result);
+    }
+
+    // -----------------------------------------------------------------------
+    // 7. Prompt hardening instructions are present
+    // -----------------------------------------------------------------------
     [Fact]
     public void BuildSystemPrompt_ContainsHardeningInstructions()
     {
-        var context = "Context Data";
-        var prompt = SafeContextBuilder.BuildSystemPrompt(context);
+        var prompt = SafeContextBuilder.BuildSystemPrompt("Context Data");
 
         Assert.Contains("Return ONLY the final answer.", prompt);
         Assert.Contains("Do NOT include reasoning, analysis, or chain-of-thought.", prompt);

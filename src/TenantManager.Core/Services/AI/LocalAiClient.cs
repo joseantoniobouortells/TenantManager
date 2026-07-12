@@ -152,7 +152,7 @@ public class LocalAiClient
         }
     }
 
-    public async Task<string?> ExtractIntentAsync(string userMessage, CancellationToken cancellationToken = default)
+    public async Task<string?> ExtractIntentAsync(string userMessage, AssistantContext? context = null, CancellationToken cancellationToken = default)
     {
         var settings = SettingsPersistence.LoadSettings();
 
@@ -161,17 +161,23 @@ public class LocalAiClient
             return null;
         }
 
-        string extractionPrompt = @"Extract the user's intent and entities into JSON.
-Return JSON ONLY. Do not use markdown. Do not include explanations.
+        var contextHint = "";
+        if (context != null && context.HasContext)
+        {
+            contextHint = $"\nConversation context: previous_intent={context.LastResolvedIntent}, previous_language={context.LastLanguage ?? "unknown"}.\nUse this context to interpret short follow-up questions that provide only a new name.\n";
+        }
 
-{
+        string extractionPrompt = $@"Extract the user's intent and entities into JSON.
+Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
+
+{{
   ""language"": ""es"", // or en
   ""intent"": ""tenant_move_out_date"", // or tenant_current_room, dashboard_summary, available_rooms, pending_or_late_payments, missing_contract_files, unknown
-  ""entities"": {
+  ""entities"": {{
     ""tenantName"": ""Erik Artigas"" // if present
-  },
+  }},
   ""confidence"": 0.92 // 0.0 to 1.0
-}";
+}}";
 
         var requestBody = new ChatRequest
         {

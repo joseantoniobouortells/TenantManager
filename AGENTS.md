@@ -14,6 +14,7 @@ Local-first desktop app for property owners to manage rooms, tenants, rental con
 5. **Zero-Leak Policy:** NEVER commit PII (names/contacts), local DB files (`.db*`, `.sqlite*`), real contract documents, or `bin`/`obj` folders.
 6. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation first.
 7. **Documentos y Planes:** Cualquier plan de implementación, especificación (`*_plan.md`, `*_spec.md`) o archivo generado para revisión humana DEBE guardarse SIEMPRE dentro de la carpeta `docs/specs/` (no en la raíz ni en los artefactos temporales).
+8. **Core library:** All reusable application/domain logic that is not purely UI-specific must live in `TenantManager.Core`. This includes: business rules, prompt builders, intent parsers, tenant matching, deterministic answer generation, data-query services, AI request/response DTOs, and AI conversation context. The Avalonia app (`TenantManager.App`) must stay focused on UI, ViewModels, Views, XAML styling, app startup, and UI-specific composition. `TenantManager.Core` must NOT reference Avalonia or any UI framework. Future web/mobile frontends must be able to reuse Core logic without changes.
 
 ## Validation Pipeline
 Run after changes:
