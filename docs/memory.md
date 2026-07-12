@@ -141,3 +141,8 @@
 96. **Migración de DMG a PKG en macOS (Julio 2026):**
     - *Decisión:* Se reemplazó la generación de instaladores `.dmg` por paquetes `.pkg` en `bundle-mac.sh` y el workflow de GitHub Actions.
     - *Motivo:* Proveer un script de Apple `postinstall` oculto en el `.pkg` que elimina automáticamente el atributo de cuarentena (`com.apple.quarantine`) y los archivos temporales (`._*`, `.DS_Store`) usando `xattr -cr` de la aplicación una vez extraída en `/Applications`. De esta forma, el usuario final ya no necesita usar la terminal para autorizar la ejecución en macOS tras la descarga.
+97. **Asistente IA Local Integrado (Fase 1-6) (Julio 2026):**
+    - *Decisión:* Se implementó un asistente de IA local para permitir a los usuarios consultar datos directamente (p.ej. "¿Cuándo se va Erik Artigas?").
+    - *Arquitectura:* Se optó por una resolución determinista y segura de la intención (`AiQueryService`) combinada con un LLM generativo compatible con la API de OpenAI (vía `LocalAiClient`).
+    - *Privacidad (PII):* El LLM nunca tiene acceso directo a la base de datos ni a los datos personales. Un intermediario (`SafeContextBuilder`) inyecta estrictamente los datos relevantes de manera anonimizada (ej. contratos, fechas) redactando teléfonos y correos electrónicos.
+    - *Independencia:* Se construyó utilizando puro `HttpClient` y la serialización JSON del framework para evitar dependencias pesadas como Semantic Kernel o la SDK oficial de OpenAI, dado que la meta era un cliente agnóstico ultra ligero enfocado en conectar contra LM Studio local.
