@@ -13,6 +13,13 @@
     <system:String x:Key="DatabasePathLabel">Database Path:</system:String>
     <system:String x:Key="AppVersionLabel">App Version:</system:String>
 
+    <!-- AI Settings -->
+    <system:String x:Key="AiSettingsLabel">AI Assistant (Local)</system:String>
+    <system:String x:Key="AiSettingsDesc">Configure the local AI assistant. Ensure LM Studio or a similar local server is running.</system:String>
+    <system:String x:Key="EnableAiLabel">Enable AI Assistant</system:String>
+    <system:String x:Key="AiEndpointLabel">Local API Endpoint</system:String>
+    <system:String x:Key="AiModelNameLabel">Model Name (optional)</system:String>
+
     <!-- Navigation tabs -->
     <system:String x:Key="DashboardTab">Dashboard</system:String>
     <system:String x:Key="RoomsTab">Rooms</system:String>

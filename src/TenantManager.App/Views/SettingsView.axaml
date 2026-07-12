@@ -41,6 +41,24 @@
                     </StackPanel>
                 </Border>
 
+                <!-- AI Settings Section -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource AiSettingsLabel}" />
+                        <TextBlock Text="{DynamicResource AiSettingsDesc}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        
+                        <ToggleSwitch Content="{DynamicResource EnableAiLabel}" IsChecked="{Binding Settings.IsAiEnabled, Mode=TwoWay}" Margin="0 8 0 0" />
+
+                        <StackPanel Spacing="8" IsVisible="{Binding Settings.IsAiEnabled}">
+                            <TextBlock Text="{DynamicResource AiEndpointLabel}" FontWeight="Medium" Margin="0 8 0 0" />
+                            <TextBox Text="{Binding Settings.AiEndpoint, Mode=TwoWay}" />
+
+                            <TextBlock Text="{DynamicResource AiModelNameLabel}" FontWeight="Medium" Margin="0 8 0 0" />
+                            <TextBox Text="{Binding Settings.AiModelName, Mode=TwoWay}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Information Section -->
                 <Border Classes="Card">
                     <StackPanel Spacing="16">

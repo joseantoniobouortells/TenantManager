@@ -44,6 +44,10 @@ public class SettingsViewModel : ViewModelBase
         new LanguageOption("es", "Español")
     };
 
+    private bool _isAiEnabled;
+    private string _aiEndpoint = "";
+    private string _aiModelName = "";
+
     public SettingsViewModel()
     {
         Log("SettingsViewModel constructor started");
@@ -72,6 +76,11 @@ public class SettingsViewModel : ViewModelBase
         var lang = SupportedLanguages.Find(l => l.Code == settings.Language) ?? SupportedLanguages[0];
         _selectedLanguage = lang;
         ApplyLanguage(lang.Code);
+        
+        // 3. Initialize AI Settings
+        _isAiEnabled = settings.IsAiEnabled;
+        _aiEndpoint = settings.AiEndpoint;
+        _aiModelName = settings.AiModelName;
     }
 
     public string DbPath => DatabasePath.FullPath;
@@ -141,6 +150,36 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
+    public bool IsAiEnabled
+    {
+        get => _isAiEnabled;
+        set
+        {
+            if (SetProperty(ref _isAiEnabled, value))
+                SaveCurrentSettings();
+        }
+    }
+
+    public string AiEndpoint
+    {
+        get => _aiEndpoint;
+        set
+        {
+            if (SetProperty(ref _aiEndpoint, value))
+                SaveCurrentSettings();
+        }
+    }
+
+    public string AiModelName
+    {
+        get => _aiModelName;
+        set
+        {
+            if (SetProperty(ref _aiModelName, value))
+                SaveCurrentSettings();
+        }
+    }
+
     private void SaveCurrentSettings()
     {
         var themeStr = "Default";
@@ -151,7 +190,10 @@ public class SettingsViewModel : ViewModelBase
         var settings = new AppSettings
         {
             Theme = themeStr,
-            Language = SelectedLanguage?.Code ?? "en"
+            Language = SelectedLanguage?.Code ?? "en",
+            IsAiEnabled = this.IsAiEnabled,
+            AiEndpoint = this.AiEndpoint,
+            AiModelName = this.AiModelName
         };
         SettingsPersistence.SaveSettings(settings);
     }

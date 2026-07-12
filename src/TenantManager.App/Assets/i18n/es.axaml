@@ -13,6 +13,13 @@
     <system:String x:Key="DatabasePathLabel">Ruta Base de Datos:</system:String>
     <system:String x:Key="AppVersionLabel">Versión de App:</system:String>
 
+    <!-- AI Settings -->
+    <system:String x:Key="AiSettingsLabel">Asistente IA (Local)</system:String>
+    <system:String x:Key="AiSettingsDesc">Configura el asistente IA local. Asegúrate de tener LM Studio o similar ejecutándose.</system:String>
+    <system:String x:Key="EnableAiLabel">Habilitar Asistente IA</system:String>
+    <system:String x:Key="AiEndpointLabel">Endpoint API Local</system:String>
+    <system:String x:Key="AiModelNameLabel">Nombre del Modelo (opcional)</system:String>
+
     <!-- Tabs de navegación -->
     <system:String x:Key="DashboardTab">Panel</system:String>
     <system:String x:Key="RoomsTab">Habitaciones</system:String>
