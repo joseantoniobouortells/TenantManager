@@ -67,10 +67,7 @@ public class SemanticQueryExecutor
         List<RentalContractExtension> extensions, 
         DateTimeOffset now)
     {
-        var occupiedRoomIds = contracts
-            .Where(c => c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now))
-            .Select(c => c.RoomId)
-            .ToHashSet();
+        var occupiedRoomIds = SemanticDomainResolver.GetOccupiedRoomIds(contracts, extensions, now);
 
         var results = rooms.Select(room =>
         {
@@ -81,7 +78,7 @@ public class SemanticQueryExecutor
                 Active = room.IsActive,
                 Occupied = occupied,
                 Available = room.IsActive && !occupied,
-                CurrentRent = GetCurrentRentForRoom(room, contracts, extensions, now)
+                CurrentRent = SemanticDomainResolver.GetCurrentRentForRoom(room, contracts, extensions, now)
             };
         }).ToList();
 
@@ -104,7 +101,7 @@ public class SemanticQueryExecutor
     {
         var results = tenants.Select(tenant =>
         {
-            var activeContract = contracts.FirstOrDefault(c => c.TenantId == tenant.Id && c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now));
+            var activeContract = contracts.FirstOrDefault(c => c.TenantId == tenant.Id && c.StartDate <= now && (SemanticDomainResolver.GetEffectiveEndDate(c, extensions) == null || SemanticDomainResolver.GetEffectiveEndDate(c, extensions) >= now));
             var room = rooms.FirstOrDefault(r => r.Id == activeContract?.RoomId);
             var latestContract = contracts.Where(c => c.TenantId == tenant.Id).OrderByDescending(c => c.StartDate).FirstOrDefault();
 
@@ -114,7 +111,7 @@ public class SemanticQueryExecutor
                 Active = activeContract != null,
                 CurrentRoom = room?.Name ?? "",
                 MoveInDate = latestContract?.StartDate,
-                EffectiveMoveOutDate = latestContract != null ? GetEffectiveEndDate(latestContract, extensions) : null
+                EffectiveMoveOutDate = latestContract != null ? SemanticDomainResolver.GetEffectiveEndDate(latestContract, extensions) : null
             };
         }).ToList();
 
@@ -122,7 +119,6 @@ public class SemanticQueryExecutor
 
         if (plan.Operation == SemanticQueryOperation.Lookup)
         {
-            // lookup operation matches fullname exactly or by partial match
             var nameFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase));
             if (nameFilter != null && nameFilter.Value != null)
             {
@@ -150,10 +146,10 @@ public class SemanticQueryExecutor
         {
             TenantName = tenants.FirstOrDefault(t => t.Id == contract.TenantId)?.FullName ?? "",
             RoomName = rooms.FirstOrDefault(r => r.Id == contract.RoomId)?.Name ?? "",
-            Active = contract.StartDate <= now && (GetEffectiveEndDate(contract, extensions) == null || GetEffectiveEndDate(contract, extensions) >= now),
+            Active = contract.StartDate <= now && (SemanticDomainResolver.GetEffectiveEndDate(contract, extensions) == null || SemanticDomainResolver.GetEffectiveEndDate(contract, extensions) >= now),
             StartDate = contract.StartDate,
             BaseEndDate = contract.EndDate,
-            EffectiveEndDate = GetEffectiveEndDate(contract, extensions),
+            EffectiveEndDate = SemanticDomainResolver.GetEffectiveEndDate(contract, extensions),
             HasExtensions = extensions.Any(e => e.RentalContractId == contract.Id),
             MissingFile = string.IsNullOrWhiteSpace(contract.FilePath) && contract.FileContent == null
         }).ToList();
@@ -230,7 +226,7 @@ public class SemanticQueryExecutor
 
                 if (!registeredKeys.Contains((tenantName, year, month)))
                 {
-                    var (rent, expense) = GetRentAndExpenseForMonth(contract, contractExtensions, year, month, rooms, contracts, expenses, categories);
+                    var (rent, expense) = SemanticDomainResolver.GetRentAndExpenseForMonth(contract, contractExtensions, year, month, rooms, contracts, expenses, categories);
                     var isOverdue = new DateTime(year, month, DateTime.DaysInMonth(year, month)) < today;
 
                     results.Add(new SemanticPaymentResult
@@ -277,13 +273,10 @@ public class SemanticQueryExecutor
         List<MonthlyPayment> payments, 
         DateTimeOffset now)
     {
-        var occupiedRoomIds = contracts
-            .Where(c => c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now))
-            .Select(c => c.RoomId)
-            .ToHashSet();
+        var occupiedRoomIds = SemanticDomainResolver.GetOccupiedRoomIds(contracts, extensions, now);
 
         int roomCount = rooms.Count(r => r.IsActive);
-        int activeTenantsCount = tenants.Count(tenant => contracts.Any(c => c.TenantId == tenant.Id && c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now)));
+        int activeTenantsCount = tenants.Count(tenant => contracts.Any(c => c.TenantId == tenant.Id && c.StartDate <= now && (SemanticDomainResolver.GetEffectiveEndDate(c, extensions) == null || SemanticDomainResolver.GetEffectiveEndDate(c, extensions) >= now)));
 
         // Compute pending and late payments
         var pendingResults = new List<SemanticPaymentResult>();
@@ -344,77 +337,7 @@ public class SemanticQueryExecutor
         };
     }
 
-    // ----- Resolution & Filter Helpers -----
-
-    private static DateTimeOffset? GetEffectiveEndDate(RentalContract contract, List<RentalContractExtension> extensions)
-    {
-        var contractExtensions = extensions.Where(e => e.RentalContractId == contract.Id).ToList();
-        var validExtensions = contractExtensions.Where(e => e.EndDate.HasValue).ToList();
-        if (validExtensions.Any())
-        {
-            return validExtensions.OrderByDescending(e => e.EndDate).First().EndDate;
-        }
-        return contract.EndDate;
-    }
-
-    private static decimal GetCurrentRentForRoom(Room room, List<RentalContract> contracts, List<RentalContractExtension> extensions, DateTimeOffset now)
-    {
-        var activeContract = contracts.FirstOrDefault(c => c.RoomId == room.Id && c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now));
-        if (activeContract == null) return room.BaseRent;
-
-        var activeExtension = extensions
-            .Where(e => e.RentalContractId == activeContract.Id && e.StartDate <= now && (e.EndDate == null || e.EndDate >= now))
-            .OrderByDescending(e => e.StartDate)
-            .FirstOrDefault();
-
-        return activeExtension != null ? activeExtension.MonthlyRent : activeContract.MonthlyRent;
-    }
-
-    private static (decimal rent, decimal expense) GetRentAndExpenseForMonth(
-        RentalContract contract, 
-        List<RentalContractExtension> extensions, 
-        int year, 
-        int month, 
-        List<Room> rooms, 
-        List<RentalContract> allContracts, 
-        List<ExpenseInvoice> allExpenses, 
-        List<ExpenseCategory> categories)
-    {
-        var targetDateStart = new DateTimeOffset(new DateTime(year, month, 1));
-        var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1);
-
-        var activeExtension = extensions
-            .Where(e => e.RentalContractId == contract.Id && e.StartDate <= targetDateEnd && (!e.EndDate.HasValue || e.EndDate.Value >= targetDateStart))
-            .OrderByDescending(e => e.StartDate)
-            .FirstOrDefault();
-
-        decimal rent = activeExtension != null ? activeExtension.MonthlyRent : contract.MonthlyRent;
-        ExpensePaymentType expenseType = activeExtension != null ? activeExtension.ExpensePaymentType : contract.ExpensePaymentType;
-        decimal fixedExpenseAmount = activeExtension != null ? activeExtension.FixedExpenseAmount : contract.FixedExpenseAmount;
-
-        if (expenseType == ExpensePaymentType.Fixed)
-        {
-            return (rent, fixedExpenseAmount);
-        }
-
-        // Variable expense calculation
-        var chargeableCategoryIds = categories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
-        var totalExpense = allExpenses
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == contract.PropertyId && chargeableCategoryIds.Contains(i.CategoryId))
-            .Sum(i => i.Amount);
-
-        var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
-        var occupiedRooms = allContracts
-            .Where(c => c.PropertyId == contract.PropertyId)
-            .ToList()
-            .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
-            .Select(c => c.RoomId)
-            .Distinct()
-            .Count();
-
-        var variableExpense = occupiedRooms > 0 ? totalExpense / occupiedRooms : 0m;
-        return (rent, fixedExpenseAmount + variableExpense);
-    }
+    // ----- Formatting & Sorting Helpers -----
 
     private static object? FormatResults<T>(SemanticQueryOperation op, IEnumerable<T> items, int limit, string? sumField = null, string? sumField2 = null)
     {
@@ -428,12 +351,12 @@ public class SemanticQueryExecutor
             decimal sum = 0m;
             foreach (var item in items)
             {
-                var val = GetPropertyValue(item, sumField);
+                var val = GetPropertyValue(item!, sumField);
                 if (val != null) sum += Convert.ToDecimal(val);
 
                 if (sumField2 != null)
                 {
-                    var val2 = GetPropertyValue(item, sumField2);
+                    var val2 = GetPropertyValue(item!, sumField2);
                     if (val2 != null) sum += Convert.ToDecimal(val2);
                 }
             }
