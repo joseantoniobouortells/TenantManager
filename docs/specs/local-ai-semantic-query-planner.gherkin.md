@@ -8,32 +8,32 @@ All implementation must follow `AGENTS.md`. Reusable logic belongs in `TenantMan
 
 ---
 
-## Phase 1 — Define Core QueryPlan Models
+## Phase 1 — Define Core SemanticQueryPlan Models
 
 **Goal:** Add the foundational data models for the Semantic Query Planner to `TenantManager.Core`. No Avalonia dependencies. No database queries. No LLM calls.
 
 ```gherkin
-Feature: QueryPlan core models
+Feature: SemanticQueryPlan core models
 
-  Scenario: QueryPlan model is defined in Core with no Avalonia dependency
-    Given a developer adds a QueryPlan model to TenantManager.Core
+  Scenario: SemanticQueryPlan model is defined in Core with no Avalonia dependency
+    Given a developer adds a SemanticQueryPlan model to TenantManager.Core
     When the Core project is built
     Then the build succeeds
     And TenantManager.Core has no reference to Avalonia assemblies
 
-  Scenario: QueryPlan contains all required fields
-    Given a QueryPlan instance is created
+  Scenario: SemanticQueryPlan contains all required fields
+    Given a SemanticQueryPlan instance is created
     Then it must have: language, resource, operation, filters, projection, sort, limit, confidence
-    And filters is a list of QueryFilter
-    And sort is a list of QuerySort
+    And filters is a list of SemanticQueryFilter
+    And sort is a list of SemanticQuerySort
     And limit defaults to 20
 
-  Scenario: QueryFilter contains required fields
-    Given a QueryFilter instance is created
+  Scenario: SemanticQueryFilter contains required fields
+    Given a SemanticQueryFilter instance is created
     Then it must have: field, operator, value
 
-  Scenario: QuerySort contains required fields
-    Given a QuerySort instance is created
+  Scenario: SemanticQuerySort contains required fields
+    Given a SemanticQuerySort instance is created
     Then it must have: field, direction (asc or desc)
 
   Scenario: Supported enums or constants are defined
@@ -43,14 +43,14 @@ Feature: QueryPlan core models
     And a defined set of known operators (equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, contains, in, between)
     And a defined set of known sort directions (asc, desc)
 
-  Scenario: QueryPlan is serializable via System.Text.Json
-    Given a valid QueryPlan instance
+  Scenario: SemanticQueryPlan is serializable via System.Text.Json
+    Given a valid SemanticQueryPlan instance
     When it is serialized to JSON and deserialized back
     Then the result is equivalent to the original instance
 ```
 
 **Acceptance criteria:**
-- `QueryPlan`, `QueryFilter`, `QuerySort` exist in `TenantManager.Core`.
+- `SemanticQueryPlan`, `SemanticQueryFilter`, `SemanticQuerySort` exist in `TenantManager.Core`.
 - All models use `System.Text.Json` attributes.
 - No Avalonia dependency in Core.
 - Build passes.

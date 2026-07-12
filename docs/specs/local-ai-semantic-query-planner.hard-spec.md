@@ -117,10 +117,10 @@ The LLM is called at most once per turn (for plan extraction). A second LLM call
 
 All of the following must live in `TenantManager.Core` (no Avalonia dependencies):
 
-- `QueryPlan`, `QueryFilter`, `QuerySort` models.
+- `SemanticQueryPlan`, `SemanticQueryFilter`, `SemanticQuerySort` models.
 - `SemanticQueryCatalog` — resource/field/operator/operation allow-list.
 - `SemanticQueryPlanner` — calls the LLM, parses the JSON response, validates structure.
-- `QueryPlanValidator` — validates the plan, injects property scope, enforces limits.
+- `SemanticQueryPlanValidator` — validates the plan, injects property scope, enforces limits.
 - `QueryExecutor` — runs EF Core queries deterministically.
 - `DomainSemanticResolvers` — effective end date, room occupancy, payment status, etc.
 - `AnswerFormatter` — deterministic localized answer generation.
@@ -243,7 +243,7 @@ Derived from: room count, active tenants, pending payments count, late payments 
 
 ---
 
-## 10. QueryPlan Structure
+## 10. SemanticQueryPlan Structure
 
 The following is **illustrative**. The exact shape may be refined during implementation.
 
@@ -279,7 +279,7 @@ The following is **illustrative**. The exact shape may be refined during impleme
 | `limit` | int | Max results for list operations; default 20, max 50 |
 | `confidence` | float | Model confidence 0.0–1.0 |
 
-### QueryFilter
+### SemanticQueryFilter
 
 ```json
 {
@@ -289,7 +289,7 @@ The following is **illustrative**. The exact shape may be refined during impleme
 }
 ```
 
-### QuerySort
+### SemanticQuerySort
 
 ```json
 {
