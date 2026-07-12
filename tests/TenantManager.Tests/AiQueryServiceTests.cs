@@ -83,11 +83,12 @@ public class AiQueryServiceTests
         await db.SaveChangesAsync();
 
         // Act
-        var (resultEnglish, isEs1, clar1) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+        var (resultEnglish, isEs1) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
 
         // Assert
         Assert.NotNull(resultEnglish);
         Assert.Contains("Erik Artigas", resultEnglish);
+        Assert.Contains("move out", resultEnglish);
         Assert.Contains(contract.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
     }
 

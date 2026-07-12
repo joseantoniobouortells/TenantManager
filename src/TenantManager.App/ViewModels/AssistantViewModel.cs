@@ -104,30 +104,22 @@ public class AssistantViewModel : ViewModelBase
         try
         {
             // 1. Deterministic Intent & Data Resolution
-            var (contextDataStr, isEs, clarificationMessage) = await _queryService.ResolveIntentAndGetDataAsync(userText);
+            var (finalAnswer, isEs) = await _queryService.ResolveIntentAndGetDataAsync(userText);
             isSpanish = isEs;
 
             string finalResponse;
 
-            if (!string.IsNullOrWhiteSpace(clarificationMessage))
+            if (!string.IsNullOrWhiteSpace(finalAnswer))
             {
-                // We need clarification, output it directly
-                finalResponse = clarificationMessage;
-            }
-            else if (string.IsNullOrWhiteSpace(contextDataStr))
-            {
-                // Fallback for unhandled intents
-                finalResponse = isSpanish 
-                    ? "Solo puedo responder preguntas específicas sobre los datos, como la fecha de salida de un inquilino."
-                    : "I can only answer specific questions about the data, such as a tenant's move-out date.";
+                // We got a deterministic answer or clarification
+                finalResponse = finalAnswer;
             }
             else
             {
-                // 2. Build Safe Prompt
-                var systemPrompt = SafeContextBuilder.BuildSystemPrompt(contextDataStr, isSpanish);
-
-                // 3. Request LLM Completion
-                finalResponse = await _aiClient.SendChatCompletionAsync(systemPrompt, userText, isSpanish);
+                // Fallback for unhandled intents or empty results
+                finalResponse = isSpanish 
+                    ? "Solo puedo responder preguntas específicas sobre los datos, como la fecha de salida de un inquilino."
+                    : "I can only answer specific questions about the data, such as a tenant's move-out date.";
             }
 
             Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });
