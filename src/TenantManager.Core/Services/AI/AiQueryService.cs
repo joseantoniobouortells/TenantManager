@@ -144,9 +144,24 @@ public class AiQueryService
 
             if (intent == "tenant_move_out_date")
             {
-                if (latestContract?.EndDate.HasValue == true)
+                DateTimeOffset? effectiveEndDate = latestContract?.EndDate;
+
+                if (latestContract != null)
                 {
-                    var dateStr = latestContract.EndDate.Value.ToString("yyyy-MM-dd");
+                    var extensions = await _dbContext.RentalContractExtensions
+                        .Where(e => e.RentalContractId == latestContract.Id)
+                        .ToListAsync();
+                    
+                    var validExtensions = extensions.Where(e => e.EndDate.HasValue).ToList();
+                    if (validExtensions.Any())
+                    {
+                        effectiveEndDate = validExtensions.OrderByDescending(e => e.EndDate).First().EndDate;
+                    }
+                }
+
+                if (effectiveEndDate.HasValue)
+                {
+                    var dateStr = effectiveEndDate.Value.ToString("yyyy-MM-dd");
                     var ans = isSpanish 
                         ? $"{bestMatch.FullName} deja la habitación el {dateStr}."
                         : $"{bestMatch.FullName} is scheduled to move out on {dateStr}.";

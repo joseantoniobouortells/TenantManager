@@ -93,6 +93,63 @@ public class AiQueryServiceTests
     }
 
     [Fact]
+    public async Task ResolveIntentAndGetDataAsync_MoveOutDate_WithExtensions_UsesLatestExtensionDate()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        
+        var httpClient = new HttpClient(new MockHttpMessageHandler());
+        var aiClient = new LocalAiClient(httpClient);
+        var service = new AiQueryService(db, aiClient);
+
+        SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = "http://mock" });
+
+        var property = new Property { Name = "Test Property" };
+        db.Properties.Add(property);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Erik Artigas", PropertyId = property.Id };
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        var contract = new RentalContract
+        {
+            TenantId = tenant.Id,
+            PropertyId = property.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-12),
+            EndDate = DateTimeOffset.Now.AddMonths(-6)
+        };
+        db.RentalContracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var extension1 = new RentalContractExtension
+        {
+            RentalContractId = contract.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-6),
+            EndDate = DateTimeOffset.Now.AddMonths(-1)
+        };
+        db.RentalContractExtensions.Add(extension1);
+
+        var extension2 = new RentalContractExtension
+        {
+            RentalContractId = contract.Id,
+            StartDate = DateTimeOffset.Now.AddMonths(-1),
+            EndDate = DateTimeOffset.Now.AddMonths(5)
+        };
+        db.RentalContractExtensions.Add(extension2);
+        await db.SaveChangesAsync();
+
+        // Act
+        var (resultEnglish, isEs) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+
+        // Assert
+        Assert.NotNull(resultEnglish);
+        Assert.Contains(extension2.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
+        Assert.DoesNotContain(contract.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
+        Assert.DoesNotContain(extension1.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
+    }
+
+    [Fact]
     public void BuildSystemPrompt_ContainsHardeningInstructions()
     {
         var context = "Context Data";
