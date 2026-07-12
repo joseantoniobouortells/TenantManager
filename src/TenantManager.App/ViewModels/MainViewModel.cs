@@ -39,7 +39,7 @@ public class MainViewModel : ViewModelBase
         Dashboard = new DashboardViewModel();
         Settings = new SettingsViewModel();
         PropertyList = new PropertyListViewModel(LoadProperties);
-        Assistant = new AssistantViewModel();
+        Assistant = new AssistantViewModel(() => SelectedProperty?.Id ?? 0);
 
         LoadProperties();
     }

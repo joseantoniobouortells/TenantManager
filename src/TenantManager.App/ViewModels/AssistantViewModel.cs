@@ -21,6 +21,7 @@ public class AssistantViewModel : ViewModelBase
 
     // AI services
     private readonly AiQueryService _queryService;
+    private readonly Func<int> _propertyIdProvider;
 
     // Conversation state — lives in the session, not persisted to DB
     private readonly AssistantContext _conversationContext = new();
@@ -58,8 +59,9 @@ public class AssistantViewModel : ViewModelBase
 
     public ICommand SendCommand { get; }
 
-    public AssistantViewModel()
+    public AssistantViewModel(Func<int>? propertyIdProvider = null)
     {
+        _propertyIdProvider = propertyIdProvider ?? (() => 0);
         var aiClient = new LocalAiClient();
         _queryService = new AiQueryService(new AppDbContext(), aiClient);
 
@@ -105,8 +107,9 @@ public class AssistantViewModel : ViewModelBase
 
         try
         {
+            var propertyId = _propertyIdProvider();
             var (finalAnswer, answerIsSpanish) =
-                await _queryService.ResolveIntentAndGetDataAsync(userText, _conversationContext);
+                await _queryService.ResolveIntentAndGetDataAsync(userText, _conversationContext, propertyId);
 
             // Update conversation language from detected language
             isSpanish = answerIsSpanish;
@@ -125,6 +128,16 @@ public class AssistantViewModel : ViewModelBase
             }
 
             Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });
+        }
+        catch (Exception ex) when (ex is InvalidOperationException && ex.Message == "AI_OFFLINE" || ex.InnerException is System.Net.Http.HttpRequestException)
+        {
+            Messages.Add(new ChatMessageViewModel
+            {
+                Role = "assistant",
+                Content = isSpanish
+                    ? "No se pudo conectar con el servidor local de IA (LM Studio). Asegúrese de que está iniciado en la configuración."
+                    : "Could not connect to the local AI server (LM Studio). Please ensure it is running in your settings."
+            });
         }
         catch (Exception ex)
         {

@@ -40,11 +40,44 @@ public class AiQueryService
     /// plus deterministic DB lookup. Updates conversation context on success.
     /// </summary>
     public async Task<(string? FinalAnswer, bool IsSpanish)> ResolveIntentAndGetDataAsync(
-        string userMessage, AssistantContext? context = null)
+        string userMessage, AssistantContext? context = null, int propertyId = 0)
     {
         bool isSpanish = context?.LastLanguage == "es";
 
-        // ---- 1. Intent / entity extraction via LLM ----
+        // ---- Primary Path: Semantic Query Planner ----
+        try
+        {
+            var planner = new SemanticQueryPlanner(_aiClient);
+            var plan = await planner.PlanQueryAsync(userMessage, context);
+            if (plan != null)
+            {
+                var validationResult = SemanticQueryPlanValidator.Validate(plan, propertyId);
+                if (validationResult.IsValid)
+                {
+                    var executor = new SemanticQueryExecutor(_dbContext);
+                    var executionResult = await executor.ExecuteAsync(plan);
+                    string formattedAnswer = SemanticAnswerFormatter.Format(plan, executionResult, plan.Language);
+
+                    if (context != null)
+                    {
+                        context.LastResolvedIntent = plan.Resource!.Value.ToString().ToLowerInvariant() + "_" + plan.Operation!.Value.ToString().ToLowerInvariant();
+                        context.LastLanguage = plan.Language;
+                    }
+
+                    return (formattedAnswer, plan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "AI_OFFLINE")
+        {
+            throw;
+        }
+        catch
+        {
+            // Fall back to old intent flow
+        }
+
+        // ---- Fallback Path: Legacy Intent Extraction ----
         var json = await _aiClient.ExtractIntentAsync(userMessage, context);
         IntentExtractionResult? extraction = null;
         if (!string.IsNullOrWhiteSpace(json))

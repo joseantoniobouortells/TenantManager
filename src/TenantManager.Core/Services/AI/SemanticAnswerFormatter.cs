@@ -21,7 +21,14 @@ public static class SemanticAnswerFormatter
                 : "No data was found matching your query.";
         }
 
-        return plan.Operation switch
+        if (!plan.Operation.HasValue || !plan.Resource.HasValue)
+        {
+            return isEs 
+                ? "Operación no soportada por el formateador." 
+                : "Operation not supported by the formatter.";
+        }
+
+        return plan.Operation.Value switch
         {
             SemanticQueryOperation.Count => FormatCount(plan, Convert.ToInt32(queryResult), isEs),
             SemanticQueryOperation.Sum => FormatSum(plan, Convert.ToDecimal(queryResult), isEs),
@@ -36,6 +43,7 @@ public static class SemanticAnswerFormatter
 
     private static string FormatCount(SemanticQueryPlan plan, int count, bool isEs)
     {
+        var resource = plan.Resource!.Value;
         bool isLate = plan.Filters.Any(f => f.Field.Equals("late", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
         bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
         bool isActive = plan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
@@ -45,64 +53,65 @@ public static class SemanticAnswerFormatter
         {
             if (count == 0)
             {
-                if (plan.Resource == SemanticQueryResource.Payments && isLate) return "No hay pagos con retraso.";
-                if (plan.Resource == SemanticQueryResource.Payments && isPending) return "No hay pagos pendientes.";
-                if (plan.Resource == SemanticQueryResource.Contracts && isActive) return "No hay contratos activos.";
-                if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return "No hay habitaciones libres.";
-                return $"No hay {GetResourcePluralEs(plan.Resource)}.";
+                if (resource == SemanticQueryResource.Payments && isLate) return "No hay pagos con retraso.";
+                if (resource == SemanticQueryResource.Payments && isPending) return "No hay pagos pendientes.";
+                if (resource == SemanticQueryResource.Contracts && isActive) return "No hay contratos activos.";
+                if (resource == SemanticQueryResource.Rooms && isAvailable) return "No hay habitaciones libres.";
+                return $"No hay {GetResourcePluralEs(resource)}.";
             }
 
             if (count == 1)
             {
-                if (plan.Resource == SemanticQueryResource.Payments && isLate) return "Hay 1 pago con retraso.";
-                if (plan.Resource == SemanticQueryResource.Payments && isPending) return "Hay 1 pago pendiente.";
-                if (plan.Resource == SemanticQueryResource.Contracts && isActive) return "Hay 1 contrato activo.";
-                if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return "Hay 1 habitación libre.";
-                return $"Hay 1 {GetResourceSingularEs(plan.Resource)}.";
+                if (resource == SemanticQueryResource.Payments && isLate) return "Hay 1 pago con retraso.";
+                if (resource == SemanticQueryResource.Payments && isPending) return "Hay 1 pago pendiente.";
+                if (resource == SemanticQueryResource.Contracts && isActive) return "Hay 1 contrato activo.";
+                if (resource == SemanticQueryResource.Rooms && isAvailable) return "Hay 1 habitación libre.";
+                return $"Hay 1 {GetResourceSingularEs(resource)}.";
             }
 
-            if (plan.Resource == SemanticQueryResource.Payments && isLate) return $"Hay {count} pagos con retraso.";
-            if (plan.Resource == SemanticQueryResource.Payments && isPending) return $"Hay {count} pagos pendientes.";
-            if (plan.Resource == SemanticQueryResource.Contracts && isActive) return $"Hay {count} contratos activos.";
-            if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return $"Hay {count} habitaciones libres.";
-            return $"Hay {count} {GetResourcePluralEs(plan.Resource)}.";
+            if (resource == SemanticQueryResource.Payments && isLate) return $"Hay {count} pagos con retraso.";
+            if (resource == SemanticQueryResource.Payments && isPending) return $"Hay {count} pagos pendientes.";
+            if (resource == SemanticQueryResource.Contracts && isActive) return $"Hay {count} contratos activos.";
+            if (resource == SemanticQueryResource.Rooms && isAvailable) return $"Hay {count} habitaciones libres.";
+            return $"Hay {count} {GetResourcePluralEs(resource)}.";
         }
         else
         {
             if (count == 0)
             {
-                if (plan.Resource == SemanticQueryResource.Payments && isLate) return "There are no late payments.";
-                if (plan.Resource == SemanticQueryResource.Payments && isPending) return "There are no pending payments.";
-                if (plan.Resource == SemanticQueryResource.Contracts && isActive) return "There are no active contracts.";
-                if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return "There are no available rooms.";
-                return $"There are no {GetResourcePluralEn(plan.Resource)}.";
+                if (resource == SemanticQueryResource.Payments && isLate) return "There are no late payments.";
+                if (resource == SemanticQueryResource.Payments && isPending) return "There are no pending payments.";
+                if (resource == SemanticQueryResource.Contracts && isActive) return "There are no active contracts.";
+                if (resource == SemanticQueryResource.Rooms && isAvailable) return "There are no available rooms.";
+                return $"There are no {GetResourcePluralEn(resource)}.";
             }
 
             if (count == 1)
             {
-                if (plan.Resource == SemanticQueryResource.Payments && isLate) return "There is 1 late payment.";
-                if (plan.Resource == SemanticQueryResource.Payments && isPending) return "There is 1 pending payment.";
-                if (plan.Resource == SemanticQueryResource.Contracts && isActive) return "There is 1 active contract.";
-                if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return "There is 1 available room.";
-                return $"There is 1 {GetResourceSingularEn(plan.Resource)}.";
+                if (resource == SemanticQueryResource.Payments && isLate) return "There is 1 late payment.";
+                if (resource == SemanticQueryResource.Payments && isPending) return "There is 1 pending payment.";
+                if (resource == SemanticQueryResource.Contracts && isActive) return "There is 1 active contract.";
+                if (resource == SemanticQueryResource.Rooms && isAvailable) return "There is 1 available room.";
+                return $"There is 1 {GetResourceSingularEn(resource)}.";
             }
 
-            if (plan.Resource == SemanticQueryResource.Payments && isLate) return $"There are {count} late payments.";
-            if (plan.Resource == SemanticQueryResource.Payments && isPending) return $"There are {count} pending payments.";
-            if (plan.Resource == SemanticQueryResource.Contracts && isActive) return $"There are {count} active contracts.";
-            if (plan.Resource == SemanticQueryResource.Rooms && isAvailable) return $"There are {count} available rooms.";
-            return $"There are {count} {GetResourcePluralEn(plan.Resource)}.";
+            if (resource == SemanticQueryResource.Payments && isLate) return $"There are {count} late payments.";
+            if (resource == SemanticQueryResource.Payments && isPending) return $"There are {count} pending payments.";
+            if (resource == SemanticQueryResource.Contracts && isActive) return $"There are {count} active contracts.";
+            if (resource == SemanticQueryResource.Rooms && isAvailable) return $"There are {count} available rooms.";
+            return $"There are {count} {GetResourcePluralEn(resource)}.";
         }
     }
 
     private static string FormatSum(SemanticQueryPlan plan, decimal sum, bool isEs)
     {
+        var resource = plan.Resource!.Value;
         bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
         bool isCurrent = plan.Filters.Any(f => (f.Field.Equals("month", StringComparison.OrdinalIgnoreCase) || f.Field.Equals("year", StringComparison.OrdinalIgnoreCase)) && f.Value != null && f.Value.ToString()!.Equals("current", StringComparison.OrdinalIgnoreCase));
 
         if (isEs)
         {
-            if (plan.Resource == SemanticQueryResource.Payments && isPending)
+            if (resource == SemanticQueryResource.Payments && isPending)
             {
                 return isCurrent 
                     ? $"Queda por cobrar un total de {sum:N2} € de pagos pendientes este mes." 
@@ -112,7 +121,7 @@ public static class SemanticAnswerFormatter
         }
         else
         {
-            if (plan.Resource == SemanticQueryResource.Payments && isPending)
+            if (resource == SemanticQueryResource.Payments && isPending)
             {
                 return isCurrent
                     ? $"There is a total of {sum:N2} € pending to collect this month."
@@ -167,17 +176,18 @@ public static class SemanticAnswerFormatter
 
     private static string FormatList(SemanticQueryPlan plan, object result, bool isEs)
     {
+        var resource = plan.Resource!.Value;
         if (result is System.Collections.IEnumerable list)
         {
             var items = list.Cast<object>().ToList();
             if (!items.Any())
             {
                 return isEs 
-                    ? $"No se encontraron registros de {GetResourcePluralEs(plan.Resource)} que coincidan con los criterios." 
-                    : $"No {GetResourcePluralEn(plan.Resource)} found matching those criteria.";
+                    ? $"No se encontraron registros de {GetResourcePluralEs(resource)} que coincidan con los criterios." 
+                    : $"No {GetResourcePluralEn(resource)} found matching those criteria.";
             }
 
-            if (plan.Resource == SemanticQueryResource.Rooms)
+            if (resource == SemanticQueryResource.Rooms)
             {
                 var names = items.Cast<SemanticRoomResult>().Select(r => r.Name).ToList();
                 bool isAvailable = plan.Filters.Any(f => f.Field.Equals("available", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
@@ -195,7 +205,7 @@ public static class SemanticAnswerFormatter
                 }
             }
 
-            if (plan.Resource == SemanticQueryResource.Tenants)
+            if (resource == SemanticQueryResource.Tenants)
             {
                 var names = items.Cast<SemanticTenantResult>().Select(t => t.FullName).ToList();
                 return isEs
@@ -203,7 +213,7 @@ public static class SemanticAnswerFormatter
                     : $"The tenants are: {string.Join(", ", names)}.";
             }
 
-            if (plan.Resource == SemanticQueryResource.Contracts)
+            if (resource == SemanticQueryResource.Contracts)
             {
                 var lines = items.Cast<SemanticContractResult>()
                     .Select(c => $"{c.TenantName} (Hab: {c.RoomName}, Fin: {(c.EffectiveEndDate.HasValue ? c.EffectiveEndDate.Value.ToString("yyyy-MM-dd") : "N/A")})");
@@ -212,7 +222,7 @@ public static class SemanticAnswerFormatter
                     : $"Contracts:\n- {string.Join("\n- ", lines)}";
             }
 
-            if (plan.Resource == SemanticQueryResource.Payments)
+            if (resource == SemanticQueryResource.Payments)
             {
                 var lines = items.Cast<SemanticPaymentResult>()
                     .Select(p => $"{p.TenantName} ({p.Month}/{p.Year}): expected {p.ExpectedAmount:N2} €, paid {p.PaidAmount:N2} € [{p.Status}]");
@@ -221,7 +231,7 @@ public static class SemanticAnswerFormatter
                     : $"Payments:\n- {string.Join("\n- ", lines)}";
             }
 
-            if (plan.Resource == SemanticQueryResource.Expenses)
+            if (resource == SemanticQueryResource.Expenses)
             {
                 var lines = items.Cast<SemanticExpenseResult>()
                     .Select(e => $"{e.Category}: {e.Amount:N2} € ({e.Date:MM/yyyy})");

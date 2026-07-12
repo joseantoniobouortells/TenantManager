@@ -48,7 +48,9 @@ public class SemanticQueryExecutor
         var now = DateTimeOffset.Now;
 
         // Execute by resource
-        return plan.Resource switch
+        if (!plan.Resource.HasValue) return null;
+
+        return plan.Resource.Value switch
         {
             SemanticQueryResource.Rooms => ProcessRooms(plan, rooms, contracts, extensions, now),
             SemanticQueryResource.Tenants => ProcessTenants(plan, tenants, rooms, contracts, extensions, now),
@@ -88,7 +90,7 @@ public class SemanticQueryExecutor
         // Apply sort
         var sorted = ApplySort(filtered, plan.Sort, GetRoomFieldValue);
 
-        return FormatResults(plan.Operation, sorted, plan.Limit, "currentRent");
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit, "currentRent");
     }
 
     private object? ProcessTenants(
@@ -131,7 +133,7 @@ public class SemanticQueryExecutor
         }
 
         var sorted = ApplySort(filtered, plan.Sort, GetTenantFieldValue);
-        return FormatResults(plan.Operation, sorted, plan.Limit);
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit);
     }
 
     private object? ProcessContracts(
@@ -156,7 +158,7 @@ public class SemanticQueryExecutor
 
         var filtered = results.Where(item => plan.Filters.Where(f => !f.Field.Equals("propertyId", StringComparison.OrdinalIgnoreCase)).All(f => EvaluateFilter(GetContractFieldValue(item, f.Field), f.Operator, f.Value, f.Field)));
         var sorted = ApplySort(filtered, plan.Sort, GetContractFieldValue);
-        return FormatResults(plan.Operation, sorted, plan.Limit);
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit);
     }
 
     private object? ProcessPayments(
@@ -247,7 +249,7 @@ public class SemanticQueryExecutor
 
         var filtered = results.Where(item => plan.Filters.Where(f => !f.Field.Equals("propertyId", StringComparison.OrdinalIgnoreCase)).All(f => EvaluateFilter(GetPaymentFieldValue(item, f.Field), f.Operator, f.Value, f.Field)));
         var sorted = ApplySort(filtered, plan.Sort, GetPaymentFieldValue);
-        return FormatResults(plan.Operation, sorted, plan.Limit, "expectedAmount", "paidAmount");
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit, "expectedAmount", "paidAmount");
     }
 
     private object? ProcessExpenses(SemanticQueryPlan plan, List<ExpenseInvoice> expenses, List<ExpenseCategory> categories)
@@ -261,7 +263,7 @@ public class SemanticQueryExecutor
 
         var filtered = results.Where(item => plan.Filters.Where(f => !f.Field.Equals("propertyId", StringComparison.OrdinalIgnoreCase)).All(f => EvaluateFilter(GetExpenseFieldValue(item, f.Field), f.Operator, f.Value, f.Field)));
         var sorted = ApplySort(filtered, plan.Sort, GetExpenseFieldValue);
-        return FormatResults(plan.Operation, sorted, plan.Limit, "amount");
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit, "amount");
     }
 
     private object? ProcessDashboard(

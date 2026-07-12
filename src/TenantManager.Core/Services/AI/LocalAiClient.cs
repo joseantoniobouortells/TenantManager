@@ -204,6 +204,10 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
 
             return chatResponse?.Choices?[0]?.Message?.Content;
         }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            throw new InvalidOperationException("AI_OFFLINE", ex);
+        }
         catch
         {
             return null;
@@ -297,6 +301,10 @@ JSON format to return:
             var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
 
             return chatResponse?.Choices?[0]?.Message?.Content;
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            throw new InvalidOperationException("AI_OFFLINE", ex);
         }
         catch
         {

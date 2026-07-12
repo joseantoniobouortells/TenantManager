@@ -136,10 +136,10 @@ public class SemanticQueryPlan
     public string Language { get; set; } = "en";
 
     [JsonPropertyName("resource")]
-    public SemanticQueryResource Resource { get; set; }
+    public SemanticQueryResource? Resource { get; set; }
 
     [JsonPropertyName("operation")]
-    public SemanticQueryOperation Operation { get; set; }
+    public SemanticQueryOperation? Operation { get; set; }
 
     [JsonPropertyName("filters")]
     public List<SemanticQueryFilter> Filters { get; set; } = new();

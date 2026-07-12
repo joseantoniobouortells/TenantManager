@@ -40,12 +40,22 @@ public static class SemanticQueryPlanValidator
             return new SemanticValidationResult { IsValid = false, ErrorMessage = "limit exceeded" };
         }
 
-        if (!SemanticQueryCatalog.Resources.TryGetValue(plan.Resource, out var resourceDef))
+        if (!plan.Resource.HasValue)
         {
             return new SemanticValidationResult { IsValid = false, ErrorMessage = "unknown resource" };
         }
 
-        if (!resourceDef.AllowedOperations.Contains(plan.Operation))
+        if (!plan.Operation.HasValue)
+        {
+            return new SemanticValidationResult { IsValid = false, ErrorMessage = "unsupported operation" };
+        }
+
+        if (!SemanticQueryCatalog.Resources.TryGetValue(plan.Resource.Value, out var resourceDef))
+        {
+            return new SemanticValidationResult { IsValid = false, ErrorMessage = "unknown resource" };
+        }
+
+        if (!resourceDef.AllowedOperations.Contains(plan.Operation.Value))
         {
             return new SemanticValidationResult { IsValid = false, ErrorMessage = "unsupported operation" };
         }
