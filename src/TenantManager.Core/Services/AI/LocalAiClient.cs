@@ -32,6 +32,8 @@ public class ChatRequest
 
     [JsonPropertyName("max_tokens")]
     public int? MaxTokens { get; set; }
+    [JsonPropertyName("stream")]
+    public bool Stream { get; set; } = false;
 }
 
 public class ChatResponseChoice
@@ -57,6 +59,28 @@ public class LocalAiClient
 
     public async Task<string> SendChatCompletionAsync(string systemPrompt, string userMessage, bool isSpanish = false, CancellationToken cancellationToken = default)
     {
+        var result = await SendChatCompletionInternalAsync(systemPrompt, userMessage, isSpanish, cancellationToken);
+
+        // If content is completely empty, it might be stuck reasoning. Retry once with a harder prompt.
+        if (result == "The AI returned an empty response." || result == "La IA devolvió una respuesta vacía." || string.IsNullOrWhiteSpace(result))
+        {
+            var harderPrompt = systemPrompt + "\n\nCRITICAL: DO NOT use reasoning. DO NOT output <think>. Provide ONLY the final answer in 1-2 sentences max.";
+            var retryResult = await SendChatCompletionInternalAsync(harderPrompt, userMessage, isSpanish, cancellationToken);
+            
+            if (retryResult == "The AI returned an empty response." || retryResult == "La IA devolvió una respuesta vacía." || string.IsNullOrWhiteSpace(retryResult))
+            {
+                return isSpanish 
+                    ? "Lo siento, la IA no devolvió una respuesta válida. Es posible que el modelo esté generando un razonamiento excesivo."
+                    : "Sorry, the AI did not return a valid response. The model might be generating excessive reasoning.";
+            }
+            return retryResult;
+        }
+
+        return result;
+    }
+
+    private async Task<string> SendChatCompletionInternalAsync(string systemPrompt, string userMessage, bool isSpanish = false, CancellationToken cancellationToken = default)
+    {
         var settings = SettingsPersistence.LoadSettings();
 
         if (!settings.IsAiEnabled)
@@ -78,7 +102,8 @@ public class LocalAiClient
                 new ChatMessage { Role = "user", Content = userMessage }
             },
             Temperature = 0.0, // Keep it deterministic
-            MaxTokens = 200 // Limit to avoid long reasoning output
+            MaxTokens = 150, // Limit to avoid long reasoning output
+            Stream = false
         };
 
         var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -101,7 +126,12 @@ public class LocalAiClient
 
             if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
             {
-                return chatResponse.Choices[0].Message?.Content ?? (isSpanish ? "La IA devolvió una respuesta vacía." : "The AI returned an empty response.");
+                var content = chatResponse.Choices[0].Message?.Content;
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    return content;
+                }
+                return isSpanish ? "La IA devolvió una respuesta vacía." : "The AI returned an empty response.";
             }
 
             return isSpanish ? "Formato de respuesta inesperado del servidor local." : "Unexpected response format from the local AI server.";

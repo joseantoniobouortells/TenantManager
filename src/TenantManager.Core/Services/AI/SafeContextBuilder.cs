@@ -30,7 +30,8 @@ RULES:
 1. {languageInstruction}
 2. Use ONLY the information provided in the Context section below. Do not invent missing dates, names, payments, or contracts.
 3. If the answer cannot be determined from the Context, state exactly: 'The information is not available in the provided context.' (or its translation in the requested language).
-4. Be concise and clear. Do not hallucinate or guess.
+4. Return ONLY the final answer. Do NOT include reasoning, analysis, or chain-of-thought.
+5. Keep your answer to one or two sentences maximum.
 
 --- CONTEXT ---
 {dataContext}

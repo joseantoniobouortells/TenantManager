@@ -90,4 +90,15 @@ public class AiQueryServiceTests
         Assert.Contains("Erik Artigas", resultEnglish);
         Assert.Contains(contract.EndDate.Value.ToString("yyyy-MM-dd"), resultEnglish);
     }
+
+    [Fact]
+    public void BuildSystemPrompt_ContainsHardeningInstructions()
+    {
+        var context = "Context Data";
+        var prompt = SafeContextBuilder.BuildSystemPrompt(context);
+
+        Assert.Contains("Return ONLY the final answer.", prompt);
+        Assert.Contains("Do NOT include reasoning, analysis, or chain-of-thought.", prompt);
+        Assert.Contains("one or two sentences maximum", prompt);
+    }
 }
