@@ -124,6 +124,14 @@ public static class SemanticQueryPlanValidator
             return validValues.Contains(strVal.ToLowerInvariant());
         }
 
+        if (rawValue is string dynamicStr && (dynamicStr.Equals("current", StringComparison.OrdinalIgnoreCase) || dynamicStr.Equals("hoy", StringComparison.OrdinalIgnoreCase) || dynamicStr.Equals("ahora", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (expectedType == typeof(int) || expectedType == typeof(DateTimeOffset))
+            {
+                return true;
+            }
+        }
+
         try
         {
             if (expectedType == typeof(bool))
