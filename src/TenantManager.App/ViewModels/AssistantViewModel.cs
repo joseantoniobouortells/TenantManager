@@ -63,8 +63,8 @@ public class AssistantViewModel : ViewModelBase
     public AssistantViewModel()
     {
         // For DI, in a real app these would be injected. We instantiate directly for now.
-        _queryService = new AiQueryService(new AppDbContext());
         _aiClient = new LocalAiClient();
+        _queryService = new AiQueryService(new AppDbContext(), _aiClient);
 
         SendCommand = new RelayCommand(
             _ => { _ = SendMessageAsync(); },
@@ -103,13 +103,18 @@ public class AssistantViewModel : ViewModelBase
 
         try
         {
-
             // 1. Deterministic Intent & Data Resolution
-            var contextDataStr = await _queryService.ResolveIntentAndGetDataAsync(userText);
+            var (contextDataStr, isEs, clarificationMessage) = await _queryService.ResolveIntentAndGetDataAsync(userText);
+            isSpanish = isEs;
 
             string finalResponse;
 
-            if (string.IsNullOrWhiteSpace(contextDataStr))
+            if (!string.IsNullOrWhiteSpace(clarificationMessage))
+            {
+                // We need clarification, output it directly
+                finalResponse = clarificationMessage;
+            }
+            else if (string.IsNullOrWhiteSpace(contextDataStr))
             {
                 // Fallback for unhandled intents
                 finalResponse = isSpanish 

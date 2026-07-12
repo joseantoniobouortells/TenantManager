@@ -29,6 +29,9 @@ public class ChatRequest
 
     [JsonPropertyName("temperature")]
     public double Temperature { get; set; } = 0.0;
+
+    [JsonPropertyName("max_tokens")]
+    public int? MaxTokens { get; set; }
 }
 
 public class ChatResponseChoice
@@ -74,7 +77,8 @@ public class LocalAiClient
                 new ChatMessage { Role = "system", Content = systemPrompt },
                 new ChatMessage { Role = "user", Content = userMessage }
             },
-            Temperature = 0.0 // Keep it deterministic
+            Temperature = 0.0, // Keep it deterministic
+            MaxTokens = 200 // Limit to avoid long reasoning output
         };
 
         var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -115,6 +119,58 @@ public class LocalAiClient
         catch (Exception ex)
         {
             return isSpanish ? $"Error inesperado: {ex.Message}" : $"Error: An unexpected error occurred: {ex.Message}";
+        }
+    }
+
+    public async Task<string?> ExtractIntentAsync(string userMessage, CancellationToken cancellationToken = default)
+    {
+        var settings = SettingsPersistence.LoadSettings();
+
+        if (!settings.IsAiEnabled || string.IsNullOrWhiteSpace(settings.AiEndpoint))
+        {
+            return null;
+        }
+
+        string extractionPrompt = @"Extract the user's intent and entities into JSON.
+Return JSON ONLY. Do not use markdown. Do not include explanations.
+
+{
+  ""language"": ""es"", // or en
+  ""intent"": ""tenant_move_out_date"", // or tenant_current_room, dashboard_summary, available_rooms, pending_or_late_payments, missing_contract_files, unknown
+  ""entities"": {
+    ""tenantName"": ""Erik Artigas"" // if present
+  },
+  ""confidence"": 0.92 // 0.0 to 1.0
+}";
+
+        var requestBody = new ChatRequest
+        {
+            Model = settings.AiModelName ?? string.Empty,
+            Messages = new List<ChatMessage>
+            {
+                new ChatMessage { Role = "system", Content = extractionPrompt },
+                new ChatMessage { Role = "user", Content = userMessage }
+            },
+            Temperature = 0.0
+        };
+
+        var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+        var jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
+        var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync(settings.AiEndpoint, httpContent, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+            var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+
+            return chatResponse?.Choices?[0]?.Message?.Content;
+        }
+        catch
+        {
+            return null;
         }
     }
 }
