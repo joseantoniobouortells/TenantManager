@@ -17,15 +17,20 @@ public class TenantContextData
 
 public static class SafeContextBuilder
 {
-    public static string BuildSystemPrompt(string dataContext)
+    public static string BuildSystemPrompt(string dataContext, bool isSpanish = false)
     {
+        string languageInstruction = isSpanish 
+            ? "Answer in Spanish (the same language as the user question)." 
+            : "Answer in English (the same language as the user question).";
+
         return $@"You are a helpful, read-only AI assistant for a property management application.
 Your goal is to answer the user's question based strictly on the provided context.
 
 RULES:
-1. Answer ONLY using the information provided in the Context section below.
-2. If the answer cannot be determined from the Context, state exactly: 'I do not have enough information to answer that.'
-3. Be concise and clear. Do not hallucinate or guess.
+1. {languageInstruction}
+2. Use ONLY the information provided in the Context section below. Do not invent missing dates, names, payments, or contracts.
+3. If the answer cannot be determined from the Context, state exactly: 'The information is not available in the provided context.' (or its translation in the requested language).
+4. Be concise and clear. Do not hallucinate or guess.
 
 --- CONTEXT ---
 {dataContext}

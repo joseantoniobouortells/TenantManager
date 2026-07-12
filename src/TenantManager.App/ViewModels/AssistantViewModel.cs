@@ -86,9 +86,16 @@ public class AssistantViewModel : ViewModelBase
 
         Messages.Add(new ChatMessageViewModel { Role = "user", Content = userText });
         
+        var lowerMsg = userText.ToLowerInvariant();
+        bool isSpanish = lowerMsg.Contains("cuando") || lowerMsg.Contains("qué") || lowerMsg.Contains("habitación") || lowerMsg.Contains("cuánt") || lowerMsg.Contains("estado") || lowerMsg.Contains("pago") || lowerMsg.Contains("deja") || lowerMsg.Contains("se va") || lowerMsg.Contains("quién") || lowerMsg.Contains("quien");
+
         if (!IsAiEnabled)
         {
-            Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = "AI Assistant is disabled." });
+            Messages.Add(new ChatMessageViewModel 
+            { 
+                Role = "assistant", 
+                Content = isSpanish ? "El asistente de IA está desactivado en la configuración." : "AI Assistant is disabled." 
+            });
             return;
         }
 
@@ -96,6 +103,7 @@ public class AssistantViewModel : ViewModelBase
 
         try
         {
+
             // 1. Deterministic Intent & Data Resolution
             var contextDataStr = await _queryService.ResolveIntentAndGetDataAsync(userText);
 
@@ -104,15 +112,17 @@ public class AssistantViewModel : ViewModelBase
             if (string.IsNullOrWhiteSpace(contextDataStr))
             {
                 // Fallback for unhandled intents
-                finalResponse = "I can only answer specific questions about the data, such as a tenant's move-out date.";
+                finalResponse = isSpanish 
+                    ? "Solo puedo responder preguntas específicas sobre los datos, como la fecha de salida de un inquilino."
+                    : "I can only answer specific questions about the data, such as a tenant's move-out date.";
             }
             else
             {
                 // 2. Build Safe Prompt
-                var systemPrompt = SafeContextBuilder.BuildSystemPrompt(contextDataStr);
+                var systemPrompt = SafeContextBuilder.BuildSystemPrompt(contextDataStr, isSpanish);
 
                 // 3. Request LLM Completion
-                finalResponse = await _aiClient.SendChatCompletionAsync(systemPrompt, userText);
+                finalResponse = await _aiClient.SendChatCompletionAsync(systemPrompt, userText, isSpanish);
             }
 
             Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });

@@ -25,18 +25,21 @@ public class AiQueryService
     public async Task<string?> ResolveIntentAndGetDataAsync(string userMessage)
     {
         var lowerMsg = userMessage.ToLowerInvariant();
+        var isSpanish = lowerMsg.Contains("cuando") || lowerMsg.Contains("qué") || lowerMsg.Contains("habitación") || lowerMsg.Contains("cuánt") || lowerMsg.Contains("estado") || lowerMsg.Contains("pago");
 
-        // Intent: Tenant Move-out date
-        // Example: "When does Erik Artigas move out?" or "move out date for erik"
-        if (lowerMsg.Contains("move out") || lowerMsg.Contains("leave"))
+        // Intents
+        bool isMoveOut = lowerMsg.Contains("move out") || lowerMsg.Contains("leave") || lowerMsg.Contains("deja") || lowerMsg.Contains("se va") || lowerMsg.Contains("sale");
+        bool isRoom = lowerMsg.Contains("room") || lowerMsg.Contains("habitación") || lowerMsg.Contains("cuarto");
+        bool isAvailable = lowerMsg.Contains("available") || lowerMsg.Contains("disponible") || lowerMsg.Contains("libre");
+        bool isPayments = lowerMsg.Contains("payment") || lowerMsg.Contains("pago") || lowerMsg.Contains("deuda");
+        bool isSummary = lowerMsg.Contains("summary") || lowerMsg.Contains("dashboard") || lowerMsg.Contains("resumen");
+
+        if (isMoveOut || isRoom)
         {
-            // Simple deterministic extraction for Phase 4: Try to find a tenant name in the message
             var tenants = await _dbContext.Tenants.ToListAsync();
-            
             Tenant? matchedTenant = null;
             foreach (var t in tenants)
             {
-                // Basic matching: if the tenant's first or full name is in the message
                 var nameParts = t.FullName.ToLowerInvariant().Split(' ');
                 if (lowerMsg.Contains(t.FullName.ToLowerInvariant()) || 
                     (nameParts.Length > 0 && lowerMsg.Contains(nameParts[0])))
@@ -48,24 +51,15 @@ public class AiQueryService
 
             if (matchedTenant != null)
             {
-                // Fetch room and contract data
-                var room = await _dbContext.Rooms.FirstOrDefaultAsync(r => r.Id == matchedTenant.Id); // Note: Simplified relation matching for MVP
-                
-                // Find the latest contract for this tenant
+                var room = await _dbContext.Rooms.FirstOrDefaultAsync(r => r.Id == matchedTenant.Id);
                 var contracts = await _dbContext.RentalContracts
                     .Where(c => c.TenantId == matchedTenant.Id)
                     .ToListAsync();
-                    
-                var latestContract = contracts
-                    .OrderByDescending(c => c.StartDate)
-                    .FirstOrDefault();
+                var latestContract = contracts.OrderByDescending(c => c.StartDate).FirstOrDefault();
 
                 var contextData = new TenantContextData
                 {
                     FullName = matchedTenant.FullName,
-                    Phone = matchedTenant.Phone,
-                    Email = matchedTenant.Email,
-                    Notes = matchedTenant.Notes,
                     RoomName = room?.Name,
                     MoveInDate = latestContract?.StartDate.DateTime,
                     MoveOutDate = latestContract?.EndDate?.DateTime
@@ -74,8 +68,14 @@ public class AiQueryService
                 return SafeContextBuilder.BuildTenantContext(contextData);
             }
         }
+        else if (isAvailable || isSummary || isPayments)
+        {
+             // For now, return a generic mock summary based on DB
+             var rooms = await _dbContext.Rooms.ToListAsync();
+             var tenantsCount = await _dbContext.Tenants.CountAsync();
+             return $"Data Context: App has {rooms.Count} rooms and {tenantsCount} tenants. More detailed summary logic can be added here.";
+        }
 
-        // Return null if we don't understand the intent
         return null;
     }
 }

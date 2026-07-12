@@ -52,18 +52,18 @@ public class LocalAiClient
         _httpClient = httpClient ?? new HttpClient();
     }
 
-    public async Task<string> SendChatCompletionAsync(string systemPrompt, string userMessage, CancellationToken cancellationToken = default)
+    public async Task<string> SendChatCompletionAsync(string systemPrompt, string userMessage, bool isSpanish = false, CancellationToken cancellationToken = default)
     {
         var settings = SettingsPersistence.LoadSettings();
 
         if (!settings.IsAiEnabled)
         {
-            return "AI Assistant is currently disabled in settings.";
+            return isSpanish ? "El asistente de IA está desactivado en la configuración." : "AI Assistant is currently disabled in settings.";
         }
 
         if (string.IsNullOrWhiteSpace(settings.AiEndpoint))
         {
-            return "AI Endpoint is not configured.";
+            return isSpanish ? "El endpoint de IA no está configurado." : "AI Endpoint is not configured.";
         }
 
         var requestBody = new ChatRequest
@@ -87,7 +87,9 @@ public class LocalAiClient
             
             if (!response.IsSuccessStatusCode)
             {
-                return $"Error: The local AI server responded with status code {response.StatusCode}.";
+                return isSpanish 
+                    ? $"Error: El servidor de IA local respondió con código {response.StatusCode}."
+                    : $"Error: The local AI server responded with status code {response.StatusCode}.";
             }
 
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -95,22 +97,24 @@ public class LocalAiClient
 
             if (chatResponse?.Choices != null && chatResponse.Choices.Count > 0)
             {
-                return chatResponse.Choices[0].Message?.Content ?? "The AI returned an empty response.";
+                return chatResponse.Choices[0].Message?.Content ?? (isSpanish ? "La IA devolvió una respuesta vacía." : "The AI returned an empty response.");
             }
 
-            return "Unexpected response format from the local AI server.";
+            return isSpanish ? "Formato de respuesta inesperado del servidor local." : "Unexpected response format from the local AI server.";
         }
         catch (HttpRequestException)
         {
-            return "Error: Could not connect to the local AI server. Please ensure LM Studio (or your configured server) is running and accessible.";
+            return isSpanish 
+                ? "Error: No se pudo conectar al servidor de IA local. Asegúrate de que LM Studio está ejecutándose y accesible."
+                : "Error: Could not connect to the local AI server. Please ensure LM Studio (or your configured server) is running and accessible.";
         }
         catch (TaskCanceledException)
         {
-            return "Error: The request to the local AI server timed out or was canceled.";
+            return isSpanish ? "Error: La petición al servidor de IA local agotó el tiempo de espera." : "Error: The request to the local AI server timed out or was canceled.";
         }
         catch (Exception ex)
         {
-            return $"Error: An unexpected error occurred: {ex.Message}";
+            return isSpanish ? $"Error inesperado: {ex.Message}" : $"Error: An unexpected error occurred: {ex.Message}";
         }
     }
 }
