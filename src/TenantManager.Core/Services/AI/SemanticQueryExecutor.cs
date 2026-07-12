@@ -124,10 +124,16 @@ public class SemanticQueryExecutor
             var nameFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase));
             if (nameFilter != null && nameFilter.Value != null)
             {
-                var targetName = nameFilter.Value.ToString()!;
+                var targetName = nameFilter.Value is JsonElement je
+                    ? (GetJsonElementRawValue(je)?.ToString() ?? "")
+                    : nameFilter.Value.ToString()!;
+
                 var exact = filtered.FirstOrDefault(t => t.FullName.Equals(targetName, StringComparison.OrdinalIgnoreCase));
                 if (exact != null) return exact;
-                return filtered.FirstOrDefault(t => t.FullName.Contains(targetName, StringComparison.OrdinalIgnoreCase));
+
+                var matches = filtered.Where(t => t.FullName.Contains(targetName, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (matches.Count > 1) return matches;
+                if (matches.Count == 1) return matches[0];
             }
             return filtered.FirstOrDefault();
         }
@@ -555,6 +561,7 @@ public class SemanticQueryExecutor
 
     private static object? GetJsonElementRawValue(JsonElement element)
     {
+        if (element.ValueKind == JsonValueKind.Undefined) return null;
         switch (element.ValueKind)
         {
             case JsonValueKind.True: return true;

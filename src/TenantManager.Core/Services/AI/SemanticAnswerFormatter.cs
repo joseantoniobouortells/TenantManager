@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 
 namespace TenantManager.Core.Services.AI;
 
@@ -44,10 +45,10 @@ public static class SemanticAnswerFormatter
     private static string FormatCount(SemanticQueryPlan plan, int count, bool isEs)
     {
         var resource = plan.Resource!.Value;
-        bool isLate = plan.Filters.Any(f => f.Field.Equals("late", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
-        bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
-        bool isActive = plan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
-        bool isAvailable = plan.Filters.Any(f => f.Field.Equals("available", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
+        bool isLate = plan.Filters.Any(f => f.Field.Equals("late", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
+        bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
+        bool isActive = plan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
+        bool isAvailable = plan.Filters.Any(f => f.Field.Equals("available", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
 
         if (isEs)
         {
@@ -106,8 +107,8 @@ public static class SemanticAnswerFormatter
     private static string FormatSum(SemanticQueryPlan plan, decimal sum, bool isEs)
     {
         var resource = plan.Resource!.Value;
-        bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
-        bool isCurrent = plan.Filters.Any(f => (f.Field.Equals("month", StringComparison.OrdinalIgnoreCase) || f.Field.Equals("year", StringComparison.OrdinalIgnoreCase)) && f.Value != null && f.Value.ToString()!.Equals("current", StringComparison.OrdinalIgnoreCase));
+        bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
+        bool isCurrent = plan.Filters.Any(f => (f.Field.Equals("month", StringComparison.OrdinalIgnoreCase) || f.Field.Equals("year", StringComparison.OrdinalIgnoreCase)) && GetRawValue(f.Value)?.ToString()?.Equals("current", StringComparison.OrdinalIgnoreCase) == true);
 
         if (isEs)
         {
@@ -144,6 +145,14 @@ public static class SemanticAnswerFormatter
 
     private static string FormatLookup(SemanticQueryPlan plan, object result, bool isEs)
     {
+        if (result is List<SemanticTenantResult> matches && matches.Count > 1)
+        {
+            var names = string.Join(", ", matches.Select(t => t.FullName));
+            return isEs
+                ? $"¿A cuál de los siguientes inquilinos se refiere? {names}."
+                : $"Which of the following tenants do you mean? {names}.";
+        }
+
         if (result is SemanticTenantResult tenant)
         {
             if (isEs)
@@ -190,7 +199,7 @@ public static class SemanticAnswerFormatter
             if (resource == SemanticQueryResource.Rooms)
             {
                 var names = items.Cast<SemanticRoomResult>().Select(r => r.Name).ToList();
-                bool isAvailable = plan.Filters.Any(f => f.Field.Equals("available", StringComparison.OrdinalIgnoreCase) && f.Value != null && Convert.ToBoolean(f.Value));
+                bool isAvailable = plan.Filters.Any(f => f.Field.Equals("available", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
                 if (isEs)
                 {
                     return isAvailable 
@@ -241,6 +250,31 @@ public static class SemanticAnswerFormatter
             }
         }
         return result.ToString() ?? "";
+    }
+
+    private static object? GetRawValue(object? val)
+    {
+        if (val is JsonElement je)
+        {
+            return je.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number => je.GetDouble(),
+                JsonValueKind.String => je.GetString(),
+                JsonValueKind.Null => null,
+                _ => je.GetRawText()
+            };
+        }
+        return val;
+    }
+
+    private static bool GetBoolValue(object? val)
+    {
+        var raw = GetRawValue(val);
+        if (raw is bool b) return b;
+        if (raw != null && bool.TryParse(raw.ToString(), out var result)) return result;
+        return false;
     }
 
     private static string GetResourceSingularEs(SemanticQueryResource res) => res switch
