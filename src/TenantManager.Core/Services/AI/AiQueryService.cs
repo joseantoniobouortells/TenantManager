@@ -52,10 +52,13 @@ public class AiQueryService
                 var room = await _dbContext.Rooms.FirstOrDefaultAsync(r => r.Id == matchedTenant.Id); // Note: Simplified relation matching for MVP
                 
                 // Find the latest contract for this tenant
-                var latestContract = await _dbContext.RentalContracts
+                var contracts = await _dbContext.RentalContracts
                     .Where(c => c.TenantId == matchedTenant.Id)
+                    .ToListAsync();
+                    
+                var latestContract = contracts
                     .OrderByDescending(c => c.StartDate)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
 
                 var contextData = new TenantContextData
                 {
