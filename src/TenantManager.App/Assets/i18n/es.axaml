@@ -29,6 +29,13 @@
     <system:String x:Key="SettingsTab">Ajustes</system:String>
     <system:String x:Key="PropertiesTab">Viviendas</system:String>
     <system:String x:Key="ExpensesTab">Gastos</system:String>
+    <system:String x:Key="AssistantTab">Asistente</system:String>
+
+    <!-- Assistant -->
+    <system:String x:Key="AssistantTitle">Asistente IA</system:String>
+    <system:String x:Key="AiDisabledMessage">El asistente de IA local está desactivado. Puedes activarlo en la pestaña de Ajustes.</system:String>
+    <system:String x:Key="AskPlaceholder">Haz una pregunta...</system:String>
+    <system:String x:Key="SendButton">Enviar</system:String>
 
     <!-- Diálogos globales -->
     <system:String x:Key="ConfirmDeleteTitle">¿Confirmar eliminación?</system:String>

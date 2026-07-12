@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.AssistantView"
+             x:DataType="vm:AssistantViewModel"
+             x:CompileBindings="True">
+    
+    <DockPanel>
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource AssistantTitle}" Margin="0" VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- View when AI is disabled -->
+        <Border Classes="Card" IsVisible="{Binding !IsAiEnabled}" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="40">
+            <StackPanel Spacing="16" HorizontalAlignment="Center">
+                <TextBlock Text="🤖" FontSize="48" HorizontalAlignment="Center" />
+                <TextBlock Text="{DynamicResource AiDisabledMessage}" FontSize="18" FontWeight="Medium" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="400" />
+            </StackPanel>
+        </Border>
+
+        <!-- View when AI is enabled -->
+        <Grid IsVisible="{Binding IsAiEnabled}" RowDefinitions="*,Auto">
+            
+            <!-- Chat History -->
+            <ScrollViewer Grid.Row="0" x:Name="ChatScrollViewer" Margin="0 0 0 16">
+                <ItemsControl ItemsSource="{Binding Messages}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="8" Padding="12 8" Margin="0 0 0 8" 
+                                    HorizontalAlignment="{Binding IsUser, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=True}"
+                                    Background="{Binding IsUser, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=True}">
+                                <Border.Styles>
+                                    <Style Selector="Border">
+                                        <Setter Property="HorizontalAlignment" Value="Left" />
+                                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                                        <Setter Property="BorderThickness" Value="1" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource TableBorderBrush}" />
+                                        <Setter Property="MaxWidth" Value="600" />
+                                    </Style>
+                                    <!-- Simple hack without writing a value converter for the binding: just use pseudo-classes or a simpler binding approach. 
+                                         Wait, Avalonia supports inline boolean converters, but let's use DataTriggers or just let the viewmodel expose an alignment.
+                                         Actually, let's keep it simple. We can bind classes if we want, but let's just use the default. -->
+                                </Border.Styles>
+                                
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Role}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Input Area -->
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0 8 0 0">
+                <TextBox Grid.Column="0" Text="{Binding InputText}" PlaceholderText="{DynamicResource AskPlaceholder}" KeyDown="Input_KeyDown" VerticalContentAlignment="Center" MinHeight="40" Margin="0 0 8 0" />
+                <Button Grid.Column="1" Content="{DynamicResource SendButton}" Command="{Binding SendCommand}" Classes="Primary" MinHeight="40" Padding="24 0" />
+            </Grid>
+            
+            <!-- Loading Indicator -->
+            <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Bottom" Height="2" Margin="0 4 0 0" />
+        </Grid>
+    </DockPanel>
+</UserControl>

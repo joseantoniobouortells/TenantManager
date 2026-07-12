@@ -29,6 +29,13 @@
     <system:String x:Key="SettingsTab">Settings</system:String>
     <system:String x:Key="PropertiesTab">Properties</system:String>
     <system:String x:Key="ExpensesTab">Expenses</system:String>
+    <system:String x:Key="AssistantTab">Assistant</system:String>
+
+    <!-- Assistant -->
+    <system:String x:Key="AssistantTitle">AI Assistant</system:String>
+    <system:String x:Key="AiDisabledMessage">The local AI assistant is disabled. You can enable it in the Settings tab.</system:String>
+    <system:String x:Key="AskPlaceholder">Ask a question...</system:String>
+    <system:String x:Key="SendButton">Send</system:String>
 
     <!-- Global dialogs -->
     <system:String x:Key="ConfirmDeleteTitle">Confirm Deletion</system:String>

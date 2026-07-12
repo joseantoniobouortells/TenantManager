@@ -39,6 +39,7 @@ public class MainViewModel : ViewModelBase
         Dashboard = new DashboardViewModel();
         Settings = new SettingsViewModel();
         PropertyList = new PropertyListViewModel(LoadProperties);
+        Assistant = new AssistantViewModel();
 
         LoadProperties();
     }
@@ -65,6 +66,7 @@ public class MainViewModel : ViewModelBase
     public DashboardViewModel Dashboard { get; }
     public SettingsViewModel Settings { get; }
     public PropertyListViewModel PropertyList { get; }
+    public AssistantViewModel Assistant { get; }
 
     public void RefreshAll()
     {
@@ -76,6 +78,7 @@ public class MainViewModel : ViewModelBase
         PaymentList.LoadPayments(SelectedProperty.Id);
         ExpenseList.LoadInvoices(SelectedProperty.Id);
         Dashboard.Refresh(SelectedProperty.Id);
+        Assistant.RefreshSettings();
     }
 
     private void LoadProperties()
