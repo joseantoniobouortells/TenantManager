@@ -209,4 +209,98 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
             return null;
         }
     }
+
+    public async Task<string?> BuildQueryPlanAsync(string userMessage, AssistantContext? context = null, CancellationToken cancellationToken = default)
+    {
+        var settings = SettingsPersistence.LoadSettings();
+
+        if (!settings.IsAiEnabled || string.IsNullOrWhiteSpace(settings.AiEndpoint))
+        {
+            return null;
+        }
+
+        var contextHint = "";
+        if (context != null && context.HasContext)
+        {
+            contextHint = $"\nConversation context: previous_intent={context.LastResolvedIntent}, previous_language={context.LastLanguage ?? "unknown"}.\nUse this to resolve follow-up questions.\n";
+        }
+
+        string plannerPrompt = $@"You are a Semantic Query Planner. Your job is to translate a user's natural language question into a structured SemanticQueryPlan JSON.
+Return JSON ONLY. Do not use markdown. Do not include explanations.
+
+Allowed resources and fields:
+- rooms:
+  - fields: active (bool), occupied (bool), available (bool), currentRent (decimal), name (string)
+  - operations: count, list
+- tenants:
+  - fields: active (bool), fullName (string), currentRoom (string), moveInDate (date), effectiveMoveOutDate (date)
+  - operations: count, list, lookup
+- contracts:
+  - fields: active (bool), tenantName (string), roomName (string), startDate (date), baseEndDate (date), effectiveEndDate (date), hasExtensions (bool), missingFile (bool)
+  - operations: count, list
+- payments:
+  - fields: status (string: 'pending', 'paid', 'late', 'partial'), year (int), month (int), expectedAmount (decimal), paidAmount (decimal), tenantName (string), pending (bool), late (bool)
+  - operations: count, list, sum
+- expenses:
+  - fields: category (string), amount (decimal), date (date)
+  - operations: count, list, sum
+- dashboard:
+  - operations: summary
+
+Allowed operators: equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, contains, in, between
+
+JSON format to return:
+{{
+  ""language"": ""es"" or ""en"",
+  ""resource"": ""rooms"" | ""tenants"" | ""contracts"" | ""payments"" | ""expenses"" | ""dashboard"",
+  ""operation"": ""count"" | ""list"" | ""lookup"" | ""sum"" | ""summary"",
+  ""filters"": [
+    {{
+      ""field"": ""field_name"",
+      ""operator"": ""equals"" | ""not_equals"" | ""greater_than"" | ""greater_than_or_equal"" | ""less_than"" | ""less_than_or_equal"" | ""contains"" | ""in"" | ""between"",
+      ""value"": value
+    }}
+  ],
+  ""projection"": [],
+  ""sort"": [
+    {{
+      ""field"": ""field_name"",
+      ""direction"": ""asc"" | ""desc""
+    }}
+  ],
+  ""limit"": 20,
+  ""confidence"": 0.95
+}}{contextHint}";
+
+        var requestBody = new ChatRequest
+        {
+            Model = settings.AiModelName ?? string.Empty,
+            Messages = new List<ChatMessage>
+            {
+                new ChatMessage { Role = "system", Content = plannerPrompt },
+                new ChatMessage { Role = "user", Content = userMessage }
+            },
+            Temperature = 0.0,
+            Stream = false
+        };
+
+        var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+        var jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
+        var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync(settings.AiEndpoint, httpContent, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+            var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+
+            return chatResponse?.Choices?[0]?.Message?.Content;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
