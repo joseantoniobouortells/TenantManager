@@ -22,3 +22,12 @@ Run after changes:
 dotnet build src/TenantManager.App/TenantManager.App.csproj && dotnet test
 git status -s
 git ls-files | grep -E '(/bin/|/obj/|\.(db|db-shm|db-wal|sqlite|sqlite3)$)' || true
+```
+
+## Specification Tracking and Commits
+
+9. **Spec files are repository artifacts:** Hard-spec (`*.hard-spec.md`) and Gherkin (`*.gherkin.md`) files under `docs/specs/` are first-class repository artifacts and must always be tracked by Git. They must never be left untracked after the corresponding feature work.
+10. **Spec + implementation commits:** When a feature changes behavior, its hard-spec and Gherkin must be updated and included in the same commit, or in a clearly preceding specification commit. Implementation commits must not silently omit relevant spec changes.
+11. **Check for untracked specs before committing:** Agents must run `git status --short` and check for untracked `docs/specs/` files before creating any commit. Untracked spec files must be staged and included.
+12. **Spec commit messages in English:** All specification file content and commit messages referencing specifications must be written in English.
+13. **AI query planning in Core:** AI query planning logic, QueryPlan models, the semantic query catalog, query validators, query executors, domain semantic resolvers, and answer formatters must all reside in `TenantManager.Core` with no Avalonia dependency.
