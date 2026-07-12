@@ -133,7 +133,7 @@
 * **Fechas sin timezone en SQLite:** Algunas fechas persisten sin sufijo de offset (ej. `2026-08-31 00:00:00`) porque se insertaron antes de que la aplicación normalizara todos los `DateTimeOffset`. Siempre usar `.Date` para comparaciones de fechas en el ViewModel, nunca comparar directamente `DateTimeOffset` raw contra otro con timezone diferente.
 
 ## 🚀 4. Roadmap / Próximos Pasos Pendientes
-* **[ ] Extracción a Librería Compartida:** Queda pendiente ejecutar el plan de `library_refactor_spec.md` para separar la lógica Core en una librería agnóstica reutilizable, permitiendo en un futuro integraciones con Web o Mobile.
+* **[x] Extracción a Librería Compartida:** Se separó la lógica de dominio y asistente IA en `TenantManager.Core`, haciéndola independiente del framework UI (Avalonia) y reutilizable.
 * **[ ] (Añadir futuros hitos aquí...)**
 95. **Internacionalización (i18n) en Vistas y Notificaciones (Julio 2026):**
     - *Decisión:* Se auditaron todas las vistas (`.axaml`) y se extrajeron las cadenas literales estáticas sustituyéndolas por `DynamicResource`, apoyándose en diccionarios de recursos dinámicos (`en.axaml` y `es.axaml`). 
@@ -146,3 +146,7 @@
     - *Arquitectura:* Se optó por una resolución determinista y segura de la intención (`AiQueryService`) combinada con un LLM generativo compatible con la API de OpenAI (vía `LocalAiClient`).
     - *Privacidad (PII):* El LLM nunca tiene acceso directo a la base de datos ni a los datos personales. Un intermediario (`SafeContextBuilder`) inyecta estrictamente los datos relevantes de manera anonimizada (ej. contratos, fechas) redactando teléfonos y correos electrónicos.
     - *Independencia:* Se construyó utilizando puro `HttpClient` y la serialización JSON del framework para evitar dependencias pesadas como Semantic Kernel o la SDK oficial de OpenAI, dado que la meta era un cliente agnóstico ultra ligero enfocado en conectar contra LM Studio local.
+98. **Planificador Semántico de Consultas Seguro (Julio 2026):**
+    - *Decisión:* Se implementó un planificador semántico de consultas (Fases 1-10) en `TenantManager.Core` con un catálogo de operaciones permitidas por recurso (Rooms, Tenants, Contracts, Payments, Expenses, Dashboard).
+    - *Motivo:* Evitar la fragilidad de la extracción de keywords del LLM anterior permitiendo responder preguntas estructuradas complejas (conteos, listas filtradas, sumas de facturas/pagos y resúmenes) de forma 100% segura y determinista en español e inglés sin que el LLM genere o ejecute código SQL.
+    - *Impacto:* Compilación con 0 advertencias y suite de 82 pruebas unitarias, de seguridad y funcionales ejecutadas con éxito sobre SQLite en memoria. Se controla estrictamente la privacidad omitiendo PII y limitando las consultas al scope de la propiedad activa.
