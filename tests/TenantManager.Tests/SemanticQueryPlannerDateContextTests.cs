@@ -362,4 +362,195 @@ public class SemanticQueryPlannerDateContextTests
         Assert.NotNull(answer);
         Assert.Contains("2026-08-31", answer);
     }
+
+    // -----------------------------------------------------------------------
+    // Dynamic Mock Handler for Truncation/Retry testing
+    // -----------------------------------------------------------------------
+
+    private class DynamicMockHttpMessageHandler : HttpMessageHandler
+    {
+        public List<string> Requests { get; } = new();
+        public List<int?> MaxTokensSent { get; } = new();
+        private readonly Queue<(HttpStatusCode StatusCode, string Content)> _responses = new();
+
+        public void QueueResponse(HttpStatusCode statusCode, string content)
+        {
+            _responses.Enqueue((statusCode, content));
+        }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (request.Content != null)
+            {
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
+                Requests.Add(body);
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("max_tokens", out var prop) && prop.ValueKind == JsonValueKind.Number)
+                {
+                    MaxTokensSent.Add(prop.GetInt32());
+                }
+                else
+                {
+                    MaxTokensSent.Add(null);
+                }
+            }
+
+            if (_responses.TryDequeue(out var res))
+            {
+                return new HttpResponseMessage(res.StatusCode)
+                {
+                    Content = new StringContent(res.Content)
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+    }
+
+    private static string BuildChoicesWithFinishReason(string content, string finishReason)
+    {
+        var obj = new
+        {
+            choices = new[]
+            {
+                new
+                {
+                    message = new { content = content },
+                    finish_reason = finishReason
+                }
+            }
+        };
+        return JsonSerializer.Serialize(obj);
+    }
+
+    // -----------------------------------------------------------------------
+    // Truncation and Retry Tests
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_NormalResponse_SucceedsWithoutRetry()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{}", "stop"));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("question");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Single(handler.Requests);
+        Assert.Equal(1024, handler.MaxTokensSent[0]);
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_TruncatedResponse_TriggersOneRetryWithLargerTokens()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        // 1st request truncated
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
+        // 2nd request succeeds
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{\"confidence\":0.9}", "stop"));
+        
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("question");
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(1024, handler.MaxTokensSent[0]);
+        Assert.Equal(2048, handler.MaxTokensSent[1]);
+        Assert.Contains("confidence", result);
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_SecondTruncatedResponse_ReturnsFailure()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        // 1st request truncated
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
+        // 2nd request also truncated
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
+        
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("question");
+
+        // Assert
+        Assert.Null(result);
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal(1024, handler.MaxTokensSent[0]);
+        Assert.Equal(2048, handler.MaxTokensSent[1]);
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_EmptyContentWithStopReason_DoesNotRetry()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "stop"));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("question");
+
+        // Assert
+        Assert.Equal("", result);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_InvalidJsonPlan_DoesNotRetryInsideClient()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{ invalid json }", "stop"));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("question");
+
+        // Assert
+        Assert.Equal("{ invalid json }", result);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task ResolveIntent_DoubleTruncationFailure_ReturnsLocalizedPlannerError_NotDashboardSummary()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        var property = new Property { Name = "P6" };
+        db.Properties.Add(property);
+        await db.SaveChangesAsync();
+
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
+        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        var service = new AiQueryService(db, aiClient);
+
+        // Act
+        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
+            "Cuales han sido los ingresos de este mes?", null, property.Id);
+
+        // Assert
+        Assert.NotNull(answer);
+        // Should return localized planner error, not legacy dashboard summary
+        Assert.DoesNotContain("Resumen:", answer);
+        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
+    }
 }

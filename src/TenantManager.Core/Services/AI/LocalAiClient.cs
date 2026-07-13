@@ -40,6 +40,9 @@ public class ChatResponseChoice
 {
     [JsonPropertyName("message")]
     public ChatMessage? Message { get; set; }
+
+    [JsonPropertyName("finish_reason")]
+    public string? FinishReason { get; set; }
 }
 
 public class ChatResponse
@@ -279,7 +282,7 @@ JSON schema:
                 new ChatMessage { Role = "user", Content = userMessage }
             },
             Temperature = 0.0,
-            MaxTokens = 300, // Bounded: a single JSON plan never exceeds ~300 tokens
+            MaxTokens = 1024, // Conservative default to allow reasoning tokens + JSON plan
             Stream = false
         };
 
@@ -295,7 +298,35 @@ JSON schema:
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
 
-            return chatResponse?.Choices?[0]?.Message?.Content;
+            var choice = chatResponse?.Choices?[0];
+            if (choice != null)
+            {
+                var isTruncated = choice.FinishReason == "length";
+                if (isTruncated)
+                {
+                    // Retry once with a larger token budget (2048)
+                    requestBody.MaxTokens = 2048;
+                    jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
+                    httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                    response = await _httpClient.PostAsync(settings.AiEndpoint, httpContent, cancellationToken);
+                    if (!response.IsSuccessStatusCode) return null;
+
+                    responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+                    chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+                    choice = chatResponse?.Choices?[0];
+
+                    if (choice != null && choice.FinishReason == "length")
+                    {
+                        // A second truncated response stops and returns planner failure
+                        return null;
+                    }
+                }
+
+                return choice?.Message?.Content;
+            }
+
+            return null;
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
