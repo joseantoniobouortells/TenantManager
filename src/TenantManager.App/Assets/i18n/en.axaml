@@ -35,11 +35,20 @@
     <system:String x:Key="AssistantTitle">AI Assistant</system:String>
     <system:String x:Key="AiDisabledMessage">The local AI assistant is disabled. You can enable it in the Settings tab.</system:String>
     <system:String x:Key="AskPlaceholder">Ask a question...</system:String>
-    <system:String x:Key="SendButton">Send</system:String>
+    <system:String x:Key="SendButton">Send message</system:String>
     <system:String x:Key="UserRoleLabel">You</system:String>
     <system:String x:Key="AssistantRoleLabel">Assistant</system:String>
     <system:String x:Key="CopyResponseTooltip">Copy response</system:String>
     <system:String x:Key="CopiedLabel">Copied</system:String>
+
+    <!-- AI Processing Stages -->
+    <system:String x:Key="Stage_PreparingRequest">Preparing query…</system:String>
+    <system:String x:Key="Stage_SendingToLmStudio">Sending to LM Studio…</system:String>
+    <system:String x:Key="Stage_WaitingForModel">LM Studio is processing…</system:String>
+    <system:String x:Key="Stage_ParsingPlan">Interpreting the response…</system:String>
+    <system:String x:Key="Stage_ValidatingPlan">Validating the query…</system:String>
+    <system:String x:Key="Stage_ExecutingQuery">Querying data…</system:String>
+    <system:String x:Key="Stage_FormattingResponse">Preparing response…</system:String>
 
     <!-- Global dialogs -->
     <system:String x:Key="ConfirmDeleteTitle">Confirm Deletion</system:String>

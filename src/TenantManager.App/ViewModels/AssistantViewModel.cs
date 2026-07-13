@@ -25,6 +25,7 @@ public class AssistantViewModel : ViewModelBase
 {
     private string _inputText = string.Empty;
     private bool _isLoading;
+    private AiProcessingStage _currentStage = AiProcessingStage.None;
 
     // AI services
     private readonly AiQueryService _queryService;
@@ -55,6 +56,16 @@ public class AssistantViewModel : ViewModelBase
         }
     }
 
+    public AiProcessingStage CurrentProcessingStage
+    {
+        get => _currentStage;
+        set => SetProperty(ref _currentStage, value);
+    }
+
+    public bool IsProcessing => CurrentProcessingStage != AiProcessingStage.None && CurrentProcessingStage != AiProcessingStage.Completed && CurrentProcessingStage != AiProcessingStage.Failed;
+
+    public string ProcessingStageKey => $"Stage_{CurrentProcessingStage}";
+
     public bool IsAiEnabled
     {
         get
@@ -65,6 +76,8 @@ public class AssistantViewModel : ViewModelBase
     }
 
     public ICommand SendCommand { get; }
+
+    public event EventHandler? ScrollRequested;
 
     public AssistantViewModel(Func<int>? propertyIdProvider = null)
     {
@@ -86,6 +99,17 @@ public class AssistantViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsAiEnabled));
     }
 
+    private void UpdateStage(AiProcessingStage stage)
+    {
+        CurrentProcessingStage = stage;
+        OnPropertyChanged(nameof(IsProcessing));
+        OnPropertyChanged(nameof(ProcessingStageKey));
+        if (IsProcessing)
+        {
+            ScrollRequested?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
     private async Task SendMessageAsync()
     {
         if (string.IsNullOrWhiteSpace(InputText)) return;
@@ -94,6 +118,7 @@ public class AssistantViewModel : ViewModelBase
         InputText = string.Empty;
 
         Messages.Add(new ChatMessageViewModel { Role = "user", Content = userText });
+        ScrollRequested?.Invoke(this, EventArgs.Empty);
 
         // Determine current language from context (default = Spanish per app UI)
         bool isSpanish = _conversationContext.LastLanguage == "es";
@@ -107,16 +132,18 @@ public class AssistantViewModel : ViewModelBase
                     ? "El asistente de IA está desactivado en la configuración."
                     : "AI Assistant is disabled."
             });
+            ScrollRequested?.Invoke(this, EventArgs.Empty);
             return;
         }
 
         IsLoading = true;
+        UpdateStage(AiProcessingStage.PreparingRequest);
 
         try
         {
             var propertyId = _propertyIdProvider();
             var (finalAnswer, answerIsSpanish) =
-                await _queryService.ResolveIntentAndGetDataAsync(userText, _conversationContext, propertyId);
+                await _queryService.ResolveIntentAndGetDataAsync(userText, _conversationContext, propertyId, UpdateStage);
 
             // Update conversation language from detected language
             isSpanish = answerIsSpanish;
@@ -135,9 +162,11 @@ public class AssistantViewModel : ViewModelBase
             }
 
             Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });
+            ScrollRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) when (ex is InvalidOperationException && ex.Message == "AI_OFFLINE" || ex.InnerException is System.Net.Http.HttpRequestException)
         {
+            UpdateStage(AiProcessingStage.Failed);
             Messages.Add(new ChatMessageViewModel
             {
                 Role = "assistant",
@@ -145,9 +174,11 @@ public class AssistantViewModel : ViewModelBase
                     ? "No se pudo conectar con el servidor local de IA (LM Studio). Asegúrese de que está iniciado en la configuración."
                     : "Could not connect to the local AI server (LM Studio). Please ensure it is running in your settings."
             });
+            ScrollRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
+            UpdateStage(AiProcessingStage.Failed);
             Messages.Add(new ChatMessageViewModel
             {
                 Role = "assistant",
@@ -155,10 +186,12 @@ public class AssistantViewModel : ViewModelBase
                     ? $"Error al procesar la consulta: {ex.Message}"
                     : $"Error processing request: {ex.Message}"
             });
+            ScrollRequested?.Invoke(this, EventArgs.Empty);
         }
         finally
         {
             IsLoading = false;
+            UpdateStage(AiProcessingStage.None);
         }
     }
 }

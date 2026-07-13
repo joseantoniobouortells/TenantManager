@@ -40,7 +40,7 @@ public class AiQueryService
     /// plus deterministic DB lookup. Updates conversation context on success.
     /// </summary>
     public async Task<(string? FinalAnswer, bool IsSpanish)> ResolveIntentAndGetDataAsync(
-        string userMessage, AssistantContext? context = null, int propertyId = 0)
+        string userMessage, AssistantContext? context = null, int propertyId = 0, Action<AiProcessingStage>? onProgress = null)
     {
         if (context != null)
         {
@@ -52,6 +52,7 @@ public class AiQueryService
         }
 
         bool isSpanish = context?.LastLanguage == "es";
+        onProgress?.Invoke(AiProcessingStage.PreparingRequest);
 
         // ---- Primary Path: Semantic Query Planner ----
         bool plannerAttempted = false;
@@ -61,16 +62,25 @@ public class AiQueryService
             if (settings.IsAiEnabled && !string.IsNullOrWhiteSpace(settings.AiEndpoint))
             {
                 plannerAttempted = true;
+                onProgress?.Invoke(AiProcessingStage.SendingToLmStudio);
+                
+                // Set to WaitingForModel immediately after triggering the request logic, 
+                // but since LocalAiClient might take a while, we'll assume WaitingForModel happens implicitly or we can set it here.
+                onProgress?.Invoke(AiProcessingStage.WaitingForModel);
+                
                 var rawResponse = await _aiClient.BuildQueryPlanAsync(userMessage, context);
 
                 if (string.IsNullOrWhiteSpace(rawResponse))
                 {
+                    onProgress?.Invoke(AiProcessingStage.Failed);
                     // Timeout or empty content
                     var plannerErrorMsg = isSpanish
                         ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
                         : "Sorry, I could not interpret your question. Please try again or simplify your query.";
                     return (plannerErrorMsg, isSpanish);
                 }
+
+                onProgress?.Invoke(AiProcessingStage.ParsingPlan);
 
                 bool isLegacyJson = false;
                 try
@@ -126,15 +136,20 @@ public class AiQueryService
                             rawPlan.Operation = SemanticQueryOperation.Summary;
                         }
 
+                        onProgress?.Invoke(AiProcessingStage.ValidatingPlan);
                         var validationResult = SemanticQueryPlanValidator.Validate(rawPlan, propertyId);
                         if (validationResult.IsValid)
                         {
+                            onProgress?.Invoke(AiProcessingStage.ExecutingQuery);
                             var executor = new SemanticQueryExecutor(_dbContext);
                             var executionResult = await executor.ExecuteAsync(rawPlan);
                             if (executionResult is string errorMsg)
                             {
+                                onProgress?.Invoke(AiProcessingStage.Failed);
                                 return (errorMsg, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
                             }
+                            
+                            onProgress?.Invoke(AiProcessingStage.FormattingResponse);
                             string formattedAnswer = SemanticAnswerFormatter.Format(rawPlan, executionResult, rawPlan.Language);
 
                             if (context != null)
@@ -142,10 +157,12 @@ public class AiQueryService
                                 UpdateSemanticContext(context, rawPlan, propertyId);
                             }
 
+                            onProgress?.Invoke(AiProcessingStage.Completed);
                             return (formattedAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
                         }
                         else
                         {
+                            onProgress?.Invoke(AiProcessingStage.Failed);
                             var errAnswer = SemanticAnswerFormatter.FormatValidationError(validationResult, rawPlan.Language);
                             return (errAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
                         }
@@ -155,10 +172,12 @@ public class AiQueryService
         }
         catch (InvalidOperationException ex) when (ex.Message == "AI_OFFLINE")
         {
+            onProgress?.Invoke(AiProcessingStage.Failed);
             throw;
         }
         catch
         {
+            onProgress?.Invoke(AiProcessingStage.Failed);
             if (plannerAttempted)
             {
                 var plannerErrorMsg = isSpanish
@@ -169,7 +188,9 @@ public class AiQueryService
         }
 
         // ---- Fallback Path: Legacy Intent Extraction ----
+        onProgress?.Invoke(AiProcessingStage.SendingToLmStudio);
         var json = await _aiClient.ExtractIntentAsync(userMessage, context);
+        onProgress?.Invoke(AiProcessingStage.ParsingPlan);
         IntentExtractionResult? extraction = null;
         if (!string.IsNullOrWhiteSpace(json))
         {
@@ -236,18 +257,28 @@ public class AiQueryService
         // ---- 4. Gate on confidence ----
         if (confidence < 0.5 && extraction != null)
         {
+            onProgress?.Invoke(AiProcessingStage.Failed);
             return (null, isSpanish);
         }
+
+        onProgress?.Invoke(AiProcessingStage.ExecutingQuery);
 
         // ---- 5. Dispatch by intent ----
         if (intent == "tenant_move_out_date" || intent == "tenant_current_room")
         {
-            if (string.IsNullOrWhiteSpace(tenantName)) return (null, isSpanish);
+            if (string.IsNullOrWhiteSpace(tenantName)) 
+            {
+                onProgress?.Invoke(AiProcessingStage.Failed);
+                return (null, isSpanish);
+            }
 
             var tenants = await _dbContext.Tenants.ToListAsync();
             var bestMatch = FindBestTenantMatch(tenantName, tenants, isSpanish, out string? clarification);
             if (bestMatch == null)
+            {
+                onProgress?.Invoke(AiProcessingStage.Failed);
                 return (clarification, isSpanish);
+            }
 
             var contracts = await _dbContext.RentalContracts
                 .Where(c => c.TenantId == bestMatch.Id)
@@ -257,6 +288,7 @@ public class AiQueryService
                 ? await _dbContext.Rooms.FirstOrDefaultAsync(r => r.Id == latestContract.RoomId)
                 : null;
 
+            onProgress?.Invoke(AiProcessingStage.FormattingResponse);
             string answer;
             if (intent == "tenant_move_out_date")
             {
@@ -301,12 +333,14 @@ public class AiQueryService
                 context.LastLanguage = isSpanish ? "es" : "en";
                 context.LastEntityType = "tenantName";
             }
+            onProgress?.Invoke(AiProcessingStage.Completed);
             return (answer, isSpanish);
         }
         else if (intent == "dashboard_summary" || intent == "available_rooms" || intent == "pending_or_late_payments")
         {
             var rooms = await _dbContext.Rooms.ToListAsync();
             var tenantsCount = await _dbContext.Tenants.CountAsync();
+            onProgress?.Invoke(AiProcessingStage.FormattingResponse);
             var ans = isSpanish
                 ? $"Resumen: La aplicación tiene {rooms.Count} habitaciones y {tenantsCount} inquilinos."
                 : $"Summary: The app has {rooms.Count} rooms and {tenantsCount} tenants.";
@@ -316,9 +350,11 @@ public class AiQueryService
                 context.LastResolvedIntent = intent;
                 context.LastLanguage = isSpanish ? "es" : "en";
             }
+            onProgress?.Invoke(AiProcessingStage.Completed);
             return (ans, isSpanish);
         }
 
+        onProgress?.Invoke(AiProcessingStage.Failed);
         return (null, isSpanish);
     }
 

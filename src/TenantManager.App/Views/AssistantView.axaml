@@ -4,6 +4,8 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:TenantManager.App.ViewModels"
              xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+             xmlns:ai="using:TenantManager.Core.Services.AI"
+             xmlns:cv="using:Avalonia.Data.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="TenantManager.App.Views.AssistantView"
              x:DataType="vm:AssistantViewModel"
@@ -23,68 +25,99 @@
         </Border>
 
         <!-- View when AI is enabled -->
-        <Grid IsVisible="{Binding IsAiEnabled}" RowDefinitions="*,Auto">
+        <Grid IsVisible="{Binding IsAiEnabled}" RowDefinitions="*,Auto" HorizontalAlignment="Stretch">
             
             <!-- Chat History -->
-            <ScrollViewer Grid.Row="0" x:Name="ChatScrollViewer" Margin="0 0 0 16">
-                <ItemsControl ItemsSource="{Binding Messages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <DockPanel Margin="0,0,0,12" LastChildFill="False">
-                                <!-- User Bubble -->
-                                <Border DockPanel.Dock="Right" IsVisible="{Binding IsUser}" 
-                                        Background="{DynamicResource PrimaryBrush}" 
-                                        CornerRadius="16,16,0,16" 
-                                        Padding="12,8" 
-                                        MaxWidth="600" HorizontalAlignment="Right">
-                                    <StackPanel>
-                                        <TextBlock Text="{DynamicResource UserRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,0,0,4" HorizontalAlignment="Right" />
-                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="White" />
-                                    </StackPanel>
-                                </Border>
+            <ScrollViewer Grid.Row="0" x:Name="ChatScrollViewer" HorizontalScrollBarVisibility="Disabled">
+                <Border MaxWidth="800" HorizontalAlignment="Center" Width="{Binding #ChatScrollViewer.Bounds.Width}" Padding="16,16,16,16">
+                    <StackPanel>
+                        <ItemsControl x:Name="ChatItemsControl" ItemsSource="{Binding Messages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,0,0,12" LastChildFill="False">
+                                        <!-- User Bubble -->
+                                        <Border DockPanel.Dock="Right" IsVisible="{Binding IsUser}" 
+                                                Background="{DynamicResource PrimaryBrush}" 
+                                                CornerRadius="16,16,0,16" 
+                                                Padding="12,8" 
+                                                MaxWidth="600" HorizontalAlignment="Right">
+                                            <StackPanel>
+                                                <TextBlock Text="{DynamicResource UserRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,0,0,4" HorizontalAlignment="Right" />
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="White" />
+                                            </StackPanel>
+                                        </Border>
 
-                                <Border DockPanel.Dock="Left" IsVisible="{Binding !IsUser}" 
-                                        Background="{DynamicResource CardBackgroundBrush}" 
-                                        BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
-                                        CornerRadius="16,16,16,0" 
-                                        Padding="12,8" 
-                                        MaxWidth="600" HorizontalAlignment="Left">
-                                    <StackPanel TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
-                                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
-                                            <TextBlock Grid.Column="0" Text="{DynamicResource AssistantRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                            
-                                            <!-- Copy Button -->
-                                            <Button Grid.Column="1" Classes="Action" Padding="4,2" CornerRadius="4" Background="Transparent"
-                                                    Click="CopyButton_OnClick" ToolTip.Tip="{DynamicResource CopyResponseTooltip}" Cursor="Hand">
-                                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                                    <TextBlock Text="📋" FontSize="12" />
-                                                    <TextBlock Text="{DynamicResource CopiedLabel}" FontSize="10" Foreground="Green" IsVisible="{Binding ShowCopiedMessage}" VerticalAlignment="Center" />
-                                                </StackPanel>
-                                            </Button>
-                                        </Grid>
-                                        
-                                        <!-- Safe Markdown Rendering -->
-                                        <md:MarkdownScrollViewer Markdown="{Binding Content}"
-                                                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                            <!-- Optional: define minimal styles inside Markdown properties if needed -->
-                                        </md:MarkdownScrollViewer>
-                                    </StackPanel>
-                                </Border>
-                            </DockPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                        <!-- Assistant Bubble -->
+                                        <Border DockPanel.Dock="Left" IsVisible="{Binding !IsUser}" 
+                                                Background="{DynamicResource CardBackgroundBrush}" 
+                                                BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
+                                                CornerRadius="16,16,16,0" 
+                                                Padding="12,8" 
+                                                MaxWidth="600" HorizontalAlignment="Left">
+                                            <StackPanel TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
+                                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                                                    <TextBlock Grid.Column="0" Text="{DynamicResource AssistantRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    
+                                                    <!-- Copy Button -->
+                                                    <Button Grid.Column="1" Classes="Action" Padding="4,2" CornerRadius="4" Background="Transparent"
+                                                            Click="CopyButton_OnClick" ToolTip.Tip="{DynamicResource CopyResponseTooltip}" Cursor="Hand">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <TextBlock Text="📋" FontSize="12" />
+                                                            <TextBlock Text="{DynamicResource CopiedLabel}" FontSize="10" Foreground="Green" IsVisible="{Binding ShowCopiedMessage}" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+                                                
+                                                <!-- Safe Markdown Rendering -->
+                                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                                    <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                    </md:MarkdownScrollViewer>
+                                                </ScrollViewer>
+                                            </StackPanel>
+                                        </Border>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Progress indicator (belongs to assistant side) -->
+                        <DockPanel Margin="0,0,0,12" LastChildFill="False" IsVisible="{Binding IsProcessing}">
+                            <Border DockPanel.Dock="Left" Background="{DynamicResource CardBackgroundBrush}" 
+                                    BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
+                                    CornerRadius="16,16,16,0" Padding="12,8" HorizontalAlignment="Left">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <ProgressBar IsIndeterminate="True" Width="20" Height="20" Classes="Circle" Theme="{DynamicResource ProgressRing}" IsVisible="False" />
+                                    <ProgressBar IsIndeterminate="True" VerticalAlignment="Center" Width="40" Height="2" Margin="0,0,8,0" />
+                                    <TextBlock Text="{DynamicResource Stage_PreparingRequest}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.PreparingRequest}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_SendingToLmStudio}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.SendingToLmStudio}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_WaitingForModel}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.WaitingForModel}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_ParsingPlan}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.ParsingPlan}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_ValidatingPlan}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.ValidatingPlan}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_ExecutingQuery}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.ExecutingQuery}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_FormattingResponse}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.FormattingResponse}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
             </ScrollViewer>
 
             <!-- Input Area -->
-            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0 8 0 0">
-                <TextBox Grid.Column="0" Text="{Binding InputText}" PlaceholderText="{DynamicResource AskPlaceholder}" KeyDown="Input_KeyDown" VerticalContentAlignment="Center" MinHeight="40" Margin="0 0 8 0" />
-                <Button Grid.Column="1" Content="{DynamicResource SendButton}" Command="{Binding SendCommand}" Classes="Primary" MinHeight="40" Padding="24 0" />
-            </Grid>
-            
-            <!-- Loading Indicator -->
-            <ProgressBar Grid.Row="1" IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Bottom" Height="2" Margin="0 4 0 0" />
+            <Border Grid.Row="1" MaxWidth="800" HorizontalAlignment="Center" Width="{Binding $parent.Bounds.Width}" Padding="16,0,16,24">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding InputText}" PlaceholderText="{DynamicResource AskPlaceholder}" KeyDown="Input_KeyDown" VerticalContentAlignment="Center" MinHeight="48" CornerRadius="16" Margin="0 0 8 0" Padding="16,0" />
+                    <!-- Send Button -->
+                    <Button Grid.Column="1" Command="{Binding SendCommand}" Classes="Primary" MinHeight="48" CornerRadius="16" Padding="16,0" ToolTip.Tip="{DynamicResource SendButton}">
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <!-- Send PathIcon -->
+                            <PathIcon Data="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" Width="16" Height="16" Foreground="White" />
+                            <TextBlock Text="{DynamicResource SendButton}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
         </Grid>
     </DockPanel>
 </UserControl>
