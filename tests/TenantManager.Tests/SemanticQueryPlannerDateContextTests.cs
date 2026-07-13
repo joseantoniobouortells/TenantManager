@@ -13,6 +13,7 @@ using Xunit;
 
 namespace TenantManager.Tests;
 
+[Collection("SequentialAiTests")]
 public class SemanticQueryPlannerDateContextTests
 {
     private class DynamicMockHttpMessageHandler : HttpMessageHandler

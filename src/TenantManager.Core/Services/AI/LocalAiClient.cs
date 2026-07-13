@@ -430,7 +430,21 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
         var contextHint = "";
         if (context != null && context.HasContext)
         {
-            contextHint = $"\nConversation context: previous_intent={context.LastResolvedIntent}, previous_language={context.LastLanguage ?? "unknown"}.\nUse this to resolve follow-up questions.\n";
+            var lines = new List<string>();
+            if (!string.IsNullOrEmpty(context.LastResource)) lines.Add($"resource={context.LastResource}");
+            if (!string.IsNullOrEmpty(context.LastTenantDisplayName)) lines.Add($"tenantName={context.LastTenantDisplayName}");
+            if (context.LastProjection != null && context.LastProjection.Count > 0) lines.Add($"projection={string.Join(",", context.LastProjection)}");
+            if (!string.IsNullOrEmpty(context.LastLanguage)) lines.Add($"language={context.LastLanguage}");
+            if (context.LastYear.HasValue) lines.Add($"year={context.LastYear}");
+            if (context.LastMonth.HasValue) lines.Add($"month={context.LastMonth}");
+
+            if (!string.IsNullOrEmpty(context.LastResolvedIntent)) lines.Add($"previous_intent={context.LastResolvedIntent}");
+            if (!string.IsNullOrEmpty(context.LastLanguage)) lines.Add($"previous_language={context.LastLanguage}");
+
+            if (lines.Count > 0)
+            {
+                contextHint = $"\nPrevious successful query:\n{string.Join("\n", lines)}\n";
+            }
         }
 
         string plannerPrompt = $@"You are a Semantic Query Planner. Translate the user question into one SemanticQueryPlan JSON object.

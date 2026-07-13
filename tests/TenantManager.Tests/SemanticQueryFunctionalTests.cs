@@ -12,6 +12,7 @@ using Xunit;
 
 namespace TenantManager.Tests;
 
+[Collection("SequentialAiTests")]
 public class SemanticQueryFunctionalTests
 {
     private static AppDbContext GetMemoryDbContext()

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace TenantManager.Core.Services.AI;
 
 /// <summary>
@@ -6,14 +8,33 @@ namespace TenantManager.Core.Services.AI;
 /// </summary>
 public class AssistantContext
 {
-    /// <summary>Last successfully resolved intent (e.g. "tenant_move_out_date").</summary>
     public string? LastResolvedIntent { get; set; }
-
-    /// <summary>Last detected language ("es" or "en").</summary>
     public string? LastLanguage { get; set; }
-
-    /// <summary>Last entity type topic (e.g. "tenantName").</summary>
     public string? LastEntityType { get; set; }
 
+    // Extended Semantic Context properties
+    public string? LastResource { get; set; }
+    public string? LastOperation { get; set; }
+    public List<string> LastProjection { get; set; } = new();
+    public int? LastTenantId { get; set; }
+    public string? LastTenantDisplayName { get; set; }
+    public int? LastYear { get; set; }
+    public int? LastMonth { get; set; }
+    public int? LastPropertyId { get; set; }
+
     public bool HasContext => LastResolvedIntent != null;
+
+    public void Reset()
+    {
+        LastResolvedIntent = null;
+        LastLanguage = null;
+        LastEntityType = null;
+        LastResource = null;
+        LastOperation = null;
+        LastProjection.Clear();
+        LastTenantId = null;
+        LastTenantDisplayName = null;
+        LastYear = null;
+        LastMonth = null;
+    }
 }

@@ -62,6 +62,7 @@ internal static class LlmJson
 // ---------------------------------------------------------------------------
 // AiQueryService Tests
 // ---------------------------------------------------------------------------
+[Collection("SequentialAiTests")]
 public class AiQueryServiceTests
 {
     private static AppDbContext GetMemoryDbContext()

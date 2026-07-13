@@ -42,6 +42,15 @@ public class AiQueryService
     public async Task<(string? FinalAnswer, bool IsSpanish)> ResolveIntentAndGetDataAsync(
         string userMessage, AssistantContext? context = null, int propertyId = 0)
     {
+        if (context != null)
+        {
+            if (context.LastPropertyId.HasValue && context.LastPropertyId.Value != propertyId)
+            {
+                context.Reset();
+            }
+            context.LastPropertyId = propertyId;
+        }
+
         bool isSpanish = context?.LastLanguage == "es";
 
         // ---- Primary Path: Semantic Query Planner ----
@@ -112,8 +121,7 @@ public class AiQueryService
 
                             if (context != null)
                             {
-                                context.LastResolvedIntent = rawPlan.Resource!.Value.ToString().ToLowerInvariant() + "_" + rawPlan.Operation!.Value.ToString().ToLowerInvariant();
-                                context.LastLanguage = rawPlan.Language;
+                                UpdateSemanticContext(context, rawPlan, propertyId);
                             }
 
                             return (formattedAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
@@ -385,6 +393,63 @@ public class AiQueryService
         var noAccents = sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
         return string.Join(" ", noAccents.Split(
             new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private void UpdateSemanticContext(AssistantContext context, SemanticQueryPlan plan, int propertyId)
+    {
+        context.LastResolvedIntent = plan.Resource!.Value.ToString().ToLowerInvariant() + "_" + plan.Operation!.Value.ToString().ToLowerInvariant();
+        context.LastLanguage = plan.Language;
+        context.LastResource = plan.Resource?.ToString().ToLowerInvariant();
+        context.LastOperation = plan.Operation?.ToString().ToLowerInvariant();
+        context.LastProjection = plan.Projection;
+
+        // Extract period values if present in filters
+        var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+        if (yearFilter != null && int.TryParse(yearFilter.Value?.ToString(), out var y))
+        {
+            context.LastYear = y;
+        }
+        else
+        {
+            context.LastYear = null;
+        }
+
+        var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+        if (monthFilter != null && int.TryParse(monthFilter.Value?.ToString(), out var m))
+        {
+            context.LastMonth = m;
+        }
+        else
+        {
+            context.LastMonth = null;
+        }
+
+        // Find tenant name filter
+        string? tenantName = null;
+        foreach (var filter in plan.Filters)
+        {
+            bool isTenantNameFilter = false;
+            if (plan.Resource == SemanticQueryResource.Tenants && filter.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
+            else if (plan.Resource == SemanticQueryResource.Contracts && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
+            else if (plan.Resource == SemanticQueryResource.Payments && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
+
+            if (isTenantNameFilter && filter.Value != null)
+            {
+                tenantName = filter.Value.ToString();
+                break;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(tenantName))
+        {
+            var tenant = _dbContext.Tenants.AsNoTracking()
+                .FirstOrDefault(t => t.PropertyId == propertyId && t.FullName == tenantName);
+            if (tenant != null)
+            {
+                context.LastTenantId = tenant.Id;
+                context.LastTenantDisplayName = tenant.FullName;
+            }
+        }
     }
 
     private static string CleanJsonOutput(string rawJson)
