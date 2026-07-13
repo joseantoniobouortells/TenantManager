@@ -105,6 +105,10 @@ public class AiQueryService
                         {
                             var executor = new SemanticQueryExecutor(_dbContext);
                             var executionResult = await executor.ExecuteAsync(rawPlan);
+                            if (executionResult is string errorMsg)
+                            {
+                                return (errorMsg, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                            }
                             string formattedAnswer = SemanticAnswerFormatter.Format(rawPlan, executionResult, rawPlan.Language);
 
                             if (context != null)
@@ -333,7 +337,7 @@ public class AiQueryService
     /// <summary>
     /// Safe token-based tenant name matching with clarification on ambiguity.
     /// </summary>
-    private static Tenant? FindBestTenantMatch(
+    public static Tenant? FindBestTenantMatch(
         string requestedName, System.Collections.Generic.List<Tenant> tenants,
         bool isSpanish, out string? clarification)
     {
@@ -347,7 +351,8 @@ public class AiQueryService
         var partialMatches = tenants.Where(t =>
         {
             var tNorm = NormalizeString(t.FullName);
-            return targetTokens.All(token => tNorm.Contains(token));
+            var tTokens = tNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return targetTokens.All(token => tTokens.Contains(token));
         }).ToList();
 
         if (partialMatches.Count == 1) return partialMatches[0];
@@ -367,7 +372,7 @@ public class AiQueryService
         return null;
     }
 
-    private static string NormalizeString(string input)
+    public static string NormalizeString(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return string.Empty;
         var normalized = input.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);

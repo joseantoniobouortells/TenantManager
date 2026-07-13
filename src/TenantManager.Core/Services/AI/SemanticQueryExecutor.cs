@@ -47,6 +47,63 @@ public class SemanticQueryExecutor
 
         var now = DateTimeOffset.Now;
 
+        // Pre-process tenant name filters by resolving them to canonical full names
+        bool isSpanish = plan.Language.Equals("es", StringComparison.OrdinalIgnoreCase);
+        foreach (var filter in plan.Filters)
+        {
+            bool isTenantNameFilter = false;
+            if (plan.Resource == SemanticQueryResource.Tenants && filter.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase))
+            {
+                isTenantNameFilter = true;
+            }
+            else if (plan.Resource == SemanticQueryResource.Contracts && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase))
+            {
+                isTenantNameFilter = true;
+            }
+            else if (plan.Resource == SemanticQueryResource.Payments && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase))
+            {
+                isTenantNameFilter = true;
+            }
+
+            if (isTenantNameFilter && filter.Value != null)
+            {
+                var filterValueStr = filter.Value.ToString();
+                if (!string.IsNullOrWhiteSpace(filterValueStr))
+                {
+                    var bestMatch = AiQueryService.FindBestTenantMatch(filterValueStr, tenants, isSpanish, out var clarification);
+                    if (bestMatch == null)
+                    {
+                        // Distinguish multiple vs zero matches to return the correct smallest existing localized result
+                        var targetNorm = AiQueryService.NormalizeString(filterValueStr);
+                        var targetTokens = targetNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        var partialMatches = tenants.Where(t =>
+                        {
+                            var tNorm = AiQueryService.NormalizeString(t.FullName);
+                            var tTokens = tNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            return targetTokens.All(token => tTokens.Contains(token));
+                        }).ToList();
+
+                        if (partialMatches.Count > 1)
+                        {
+                            var names = string.Join(", ", partialMatches.Select(p => p.FullName));
+                            return isSpanish
+                                ? $"¿A cuál de los siguientes inquilinos se refiere? {names}."
+                                : $"Which of the following tenants do you mean? {names}.";
+                        }
+                        
+                        return isSpanish
+                            ? "No se encontraron datos que coincidan con su consulta."
+                            : "No data was found matching your query.";
+                    }
+                    else
+                    {
+                        // Rewrite to canonical full name
+                        filter.Value = bestMatch.FullName;
+                    }
+                }
+            }
+        }
+
         // Execute by resource
         if (!plan.Resource.HasValue) return null;
 
