@@ -12,8 +12,34 @@
              x:CompileBindings="True">
     
     <DockPanel>
-        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0 0 0 24">
             <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource AssistantTitle}" Margin="0" VerticalAlignment="Center" />
+
+            <!-- Active model badge — shown only when AI is enabled -->
+            <Border Grid.Column="2"
+                    IsVisible="{Binding IsAiEnabled}"
+                    VerticalAlignment="Center"
+                    CornerRadius="20"
+                    Padding="10,5,12,5"
+                    Background="{DynamicResource PrimaryBrush}"
+                    Opacity="0.85">
+                <Border.Effect>
+                    <DropShadowEffect Color="#3B82F6"
+                                      BlurRadius="12"
+                                      OffsetX="0" OffsetY="2"
+                                      Opacity="0.35" />
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <TextBlock Text="✦" FontSize="10" Foreground="White" VerticalAlignment="Center" Opacity="0.8" />
+                    <TextBlock Text="{Binding ActiveModelName}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="220" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         <!-- View when AI is disabled -->

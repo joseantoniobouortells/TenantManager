@@ -19,6 +19,12 @@
     <system:String x:Key="EnableAiLabel">Enable AI Assistant</system:String>
     <system:String x:Key="AiEndpointLabel">Local API Endpoint</system:String>
     <system:String x:Key="AiModelNameLabel">Model Name (optional)</system:String>
+    <system:String x:Key="AiModelSelectLabel">Select Model</system:String>
+    <system:String x:Key="AiModelSelectPlaceholder">Click ⋯ Load to see available models…</system:String>
+    <system:String x:Key="AiLoadModelsButton">Load</system:String>
+    <system:String x:Key="AiLoadModelsTooltip">Fetch available models from the configured server</system:String>
+    <system:String x:Key="AiModelManualLabel">Or type a model name manually:</system:String>
+    <system:String x:Key="AiModelManualPlaceholder">e.g. llama3, mistral:instruct…</system:String>
 
     <!-- Navigation tabs -->
     <system:String x:Key="DashboardTab">Dashboard</system:String>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -524,6 +525,60 @@ JSON schema:
         catch
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Queries the /v1/models endpoint on the configured server and returns
+    /// the list of available model IDs. Returns an empty list on any error.
+    /// </summary>
+    public async Task<List<string>> GetAvailableModelsAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = SettingsPersistence.LoadSettings();
+        if (string.IsNullOrWhiteSpace(settings.AiEndpoint))
+            return new List<string>();
+
+        // Derive the /v1/models URL from the configured endpoint
+        string modelsUrl;
+        try
+        {
+            var uri = new Uri(NormalizeCompletionsEndpoint(settings.AiEndpoint));
+            modelsUrl = $"{uri.Scheme}://{uri.Authority}/v1/models";
+        }
+        catch
+        {
+            return new List<string>();
+        }
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(8));
+
+            var response = await _httpClient.GetAsync(modelsUrl, cts.Token);
+            if (!response.IsSuccessStatusCode) return new List<string>();
+
+            var json = await response.Content.ReadAsStringAsync(cts.Token);
+            using var doc = JsonDocument.Parse(json);
+
+            var ids = new List<string>();
+            if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var model in data.EnumerateArray())
+                {
+                    if (model.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
+                    {
+                        var idStr = id.GetString();
+                        if (!string.IsNullOrWhiteSpace(idStr))
+                            ids.Add(idStr!);
+                    }
+                }
+            }
+            return ids.OrderBy(x => x).ToList();
+        }
+        catch
+        {
+            return new List<string>();
         }
     }
 }

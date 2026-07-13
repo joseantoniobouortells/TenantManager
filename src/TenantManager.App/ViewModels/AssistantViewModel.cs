@@ -75,6 +75,17 @@ public class AssistantViewModel : ViewModelBase
         }
     }
 
+    public string ActiveModelName
+    {
+        get
+        {
+            var settings = SettingsPersistence.LoadSettings();
+            return !string.IsNullOrWhiteSpace(settings.AiModelName)
+                ? settings.AiModelName
+                : "—";
+        }
+    }
+
     public ICommand SendCommand { get; }
 
     public event EventHandler? ScrollRequested;
@@ -97,6 +108,7 @@ public class AssistantViewModel : ViewModelBase
     public void RefreshSettings()
     {
         OnPropertyChanged(nameof(IsAiEnabled));
+        OnPropertyChanged(nameof(ActiveModelName));
     }
 
     private void UpdateStage(AiProcessingStage stage)
