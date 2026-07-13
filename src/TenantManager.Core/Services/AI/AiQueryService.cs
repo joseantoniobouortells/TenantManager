@@ -63,11 +63,10 @@ public class AiQueryService
                     return (plannerErrorMsg, isSpanish);
                 }
 
-                var cleanedJson = CleanJsonOutput(rawResponse);
                 bool isLegacyJson = false;
                 try
                 {
-                    using var doc = JsonDocument.Parse(cleanedJson);
+                    using var doc = JsonDocument.Parse(rawResponse);
                     if (doc.RootElement.TryGetProperty("intent", out _))
                     {
                         isLegacyJson = true;
@@ -87,7 +86,7 @@ public class AiQueryService
                     SemanticQueryPlan? rawPlan = null;
                     try
                     {
-                        rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(cleanedJson);
+                        rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(rawResponse);
                     }
                     catch
                     {

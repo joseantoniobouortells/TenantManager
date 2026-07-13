@@ -34,6 +34,9 @@ public class ChatRequest
     public int? MaxTokens { get; set; }
     [JsonPropertyName("stream")]
     public bool Stream { get; set; } = false;
+
+    [JsonPropertyName("response_format")]
+    public object? ResponseFormat { get; set; }
 }
 
 public class NativeChatRequest
@@ -259,6 +262,26 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
         }
     }
 
+    public static string NormalizeCompletionsEndpoint(string configuredEndpoint)
+    {
+        if (string.IsNullOrWhiteSpace(configuredEndpoint)) return string.Empty;
+        var url = configuredEndpoint.Trim().TrimEnd('/');
+        try
+        {
+            var uri = new Uri(url);
+            var baseAddress = $"{uri.Scheme}://{uri.Authority}";
+            return $"{baseAddress}/v1/chat/completions";
+        }
+        catch
+        {
+            if (url.Contains("/api/v1/chat"))
+            {
+                return url.Replace("/api/v1/chat", "/v1/chat/completions");
+            }
+            return $"{url}/v1/chat/completions";
+        }
+    }
+
     public static string NormalizeNativeChatEndpoint(string configuredEndpoint)
     {
         if (string.IsNullOrWhiteSpace(configuredEndpoint)) return string.Empty;
@@ -277,6 +300,109 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
             }
             return $"{url}/api/v1/chat";
         }
+    }
+
+    public static object GetSemanticQueryPlanJsonSchema()
+    {
+        return new
+        {
+            type = "json_schema",
+            json_schema = new
+            {
+                name = "SemanticQueryPlan",
+                strict = true,
+                schema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        language = new
+                        {
+                            type = "string",
+                            @enum = new[] { "es", "en" }
+                        },
+                        resource = new
+                        {
+                            type = "string",
+                            @enum = new[] { "rooms", "tenants", "contracts", "payments", "expenses", "dashboard" }
+                        },
+                        operation = new
+                        {
+                            type = "string",
+                            @enum = new[] { "count", "list", "lookup", "sum", "summary" }
+                        },
+                        filters = new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    field = new { type = "string" },
+                                    @operator = new
+                                    {
+                                        type = "string",
+                                        @enum = new[] { "equals", "not_equals", "greater_than", "greater_than_or_equal", "less_than", "less_than_or_equal", "contains", "in", "between" }
+                                    },
+                                    value = new
+                                    {
+                                        anyOf = new object[]
+                                        {
+                                            new { type = "string" },
+                                            new { type = "number" },
+                                            new { type = "boolean" },
+                                            new
+                                            {
+                                                type = "array",
+                                                items = new
+                                                {
+                                                    anyOf = new object[]
+                                                    {
+                                                        new { type = "string" },
+                                                        new { type = "number" }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                required = new[] { "field", "operator", "value" },
+                                additionalProperties = false
+                            }
+                        },
+                        projection = new
+                        {
+                            type = "array",
+                            items = new { type = "string" }
+                        },
+                        sort = new
+                        {
+                            type = "array",
+                            items = new
+                            {
+                                type = "object",
+                                properties = new
+                                {
+                                    field = new { type = "string" },
+                                    direction = new
+                                    {
+                                        type = "string",
+                                        @enum = new[] { "asc", "desc" }
+                                    }
+                                },
+                                required = new[] { "field", "direction" },
+                                additionalProperties = false
+                            }
+                        },
+                        limit = new { type = "integer" },
+                        confidence = new { type = "number" }
+                    },
+                    required = new[] { "language", "resource", "operation", "filters", "projection", "sort", "limit", "confidence" },
+                    additionalProperties = false
+                }
+            }
+        };
     }
 
     public async Task<string?> BuildQueryPlanAsync(string userMessage, AssistantContext? context = null, CancellationToken cancellationToken = default)
@@ -332,21 +458,30 @@ Allowed resources and fields:
 
 Allowed operators: equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, contains, in, between
 
+Concise Planning Rules:
+- Tenant names always use `equals`; Core resolves partial natural-language names.
+- Never use `contains` merely because a tenant name is incomplete.
+- Date ranges must use the exact filter representation defined by the SemanticQueryPlan contract.
+- Monthly collected income uses: resource `payments`, operation `sum`, projection `paidAmount`, and explicit `year` and `month` filters.
+- Expense totals use: resource `expenses`, operation `sum`, projection `amount`, and only valid date filters from the contract.
+
 JSON schema:
 {{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";
 
-        var nativeEndpoint = NormalizeNativeChatEndpoint(settings.AiEndpoint);
+        var completionsEndpoint = NormalizeCompletionsEndpoint(settings.AiEndpoint);
 
-        var requestBody = new NativeChatRequest
+        var requestBody = new ChatRequest
         {
             Model = settings.AiModelName ?? string.Empty,
-            SystemPrompt = plannerPrompt,
-            Input = userMessage,
-            Reasoning = "off",
+            Messages = new List<ChatMessage>
+            {
+                new ChatMessage { Role = "system", Content = plannerPrompt },
+                new ChatMessage { Role = "user", Content = userMessage }
+            },
             Temperature = 0.0,
-            MaxOutputTokens = 512,
+            MaxTokens = 512,
             Stream = false,
-            Store = false
+            ResponseFormat = GetSemanticQueryPlanJsonSchema()
         };
 
         var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -355,43 +490,13 @@ JSON schema:
 
         try
         {
-            var response = await _httpClient.PostAsync(nativeEndpoint, httpContent, cancellationToken);
+            var response = await _httpClient.PostAsync(completionsEndpoint, httpContent, cancellationToken);
             if (!response.IsSuccessStatusCode) return null;
 
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-
-            NativeChatResponse? nativeResponse = null;
-            try
-            {
-                nativeResponse = JsonSerializer.Deserialize<NativeChatResponse>(responseJson);
-            }
-            catch {}
-
-            if (nativeResponse?.Output != null)
-            {
-                foreach (var item in nativeResponse.Output)
-                {
-                    if (item.Type == "message" && !string.IsNullOrWhiteSpace(item.Content))
-                    {
-                        return item.Content;
-                    }
-                }
-                return null;
-            }
-
-            // Compatibility fallback for mock-based tests returning Choices
-            try
-            {
-                var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
-                var choice = chatResponse?.Choices?[0];
-                if (choice != null)
-                {
-                    return choice.Message?.Content;
-                }
-            }
-            catch {}
-
-            return null;
+            var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+            var content = chatResponse?.Choices?[0]?.Message?.Content;
+            return string.IsNullOrWhiteSpace(content) ? null : content;
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
