@@ -155,31 +155,16 @@ public static class SemanticAnswerFormatter
 
         if (result is SemanticTenantResult tenant)
         {
-            if (isEs)
-            {
-                if (tenant.EffectiveMoveOutDate.HasValue)
-                {
-                    return $"{tenant.FullName} tiene previsto dejar la habitación el {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}.";
-                }
-                if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
-                {
-                    return $"{tenant.FullName} está actualmente en la habitación {tenant.CurrentRoom}.";
-                }
-                return $"{tenant.FullName} (Inquilino activo: {(tenant.Active ? "Sí" : "No")}).";
-            }
-            else
-            {
-                if (tenant.EffectiveMoveOutDate.HasValue)
-                {
-                    return $"{tenant.FullName} is scheduled to move out on {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}.";
-                }
-                if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
-                {
-                    return $"{tenant.FullName} is currently in room {tenant.CurrentRoom}.";
-                }
-                return $"{tenant.FullName} (Active tenant: {(tenant.Active ? "Yes" : "No")}).";
-            }
+            var proj = plan.Projection.FirstOrDefault();
+            return FormatSingleTenantProjection(tenant, proj, isEs);
         }
+
+        if (result is List<SemanticTenantResult> singleList && singleList.Count == 1)
+        {
+            var proj = plan.Projection.FirstOrDefault();
+            return FormatSingleTenantProjection(singleList[0], proj, isEs);
+        }
+
         return result.ToString() ?? "";
     }
 
@@ -216,10 +201,17 @@ public static class SemanticAnswerFormatter
 
             if (resource == SemanticQueryResource.Tenants)
             {
-                var names = items.Cast<SemanticTenantResult>().Select(t => t.FullName).ToList();
-                return isEs
-                    ? $"Los inquilinos son: {string.Join(", ", names)}."
-                    : $"The tenants are: {string.Join(", ", names)}.";
+                var tenantsList = items.Cast<SemanticTenantResult>().ToList();
+                if (tenantsList.Count == 1)
+                {
+                    var proj = plan.Projection.FirstOrDefault();
+                    return FormatSingleTenantProjection(tenantsList[0], proj, isEs);
+                }
+                else
+                {
+                    var proj = plan.Projection.FirstOrDefault();
+                    return FormatMultipleTenantsProjection(tenantsList, proj, isEs);
+                }
             }
 
             if (resource == SemanticQueryResource.Contracts)
@@ -350,5 +342,111 @@ public static class SemanticAnswerFormatter
                 _ => $"I'm sorry, the query is invalid: {result.ErrorMessage}"
             };
         }
+    }
+
+    private static string FormatSingleTenantProjection(SemanticTenantResult tenant, string? projection, bool isEs)
+    {
+        if (string.IsNullOrWhiteSpace(projection))
+        {
+            if (isEs)
+            {
+                if (tenant.EffectiveMoveOutDate.HasValue)
+                {
+                    return $"{tenant.FullName} tiene previsto dejar la habitación el {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}.";
+                }
+                if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
+                {
+                    return $"{tenant.FullName} está actualmente en la habitación {tenant.CurrentRoom}.";
+                }
+                return $"{tenant.FullName} (Inquilino activo: {(tenant.Active ? "Sí" : "No")}).";
+            }
+            else
+            {
+                if (tenant.EffectiveMoveOutDate.HasValue)
+                {
+                    return $"{tenant.FullName} is scheduled to move out on {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}.";
+                }
+                if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
+                {
+                    return $"{tenant.FullName} is currently in room {tenant.CurrentRoom}.";
+                }
+                return $"{tenant.FullName} (Active tenant: {(tenant.Active ? "Yes" : "No")}).";
+            }
+        }
+
+        var proj = projection.ToLowerInvariant();
+        if (proj == "effectivemoveoutdate")
+        {
+            if (tenant.EffectiveMoveOutDate.HasValue)
+            {
+                return isEs
+                    ? $"{tenant.FullName} tiene previsto dejar la habitación el {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}."
+                    : $"{tenant.FullName} is scheduled to move out on {tenant.EffectiveMoveOutDate.Value:yyyy-MM-dd}.";
+            }
+            return isEs
+                ? $"No hay fecha de salida registrada para {tenant.FullName}."
+                : $"There is no move-out date registered for {tenant.FullName}.";
+        }
+        if (proj == "currentroom")
+        {
+            if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
+            {
+                return isEs
+                    ? $"{tenant.FullName} está actualmente en la habitación {tenant.CurrentRoom}."
+                    : $"{tenant.FullName} is currently in room {tenant.CurrentRoom}.";
+            }
+            return isEs
+                ? $"{tenant.FullName} no tiene ninguna habitación asignada."
+                : $"{tenant.FullName} is not assigned to any room.";
+        }
+        if (proj == "moveindate")
+        {
+            if (tenant.MoveInDate.HasValue)
+            {
+                return isEs
+                    ? $"{tenant.FullName} entró a vivir el {tenant.MoveInDate.Value:yyyy-MM-dd}."
+                    : $"{tenant.FullName} moved in on {tenant.MoveInDate.Value:yyyy-MM-dd}.";
+            }
+            return isEs
+                ? $"No hay fecha de entrada registrada para {tenant.FullName}."
+                : $"There is no move-in date registered for {tenant.FullName}.";
+        }
+
+        // Default or fullName: singular factual answer
+        return isEs
+            ? $"El inquilino es {tenant.FullName}."
+            : $"The tenant is {tenant.FullName}.";
+    }
+
+    private static string FormatMultipleTenantsProjection(List<SemanticTenantResult> tenants, string? projection, bool isEs)
+    {
+        var proj = projection?.ToLowerInvariant();
+        if (proj == "effectivemoveoutdate")
+        {
+            var lines = tenants.Select(t => $"{t.FullName}: {(t.EffectiveMoveOutDate.HasValue ? t.EffectiveMoveOutDate.Value.ToString("yyyy-MM-dd") : "N/A")}");
+            return isEs
+                ? $"Fechas de salida:\n- {string.Join("\n- ", lines)}"
+                : $"Move-out dates:\n- {string.Join("\n- ", lines)}";
+        }
+        if (proj == "currentroom")
+        {
+            var lines = tenants.Select(t => $"{t.FullName}: {(!string.IsNullOrWhiteSpace(t.CurrentRoom) ? t.CurrentRoom : "N/A")}");
+            return isEs
+                ? $"Habitaciones:\n- {string.Join("\n- ", lines)}"
+                : $"Rooms:\n- {string.Join("\n- ", lines)}";
+        }
+        if (proj == "moveindate")
+        {
+            var lines = tenants.Select(t => $"{t.FullName}: {(t.MoveInDate.HasValue ? t.MoveInDate.Value.ToString("yyyy-MM-dd") : "N/A")}");
+            return isEs
+                ? $"Fechas de entrada:\n- {string.Join("\n- ", lines)}"
+                : $"Move-in dates:\n- {string.Join("\n- ", lines)}";
+        }
+
+        // Default or fullName: generic list response
+        var names = tenants.Select(t => t.FullName).ToList();
+        return isEs
+            ? $"Los inquilinos son: {string.Join(", ", names)}."
+            : $"The tenants are: {string.Join(", ", names)}.";
     }
 }
