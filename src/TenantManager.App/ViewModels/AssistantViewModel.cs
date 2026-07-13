@@ -101,13 +101,16 @@ public class AssistantViewModel : ViewModelBase
 
     private void UpdateStage(AiProcessingStage stage)
     {
-        CurrentProcessingStage = stage;
-        OnPropertyChanged(nameof(IsProcessing));
-        OnPropertyChanged(nameof(ProcessingStageKey));
-        if (IsProcessing)
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            ScrollRequested?.Invoke(this, EventArgs.Empty);
-        }
+            CurrentProcessingStage = stage;
+            OnPropertyChanged(nameof(IsProcessing));
+            OnPropertyChanged(nameof(ProcessingStageKey));
+            if (IsProcessing)
+            {
+                ScrollRequested?.Invoke(this, EventArgs.Empty);
+            }
+        });
     }
 
     private async Task SendMessageAsync()
@@ -171,8 +174,8 @@ public class AssistantViewModel : ViewModelBase
             {
                 Role = "assistant",
                 Content = isSpanish
-                    ? "No se pudo conectar con el servidor local de IA (LM Studio). Asegúrese de que está iniciado en la configuración."
-                    : "Could not connect to the local AI server (LM Studio). Please ensure it is running in your settings."
+                    ? "No se pudo conectar con el servidor local de IA. Asegúrese de que está iniciado en la configuración."
+                    : "Could not connect to the local AI server. Please ensure it is running in your settings."
             });
             ScrollRequested?.Invoke(this, EventArgs.Empty);
         }

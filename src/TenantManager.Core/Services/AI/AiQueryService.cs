@@ -62,7 +62,7 @@ public class AiQueryService
             if (settings.IsAiEnabled && !string.IsNullOrWhiteSpace(settings.AiEndpoint))
             {
                 plannerAttempted = true;
-                onProgress?.Invoke(AiProcessingStage.SendingToLmStudio);
+                onProgress?.Invoke(AiProcessingStage.SendingToServer);
                 
                 // Set to WaitingForModel immediately after triggering the request logic, 
                 // but since LocalAiClient might take a while, we'll assume WaitingForModel happens implicitly or we can set it here.
@@ -188,7 +188,7 @@ public class AiQueryService
         }
 
         // ---- Fallback Path: Legacy Intent Extraction ----
-        onProgress?.Invoke(AiProcessingStage.SendingToLmStudio);
+        onProgress?.Invoke(AiProcessingStage.SendingToServer);
         var json = await _aiClient.ExtractIntentAsync(userMessage, context);
         onProgress?.Invoke(AiProcessingStage.ParsingPlan);
         IntentExtractionResult? extraction = null;

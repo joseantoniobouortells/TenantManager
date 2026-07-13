@@ -3,7 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:TenantManager.App.ViewModels"
-             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
+
              xmlns:ai="using:TenantManager.Core.Services.AI"
              xmlns:cv="using:Avalonia.Data.Converters"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
@@ -68,13 +68,7 @@
                                                     </Button>
                                                 </Grid>
                                                 
-                                                <!-- Safe Markdown Rendering -->
-                                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                                                    <md:MarkdownScrollViewer Markdown="{Binding Content}"
-                                                                             ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                                    </md:MarkdownScrollViewer>
-                                                </ScrollViewer>
+                                                <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}" />
                                             </StackPanel>
                                         </Border>
                                     </DockPanel>
@@ -91,7 +85,7 @@
                                     <ProgressBar IsIndeterminate="True" Width="20" Height="20" Classes="Circle" Theme="{DynamicResource ProgressRing}" IsVisible="False" />
                                     <ProgressBar IsIndeterminate="True" VerticalAlignment="Center" Width="40" Height="2" Margin="0,0,8,0" />
                                     <TextBlock Text="{DynamicResource Stage_PreparingRequest}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.PreparingRequest}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                                    <TextBlock Text="{DynamicResource Stage_SendingToLmStudio}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.SendingToLmStudio}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{DynamicResource Stage_SendingToServer}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.SendingToServer}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <TextBlock Text="{DynamicResource Stage_WaitingForModel}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.WaitingForModel}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <TextBlock Text="{DynamicResource Stage_ParsingPlan}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.ParsingPlan}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />
                                     <TextBlock Text="{DynamicResource Stage_ValidatingPlan}" IsVisible="{Binding CurrentProcessingStage, Converter={x:Static cv:ObjectConverters.Equal}, ConverterParameter={x:Static ai:AiProcessingStage.ValidatingPlan}}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" />

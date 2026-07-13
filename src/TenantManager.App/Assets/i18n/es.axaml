@@ -15,7 +15,7 @@
 
     <!-- AI Settings -->
     <system:String x:Key="AiSettingsLabel">Asistente IA (Local)</system:String>
-    <system:String x:Key="AiSettingsDesc">Configura el asistente IA local. Asegúrate de tener LM Studio o similar ejecutándose.</system:String>
+    <system:String x:Key="AiSettingsDesc">Configura el asistente IA local. Asegúrate de tener un servidor de IA local ejecutándose.</system:String>
     <system:String x:Key="EnableAiLabel">Habilitar Asistente IA</system:String>
     <system:String x:Key="AiEndpointLabel">Endpoint API Local</system:String>
     <system:String x:Key="AiModelNameLabel">Nombre del Modelo (opcional)</system:String>
@@ -43,8 +43,8 @@
 
     <!-- AI Processing Stages -->
     <system:String x:Key="Stage_PreparingRequest">Preparando consulta…</system:String>
-    <system:String x:Key="Stage_SendingToLmStudio">Enviando a LM Studio…</system:String>
-    <system:String x:Key="Stage_WaitingForModel">LM Studio está procesando…</system:String>
+    <system:String x:Key="Stage_SendingToServer">Enviando petición…</system:String>
+    <system:String x:Key="Stage_WaitingForModel">La IA está procesando…</system:String>
     <system:String x:Key="Stage_ParsingPlan">Interpretando la respuesta…</system:String>
     <system:String x:Key="Stage_ValidatingPlan">Validando la consulta…</system:String>
     <system:String x:Key="Stage_ExecutingQuery">Consultando los datos…</system:String>

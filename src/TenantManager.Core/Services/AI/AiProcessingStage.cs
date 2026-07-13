@@ -4,7 +4,7 @@ public enum AiProcessingStage
 {
     None,
     PreparingRequest,
-    SendingToLmStudio,
+    SendingToServer,
     WaitingForModel,
     ParsingPlan,
     ValidatingPlan,

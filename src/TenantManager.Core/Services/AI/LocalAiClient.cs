@@ -187,8 +187,8 @@ public class LocalAiClient
         catch (HttpRequestException)
         {
             return isSpanish 
-                ? "Error: No se pudo conectar al servidor de IA local. Asegúrate de que LM Studio está ejecutándose y accesible."
-                : "Error: Could not connect to the local AI server. Please ensure LM Studio (or your configured server) is running and accessible.";
+                ? "Error: No se pudo conectar al servidor de IA local. Asegúrate de que el servidor está ejecutándose y es accesible."
+                : "Error: Could not connect to the local AI server. Please ensure your configured server is running and accessible.";
         }
         catch (TaskCanceledException)
         {
