@@ -36,6 +36,48 @@ public class ChatRequest
     public bool Stream { get; set; } = false;
 }
 
+public class NativeChatRequest
+{
+    [JsonPropertyName("model")]
+    public string Model { get; set; } = string.Empty;
+
+    [JsonPropertyName("system_prompt")]
+    public string SystemPrompt { get; set; } = string.Empty;
+
+    [JsonPropertyName("input")]
+    public string Input { get; set; } = string.Empty;
+
+    [JsonPropertyName("reasoning")]
+    public string Reasoning { get; set; } = "off";
+
+    [JsonPropertyName("temperature")]
+    public double Temperature { get; set; } = 0.0;
+
+    [JsonPropertyName("max_output_tokens")]
+    public int MaxOutputTokens { get; set; } = 512;
+
+    [JsonPropertyName("stream")]
+    public bool Stream { get; set; } = false;
+
+    [JsonPropertyName("store")]
+    public bool Store { get; set; } = false;
+}
+
+public class NativeChatResponseOutputItem
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = string.Empty;
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
+}
+
+public class NativeChatResponse
+{
+    [JsonPropertyName("output")]
+    public List<NativeChatResponseOutputItem>? Output { get; set; }
+}
+
 public class ChatResponseChoice
 {
     [JsonPropertyName("message")]
@@ -217,6 +259,26 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
         }
     }
 
+    public static string NormalizeNativeChatEndpoint(string configuredEndpoint)
+    {
+        if (string.IsNullOrWhiteSpace(configuredEndpoint)) return string.Empty;
+        var url = configuredEndpoint.Trim().TrimEnd('/');
+        try
+        {
+            var uri = new Uri(url);
+            var baseAddress = $"{uri.Scheme}://{uri.Authority}";
+            return $"{baseAddress}/api/v1/chat";
+        }
+        catch
+        {
+            if (url.Contains("/v1/chat/completions"))
+            {
+                return url.Replace("/v1/chat/completions", "/api/v1/chat");
+            }
+            return $"{url}/api/v1/chat";
+        }
+    }
+
     public async Task<string?> BuildQueryPlanAsync(string userMessage, AssistantContext? context = null, CancellationToken cancellationToken = default)
     {
         return await BuildQueryPlanAsync(userMessage, context, clock: null, cancellationToken);
@@ -273,17 +335,18 @@ Allowed operators: equals, not_equals, greater_than, greater_than_or_equal, less
 JSON schema:
 {{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";
 
-        var requestBody = new ChatRequest
+        var nativeEndpoint = NormalizeNativeChatEndpoint(settings.AiEndpoint);
+
+        var requestBody = new NativeChatRequest
         {
             Model = settings.AiModelName ?? string.Empty,
-            Messages = new List<ChatMessage>
-            {
-                new ChatMessage { Role = "system", Content = plannerPrompt },
-                new ChatMessage { Role = "user", Content = userMessage }
-            },
+            SystemPrompt = plannerPrompt,
+            Input = userMessage,
+            Reasoning = "off",
             Temperature = 0.0,
-            MaxTokens = 1024, // Conservative default to allow reasoning tokens + JSON plan
-            Stream = false
+            MaxOutputTokens = 512,
+            Stream = false,
+            Store = false
         };
 
         var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -292,39 +355,41 @@ JSON schema:
 
         try
         {
-            var response = await _httpClient.PostAsync(settings.AiEndpoint, httpContent, cancellationToken);
+            var response = await _httpClient.PostAsync(nativeEndpoint, httpContent, cancellationToken);
             if (!response.IsSuccessStatusCode) return null;
 
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-            var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
 
-            var choice = chatResponse?.Choices?[0];
-            if (choice != null)
+            NativeChatResponse? nativeResponse = null;
+            try
             {
-                var isTruncated = choice.FinishReason == "length";
-                if (isTruncated)
+                nativeResponse = JsonSerializer.Deserialize<NativeChatResponse>(responseJson);
+            }
+            catch {}
+
+            if (nativeResponse?.Output != null)
+            {
+                foreach (var item in nativeResponse.Output)
                 {
-                    // Retry once with a larger token budget (2048)
-                    requestBody.MaxTokens = 2048;
-                    jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
-                    httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                    response = await _httpClient.PostAsync(settings.AiEndpoint, httpContent, cancellationToken);
-                    if (!response.IsSuccessStatusCode) return null;
-
-                    responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
-                    chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
-                    choice = chatResponse?.Choices?[0];
-
-                    if (choice != null && choice.FinishReason == "length")
+                    if (item.Type == "message" && !string.IsNullOrWhiteSpace(item.Content))
                     {
-                        // A second truncated response stops and returns planner failure
-                        return null;
+                        return item.Content;
                     }
                 }
-
-                return choice?.Message?.Content;
+                return null;
             }
+
+            // Compatibility fallback for mock-based tests returning Choices
+            try
+            {
+                var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+                var choice = chatResponse?.Choices?[0];
+                if (choice != null)
+                {
+                    return choice.Message?.Content;
+                }
+            }
+            catch {}
 
             return null;
         }

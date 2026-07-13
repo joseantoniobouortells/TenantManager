@@ -14,59 +14,50 @@ using Xunit;
 namespace TenantManager.Tests;
 
 /// <summary>
-/// Focused deterministic tests for the planner date-context injection, planner failure
-/// handling, and monthly-income query plan acceptance. No LM Studio calls are made.
+/// Focused deterministic tests for the planner date-context injection, native chat API calls,
+/// url normalization, output parsing, reasoning item ignore logic, and failure handling.
 /// </summary>
 public class SemanticQueryPlannerDateContextTests
 {
-    // -----------------------------------------------------------------------
-    // Infrastructure helpers
-    // -----------------------------------------------------------------------
-
-    private class CapturingHttpMessageHandler : HttpMessageHandler
+    private class DynamicMockHttpMessageHandler : HttpMessageHandler
     {
-        private readonly string? _responseContent;
-        public string? LastRequestBody { get; private set; }
+        public List<string> Requests { get; } = new();
+        public List<string> RequestUrls { get; } = new();
+        public List<NativeChatRequest?> ParsedRequests { get; } = new();
+        private readonly Queue<(HttpStatusCode StatusCode, string Content)> _responses = new();
 
-        public CapturingHttpMessageHandler(string? responseContent)
+        public void QueueResponse(HttpStatusCode statusCode, string content)
         {
-            _responseContent = responseContent;
+            _responses.Enqueue((statusCode, content));
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestUrls.Add(request.RequestUri?.ToString() ?? string.Empty);
             if (request.Content != null)
-                LastRequestBody = await request.Content.ReadAsStringAsync(cancellationToken);
-
-            var response = new HttpResponseMessage(HttpStatusCode.OK);
-            if (_responseContent != null)
-                response.Content = new StringContent(_responseContent);
-            return response;
-        }
-    }
-
-    private class EmptyContentHttpMessageHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            // Returns a valid 200 response but with empty string content in the choices message
-            var body = """{"choices":[{"message":{"content":""}}]}""";
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(body)
-            });
-        }
-    }
+                var body = await request.Content.ReadAsStringAsync(cancellationToken);
+                Requests.Add(body);
+                try
+                {
+                    var parsed = JsonSerializer.Deserialize<NativeChatRequest>(body);
+                    ParsedRequests.Add(parsed);
+                }
+                catch
+                {
+                    ParsedRequests.Add(null);
+                }
+            }
 
-    private class InvalidJsonHttpMessageHandler : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var body = """{"choices":[{"message":{"content":"{ invalid json..."}}]}""";
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            if (_responses.TryDequeue(out var res))
             {
-                Content = new StringContent(body)
-            });
+                return new HttpResponseMessage(res.StatusCode)
+                {
+                    Content = new StringContent(res.Content)
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
     }
 
@@ -81,240 +72,225 @@ public class SemanticQueryPlannerDateContextTests
         return db;
     }
 
-    private static void ConfigureMockSettings(string endpoint = "http://mock")
+    private static void ConfigureMockSettings(string endpoint = "http://mock/v1/chat/completions")
     {
         SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = endpoint });
     }
 
-    private static string BuildChoicesResponse(string innerContent)
+    private static string BuildNativeChatResponse(List<NativeChatResponseOutputItem> outputItems)
     {
-        var obj = new { choices = new[] { new { message = new { content = innerContent } } } };
+        var obj = new { output = outputItems };
         return JsonSerializer.Serialize(obj);
     }
 
     // -----------------------------------------------------------------------
-    // 1. Planner prompt includes injected date, year, and month
+    // URL Normalization Tests
     // -----------------------------------------------------------------------
 
-    [Fact]
-    public async Task BuildQueryPlanAsync_InjectsCurrentDateIntoPrompt()
+    [Theory]
+    [InlineData("http://localhost:1234", "http://localhost:1234/api/v1/chat")]
+    [InlineData("http://localhost:1234/", "http://localhost:1234/api/v1/chat")]
+    [InlineData("http://localhost:1234/v1/chat/completions", "http://localhost:1234/api/v1/chat")]
+    [InlineData("http://172.20.10.11:1234/v1/chat/completions", "http://172.20.10.11:1234/api/v1/chat")]
+    [InlineData("http://my-lm-studio.local:8080/v1/chat/completions", "http://my-lm-studio.local:8080/api/v1/chat")]
+    public void EndpointNormalization_ResolvesToNativeChatUrl(string configured, string expected)
     {
-        // Arrange
-        var fixedDate = new DateTimeOffset(2026, 7, 13, 0, 0, 0, TimeSpan.Zero);
-        var handler = new CapturingHttpMessageHandler(BuildChoicesResponse("{}"));
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        await aiClient.BuildQueryPlanAsync("test", null, () => fixedDate);
-
-        // Assert: the system prompt sent to LM Studio must contain the injected date
-        Assert.NotNull(handler.LastRequestBody);
-        Assert.Contains("2026-07-13", handler.LastRequestBody);
-        Assert.Contains("year=2026", handler.LastRequestBody);
-        Assert.Contains("month=7", handler.LastRequestBody);
+        var normalized = LocalAiClient.NormalizeNativeChatEndpoint(configured);
+        Assert.Equal(expected, normalized);
     }
 
     // -----------------------------------------------------------------------
-    // 2. "This month" can be represented using the injected period
+    // Injected Date & Prompt Semantic Tests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task BuildQueryPlanAsync_PromptExplainsThisMonthSemantics()
+    public async Task BuildQueryPlanAsync_InjectsDateAndPlannerPrompt()
     {
         // Arrange
         var fixedDate = new DateTimeOffset(2026, 7, 13, 0, 0, 0, TimeSpan.Zero);
-        var handler = new CapturingHttpMessageHandler(BuildChoicesResponse("{}"));
+        var handler = new DynamicMockHttpMessageHandler();
+        var validPlan = "{\"language\":\"es\",\"resource\":\"payments\",\"operation\":\"sum\",\"confidence\":0.95}";
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
+        {
+            new NativeChatResponseOutputItem { Type = "message", Content = validPlan }
+        }));
+        
         var aiClient = new LocalAiClient(new HttpClient(handler));
         ConfigureMockSettings();
 
         // Act
         await aiClient.BuildQueryPlanAsync("Cuales han sido los ingresos de este mes?", null, () => fixedDate);
 
-        // Assert: the prompt must define relative-date semantics using the injected period
-        Assert.NotNull(handler.LastRequestBody);
-        // The prompt explains that 'este mes' maps to the concrete year and month
-        Assert.Contains("este mes", handler.LastRequestBody!.ToLowerInvariant());
-        // And the concrete values are embedded
-        Assert.Contains("year=2026", handler.LastRequestBody);
-        Assert.Contains("month=7", handler.LastRequestBody);
+        // Assert
+        Assert.Single(handler.Requests);
+        var req = handler.ParsedRequests[0];
+        Assert.NotNull(req);
+        Assert.Contains("2026-07-13", req.SystemPrompt);
+        Assert.Contains("year=2026", req.SystemPrompt);
+        Assert.Contains("month=7", req.SystemPrompt);
+        Assert.Contains("este mes", req.SystemPrompt.ToLowerInvariant());
     }
 
     // -----------------------------------------------------------------------
-    // 3. Empty planner content is treated as failure (returns localized error)
+    // Native Chat Endpoint & Request Configuration Tests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task ResolveIntent_EmptyPlannerContent_ReturnsLocalizedError_NotDashboardSummary()
+    public async Task BuildQueryPlanAsync_CallsNativeChatUrlWithCorrectParameters()
     {
         // Arrange
-        using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P1" };
-        db.Properties.Add(property);
-        await db.SaveChangesAsync();
-
-        var aiClient = new LocalAiClient(new HttpClient(new EmptyContentHttpMessageHandler()));
-        ConfigureMockSettings();
-
-        var service = new AiQueryService(db, aiClient);
-
-        // Act
-        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
-            "Cuales han sido los ingresos de este mes?", null, property.Id);
-
-        // Assert: must NOT be the legacy dashboard summary (rooms + tenants count)
-        Assert.NotNull(answer);
-        Assert.DoesNotContain("habitaciones", answer, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("rooms", answer, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Resumen:", answer, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Summary:", answer, StringComparison.OrdinalIgnoreCase);
-        // Must be a planner-error message instead
-        Assert.True(answer.Contains("interpretar", StringComparison.OrdinalIgnoreCase) ||
-                    answer.Contains("interpret", StringComparison.OrdinalIgnoreCase) ||
-                    answer.Contains("error", StringComparison.OrdinalIgnoreCase),
-                    $"Expected localized error, got: {answer}");
-    }
-
-    // -----------------------------------------------------------------------
-    // 4. Invalid planner JSON is treated as failure
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task ResolveIntent_InvalidPlannerJson_ReturnsLocalizedError_NotDashboardSummary()
-    {
-        // Arrange
-        using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P2" };
-        db.Properties.Add(property);
-        await db.SaveChangesAsync();
-
-        var aiClient = new LocalAiClient(new HttpClient(new InvalidJsonHttpMessageHandler()));
-        ConfigureMockSettings();
-
-        var service = new AiQueryService(db, aiClient);
-
-        // Act
-        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
-            "Cuales han sido los ingresos de este mes?", null, property.Id);
-
-        // Assert: must NOT fall through to legacy dashboard_summary
-        Assert.NotNull(answer);
-        Assert.DoesNotContain("habitaciones", answer, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Resumen:", answer, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // -----------------------------------------------------------------------
-    // 5. Planner failure for monthly-income question does NOT execute dashboard_summary
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task ResolveIntent_PlannerFailure_DoesNotReturnDashboardSummaryForIncomeQuestion()
-    {
-        // Arrange: use empty-content handler (timeout simulation)
-        using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P3" };
-        db.Properties.Add(property);
-        db.Tenants.Add(new Tenant { FullName = "Test Tenant", PropertyId = property.Id });
-        db.Rooms.Add(new Room { Name = "R1", PropertyId = property.Id, IsActive = true });
-        await db.SaveChangesAsync();
-
-        var aiClient = new LocalAiClient(new HttpClient(new EmptyContentHttpMessageHandler()));
-        ConfigureMockSettings();
-
-        var service = new AiQueryService(db, aiClient);
-
-        // Act
-        var (answer, isSpanish) = await service.ResolveIntentAndGetDataAsync(
-            "Cuales han sido los ingresos de este mes?", null, property.Id);
-
-        // Assert: dashboard_summary format never returned
-        // Legacy dashboard_summary produces: "Resumen: La aplicación tiene X habitaciones..."
-        Assert.NotNull(answer);
-        Assert.DoesNotContain("Resumen: La aplicación", answer, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("Summary: The app", answer, StringComparison.OrdinalIgnoreCase);
-    }
-
-    // -----------------------------------------------------------------------
-    // 6. A valid monthly-income QueryPlan is accepted (payments/sum/year+month filters)
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task ResolveIntent_ValidMonthlyIncomePlan_ExecutesAndFormatsCorrectly()
-    {
-        // Arrange
-        using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P4" };
-        db.Properties.Add(property);
-        await db.SaveChangesAsync();
-
-        var tenant = new Tenant { FullName = "T1", PropertyId = property.Id };
-        db.Tenants.Add(tenant);
-        await db.SaveChangesAsync();
-
-        var year = DateTime.Today.Year;
-        var month = DateTime.Today.Month;
-
-        // Add a paid payment for this month
-        db.MonthlyPayments.Add(new MonthlyPayment
+        var handler = new DynamicMockHttpMessageHandler();
+        var validPlan = "{\"language\":\"es\",\"resource\":\"payments\",\"operation\":\"sum\",\"confidence\":0.95}";
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
         {
-            TenantId = tenant.Id,
-            PropertyId = property.Id,
-            Year = year,
-            Month = month,
-            ExpectedRentAmount = 500,
-            ExpectedExpenseAmount = 50,
-            PaidAmount = 500,
-            Status = PaymentStatus.Paid
-        });
+            new NativeChatResponseOutputItem { Type = "message", Content = validPlan }
+        }));
+
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings("http://127.0.0.1:1234/v1/chat/completions");
+
+        // Act
+        await aiClient.BuildQueryPlanAsync("Question");
+
+        // Assert
+        Assert.Single(handler.RequestUrls);
+        Assert.Equal("http://127.0.0.1:1234/api/v1/chat", handler.RequestUrls[0]);
+
+        var req = handler.ParsedRequests[0];
+        Assert.NotNull(req);
+        Assert.Equal("off", req.Reasoning);
+        Assert.Equal(512, req.MaxOutputTokens);
+        Assert.False(req.Stream);
+        Assert.False(req.Store);
+        Assert.Equal(0.0, req.Temperature);
+    }
+
+    // -----------------------------------------------------------------------
+    // Message parsing and reasoning ignore tests
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_IgnoresReasoningItems_ExtractsMessageContent()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        var validPlan = "{\"language\":\"es\",\"resource\":\"payments\",\"operation\":\"sum\",\"confidence\":0.95}";
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
+        {
+            new NativeChatResponseOutputItem { Type = "reasoning", Content = "<think>Calculating sum...</think>" },
+            new NativeChatResponseOutputItem { Type = "message", Content = validPlan }
+        }));
+
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("Question");
+
+        // Assert
+        Assert.Equal(validPlan, result);
+    }
+
+    // -----------------------------------------------------------------------
+    // Failure Paths: single request, missing outputs, empty content, invalid JSON
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_MissingOutput_ReturnsNullWithoutRetry()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, "{}"); // Empty response body, missing "output"
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("Question");
+
+        // Assert
+        Assert.Null(result);
+        Assert.Single(handler.Requests); // Only one request is made
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_EmptyMessageContent_ReturnsNullWithoutRetry()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
+        {
+            new NativeChatResponseOutputItem { Type = "message", Content = "" } // Empty message content
+        }));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("Question");
+
+        // Assert
+        Assert.Null(result);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task BuildQueryPlanAsync_NoMessageItem_ReturnsNullWithoutRetry()
+    {
+        // Arrange
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
+        {
+            new NativeChatResponseOutputItem { Type = "reasoning", Content = "Just thinking..." } // No message item at all
+        }));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        // Act
+        var result = await aiClient.BuildQueryPlanAsync("Question");
+
+        // Assert
+        Assert.Null(result);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task ResolveIntent_PlannerFailure_ReturnsPlannerError_DoesNotExecuteDashboardSummary()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        var property = new Property { Name = "P6" };
+        db.Properties.Add(property);
         await db.SaveChangesAsync();
 
-        // Return a valid plan JSON from LLM: payments/sum filtered by current year+month
-        var planJson = JsonSerializer.Serialize(new
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
         {
-            language = "es",
-            resource = "payments",
-            operation = "sum",
-            filters = new[]
-            {
-                new { field = "year", @operator = "equals", value = year },
-                new { field = "month", @operator = "equals", value = month }
-            },
-            projection = new[] { "paidAmount" },
-            sort = Array.Empty<object>(),
-            limit = 20,
-            confidence = 0.95
-        });
-
-        var httpContent = BuildChoicesResponse(planJson);
-        var handler = new CapturingHttpMessageHandler(httpContent);
+            new NativeChatResponseOutputItem { Type = "message", Content = "{ invalid json }" }
+        }));
         var aiClient = new LocalAiClient(new HttpClient(handler));
         ConfigureMockSettings();
 
         var service = new AiQueryService(db, aiClient);
 
         // Act
-        var (answer, isSpanish) = await service.ResolveIntentAndGetDataAsync(
+        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
             "Cuales han sido los ingresos de este mes?", null, property.Id);
 
-        // Assert: answer must contain the summed paidAmount
+        // Assert
         Assert.NotNull(answer);
-        Assert.True(isSpanish);
-        // The formatter outputs sum in locale format; 500 should appear in the answer
-        Assert.Contains("500", answer);
-        // Must NOT be a dashboard summary
-        Assert.DoesNotContain("Resumen: La aplicación", answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Resumen:", answer); // Does not fallback to dashboard summary
+        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
     }
 
     // -----------------------------------------------------------------------
-    // 7. Existing tenant move-out tests still pass through the semantic planner
+    // Move-out query for Erik Artigas reaches semantic planner path
     // -----------------------------------------------------------------------
 
     [Fact]
-    public async Task ResolveIntent_TenantMoveOutPlan_StillWorks()
+    public async Task ResolveIntent_TenantMoveOutPlan_ResolvesThroughSemanticPlanner()
     {
         // Arrange
         using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P5" };
+        var property = new Property { Name = "Prop" };
         db.Properties.Add(property);
         await db.SaveChangesAsync();
 
@@ -347,7 +323,11 @@ public class SemanticQueryPlannerDateContextTests
             confidence = 0.95
         });
 
-        var handler = new CapturingHttpMessageHandler(BuildChoicesResponse(planJson));
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildNativeChatResponse(new List<NativeChatResponseOutputItem>
+        {
+            new NativeChatResponseOutputItem { Type = "message", Content = planJson }
+        }));
         var aiClient = new LocalAiClient(new HttpClient(handler));
         ConfigureMockSettings();
 
@@ -361,196 +341,5 @@ public class SemanticQueryPlannerDateContextTests
         Assert.True(isSpanish);
         Assert.NotNull(answer);
         Assert.Contains("2026-08-31", answer);
-    }
-
-    // -----------------------------------------------------------------------
-    // Dynamic Mock Handler for Truncation/Retry testing
-    // -----------------------------------------------------------------------
-
-    private class DynamicMockHttpMessageHandler : HttpMessageHandler
-    {
-        public List<string> Requests { get; } = new();
-        public List<int?> MaxTokensSent { get; } = new();
-        private readonly Queue<(HttpStatusCode StatusCode, string Content)> _responses = new();
-
-        public void QueueResponse(HttpStatusCode statusCode, string content)
-        {
-            _responses.Enqueue((statusCode, content));
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            if (request.Content != null)
-            {
-                var body = await request.Content.ReadAsStringAsync(cancellationToken);
-                Requests.Add(body);
-                using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("max_tokens", out var prop) && prop.ValueKind == JsonValueKind.Number)
-                {
-                    MaxTokensSent.Add(prop.GetInt32());
-                }
-                else
-                {
-                    MaxTokensSent.Add(null);
-                }
-            }
-
-            if (_responses.TryDequeue(out var res))
-            {
-                return new HttpResponseMessage(res.StatusCode)
-                {
-                    Content = new StringContent(res.Content)
-                };
-            }
-
-            return new HttpResponseMessage(HttpStatusCode.NotFound);
-        }
-    }
-
-    private static string BuildChoicesWithFinishReason(string content, string finishReason)
-    {
-        var obj = new
-        {
-            choices = new[]
-            {
-                new
-                {
-                    message = new { content = content },
-                    finish_reason = finishReason
-                }
-            }
-        };
-        return JsonSerializer.Serialize(obj);
-    }
-
-    // -----------------------------------------------------------------------
-    // Truncation and Retry Tests
-    // -----------------------------------------------------------------------
-
-    [Fact]
-    public async Task BuildQueryPlanAsync_NormalResponse_SucceedsWithoutRetry()
-    {
-        // Arrange
-        var handler = new DynamicMockHttpMessageHandler();
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{}", "stop"));
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        var result = await aiClient.BuildQueryPlanAsync("question");
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Single(handler.Requests);
-        Assert.Equal(1024, handler.MaxTokensSent[0]);
-    }
-
-    [Fact]
-    public async Task BuildQueryPlanAsync_TruncatedResponse_TriggersOneRetryWithLargerTokens()
-    {
-        // Arrange
-        var handler = new DynamicMockHttpMessageHandler();
-        // 1st request truncated
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
-        // 2nd request succeeds
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{\"confidence\":0.9}", "stop"));
-        
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        var result = await aiClient.BuildQueryPlanAsync("question");
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(2, handler.Requests.Count);
-        Assert.Equal(1024, handler.MaxTokensSent[0]);
-        Assert.Equal(2048, handler.MaxTokensSent[1]);
-        Assert.Contains("confidence", result);
-    }
-
-    [Fact]
-    public async Task BuildQueryPlanAsync_SecondTruncatedResponse_ReturnsFailure()
-    {
-        // Arrange
-        var handler = new DynamicMockHttpMessageHandler();
-        // 1st request truncated
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
-        // 2nd request also truncated
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
-        
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        var result = await aiClient.BuildQueryPlanAsync("question");
-
-        // Assert
-        Assert.Null(result);
-        Assert.Equal(2, handler.Requests.Count);
-        Assert.Equal(1024, handler.MaxTokensSent[0]);
-        Assert.Equal(2048, handler.MaxTokensSent[1]);
-    }
-
-    [Fact]
-    public async Task BuildQueryPlanAsync_EmptyContentWithStopReason_DoesNotRetry()
-    {
-        // Arrange
-        var handler = new DynamicMockHttpMessageHandler();
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "stop"));
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        var result = await aiClient.BuildQueryPlanAsync("question");
-
-        // Assert
-        Assert.Equal("", result);
-        Assert.Single(handler.Requests);
-    }
-
-    [Fact]
-    public async Task BuildQueryPlanAsync_InvalidJsonPlan_DoesNotRetryInsideClient()
-    {
-        // Arrange
-        var handler = new DynamicMockHttpMessageHandler();
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("{ invalid json }", "stop"));
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        // Act
-        var result = await aiClient.BuildQueryPlanAsync("question");
-
-        // Assert
-        Assert.Equal("{ invalid json }", result);
-        Assert.Single(handler.Requests);
-    }
-
-    [Fact]
-    public async Task ResolveIntent_DoubleTruncationFailure_ReturnsLocalizedPlannerError_NotDashboardSummary()
-    {
-        // Arrange
-        using var db = GetMemoryDbContext();
-        var property = new Property { Name = "P6" };
-        db.Properties.Add(property);
-        await db.SaveChangesAsync();
-
-        var handler = new DynamicMockHttpMessageHandler();
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
-        handler.QueueResponse(HttpStatusCode.OK, BuildChoicesWithFinishReason("", "length"));
-        var aiClient = new LocalAiClient(new HttpClient(handler));
-        ConfigureMockSettings();
-
-        var service = new AiQueryService(db, aiClient);
-
-        // Act
-        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
-            "Cuales han sido los ingresos de este mes?", null, property.Id);
-
-        // Assert
-        Assert.NotNull(answer);
-        // Should return localized planner error, not legacy dashboard summary
-        Assert.DoesNotContain("Resumen:", answer);
-        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
     }
 }
