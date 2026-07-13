@@ -114,7 +114,7 @@ public class SemanticQueryExecutor
             SemanticQueryResource.Contracts => ProcessContracts(plan, contracts, tenants, rooms, extensions, now),
             SemanticQueryResource.Payments => ProcessPayments(plan, payments, contracts, tenants, rooms, extensions, expenses, categories, now),
             SemanticQueryResource.Expenses => ProcessExpenses(plan, expenses, categories),
-            SemanticQueryResource.Dashboard => ProcessDashboard(plan, rooms, tenants, contracts, extensions, payments, now),
+            SemanticQueryResource.Dashboard => ProcessDashboard(plan, rooms, tenants, contracts, extensions, payments, expenses, categories, now),
             _ => null
         };
     }
@@ -348,8 +348,40 @@ public class SemanticQueryExecutor
         List<RentalContract> contracts, 
         List<RentalContractExtension> extensions, 
         List<MonthlyPayment> payments, 
+        List<ExpenseInvoice> expenses, 
+        List<ExpenseCategory> categories, 
         DateTimeOffset now)
     {
+        if (plan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+        {
+            var paymentsPlan = new SemanticQueryPlan
+            {
+                Resource = SemanticQueryResource.Payments,
+                Operation = SemanticQueryOperation.Sum,
+                Filters = plan.Filters.ToList(),
+                Projection = new List<string> { "paidAmount" },
+                Limit = plan.Limit,
+                Language = plan.Language
+            };
+            var expensesPlan = new SemanticQueryPlan
+            {
+                Resource = SemanticQueryResource.Expenses,
+                Operation = SemanticQueryOperation.Sum,
+                Filters = plan.Filters.ToList(),
+                Projection = new List<string> { "amount" },
+                Limit = plan.Limit,
+                Language = plan.Language
+            };
+
+            var paymentsSum = Convert.ToDecimal(ProcessPayments(paymentsPlan, payments, contracts, tenants, rooms, extensions, expenses, categories, now) ?? 0m);
+            var expensesSum = Convert.ToDecimal(ProcessExpenses(expensesPlan, expenses, categories) ?? 0m);
+
+            return new SemanticDashboardResult
+            {
+                Profit = paymentsSum - expensesSum
+            };
+        }
+
         var occupiedRoomIds = SemanticDomainResolver.GetOccupiedRoomIds(contracts, extensions, now);
 
         int roomCount = rooms.Count(r => r.IsActive);
@@ -693,6 +725,8 @@ public class SemanticQueryExecutor
         "category" => item.Category,
         "amount" => item.Amount,
         "date" => item.Date,
+        "year" => item.Date.Year,
+        "month" => item.Date.Month,
         _ => null
     };
 }
@@ -754,4 +788,5 @@ public class SemanticDashboardResult
     public int ActiveTenantsCount { get; set; }
     public int PendingPaymentsCount { get; set; }
     public int LatePaymentsCount { get; set; }
+    public decimal? Profit { get; set; }
 }

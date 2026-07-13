@@ -151,8 +151,12 @@ public static class SemanticQueryCatalog
         resources[SemanticQueryResource.Dashboard] = new SemanticResourceDefinition
         {
             Resource = SemanticQueryResource.Dashboard,
-            AllowedOperations = { SemanticQueryOperation.Summary }
-            // Dashboard summary does not have queryable semantic fields
+            AllowedOperations = { SemanticQueryOperation.Summary },
+            Fields =
+            {
+                ["year"] = new SemanticFieldDefinition { Name = "year", Type = typeof(int), AllowedOperators = numericAndDateOperators },
+                ["month"] = new SemanticFieldDefinition { Name = "month", Type = typeof(int), AllowedOperators = numericAndDateOperators }
+            }
         };
 
         Resources = resources;

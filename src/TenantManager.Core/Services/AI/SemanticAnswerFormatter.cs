@@ -136,6 +136,37 @@ public static class SemanticAnswerFormatter
     {
         if (result is SemanticDashboardResult dashboard)
         {
+            if (dashboard.Profit.HasValue)
+            {
+                var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+                var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+
+                string periodTextEs = "";
+                string periodTextEn = "";
+                if (yearFilter != null)
+                {
+                    var y = yearFilter.Value?.ToString();
+                    var m = monthFilter?.Value?.ToString();
+                    if (y == "current" || y == "hoy" || y == "ahora") y = DateTime.Now.Year.ToString();
+                    if (m == "current" || m == "hoy" || m == "ahora") m = DateTime.Now.Month.ToString();
+
+                    if (m != null)
+                    {
+                        periodTextEs = $" de {m}/{y}";
+                        periodTextEn = $" for {m}/{y}";
+                    }
+                    else
+                    {
+                        periodTextEs = $" de {y}";
+                        periodTextEn = $" for {y}";
+                    }
+                }
+
+                return isEs
+                    ? $"El beneficio{periodTextEs} es {dashboard.Profit.Value:N2} €."
+                    : $"The profit{periodTextEn} is €{dashboard.Profit.Value:N2}.";
+            }
+
             return isEs
                 ? $"Resumen de la propiedad: {dashboard.RoomCount} habitaciones ({dashboard.ActiveTenantsCount} ocupadas), {dashboard.PendingPaymentsCount} pagos pendientes ({dashboard.LatePaymentsCount} con retraso)."
                 : $"Property summary: {dashboard.RoomCount} rooms ({dashboard.ActiveTenantsCount} occupied), {dashboard.PendingPaymentsCount} pending payments ({dashboard.LatePaymentsCount} late).";

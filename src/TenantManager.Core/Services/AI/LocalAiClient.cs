@@ -480,6 +480,9 @@ Concise Planning Rules:
 - Expense totals use: resource `expenses`, operation `sum`, projection `amount`, and only valid date filters from the contract.
 - `tenants` tenant-name field: `fullName`. `contracts` and `payments` tenant-name field: `tenantName`.
 - Tenant follow-ups on the `tenants` resource MUST use `fullName`, NEVER `tenantName`.
+- `beneficio`, `profit`, `ingresos menos gastos`, and `income minus expenses` map to: resource `dashboard`, operation `summary`, projection `profit`.
+- Never use `dashboard` + `sum` for profit.
+- Preserve the previous year and month for elliptical follow-ups unless the current question explicitly replaces them.
 
 JSON schema:
 {{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";

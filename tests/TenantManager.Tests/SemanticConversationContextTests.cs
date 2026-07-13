@@ -385,4 +385,61 @@ public class SemanticConversationContextTests
         Assert.Equal("tenants", context.LastResource);
         Assert.Contains("effectiveMoveOutDate", context.LastProjection);
     }
+
+    [Fact]
+    public async Task Context_DashboardProfit_ComputedCorrectly()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        var prop = new Property { Name = "Active Property" };
+        db.Properties.Add(prop);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Tenant", PropertyId = prop.Id };
+        db.Tenants.Add(tenant);
+        var contract = new RentalContract { PropertyId = prop.Id, TenantId = tenant.Id, StartDate = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero) };
+        db.RentalContracts.Add(contract);
+        db.MonthlyPayments.Add(new MonthlyPayment { PropertyId = prop.Id, TenantId = tenant.Id, Year = 2026, Month = 1, ExpectedRentAmount = 1000, ExpectedExpenseAmount = 0, PaidAmount = 800, Status = PaymentStatus.Partial });
+        db.MonthlyPayments.Add(new MonthlyPayment { PropertyId = prop.Id, TenantId = tenant.Id, Year = 2026, Month = 2, ExpectedRentAmount = 1000, ExpectedExpenseAmount = 0, PaidAmount = 1000, Status = PaymentStatus.Paid });
+        
+        var cat = new ExpenseCategory { Name = "Mantenimiento" };
+        db.ExpenseCategories.Add(cat);
+        await db.SaveChangesAsync();
+        
+        db.ExpenseInvoices.Add(new ExpenseInvoice { PropertyId = prop.Id, CategoryId = cat.Id, Year = 2026, Month = 1, Amount = 550.50m });
+        await db.SaveChangesAsync();
+
+        var context = new AssistantContext();
+        
+        var planJson = JsonSerializer.Serialize(new
+        {
+            language = "es",
+            resource = "dashboard",
+            operation = "sum", // To test canonicalization as well
+            filters = new[] { new { field = "year", @operator = "equals", value = 2026 } },
+            projection = new[] { "profit" },
+            sort = Array.Empty<object>(),
+            limit = 20,
+            confidence = 0.95
+        });
+
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse(planJson));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        var service = new AiQueryService(db, aiClient);
+
+        // Act
+        var (answer, _) = await service.ResolveIntentAndGetDataAsync("Cuanto beneficio?", context, prop.Id);
+
+        // Assert
+        // Total payments = 1800. Total expenses = 550.50. Profit = 1249.50.
+        Assert.NotNull(answer);
+        Assert.Contains("1249", answer.Replace(".", "").Replace(",", ""));
+        Assert.Contains("2026", answer);
+        Assert.Equal("dashboard", context.LastResource);
+        Assert.Equal("summary", context.LastOperation); // Was canonicalized from sum
+        Assert.Equal(2026, context.LastYear);
+    }
 }

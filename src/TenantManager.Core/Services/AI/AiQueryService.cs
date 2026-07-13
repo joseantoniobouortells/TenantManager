@@ -120,6 +120,12 @@ public class AiQueryService
                             }
                         }
 
+                        // Canonicalize planner mistakes: profit queries might use dashboard + sum instead of dashboard + summary
+                        if (rawPlan.Resource == SemanticQueryResource.Dashboard && rawPlan.Operation == SemanticQueryOperation.Sum && rawPlan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+                        {
+                            rawPlan.Operation = SemanticQueryOperation.Summary;
+                        }
+
                         var validationResult = SemanticQueryPlanValidator.Validate(rawPlan, propertyId);
                         if (validationResult.IsValid)
                         {
