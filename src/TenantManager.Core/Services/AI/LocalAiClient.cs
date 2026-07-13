@@ -216,6 +216,14 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
 
     public async Task<string?> BuildQueryPlanAsync(string userMessage, AssistantContext? context = null, CancellationToken cancellationToken = default)
     {
+        return await BuildQueryPlanAsync(userMessage, context, clock: null, cancellationToken);
+    }
+
+    /// <summary>
+    /// Overload that accepts an injectable date provider for deterministic testing.
+    /// </summary>
+    public async Task<string?> BuildQueryPlanAsync(string userMessage, AssistantContext? context, Func<DateTimeOffset>? clock, CancellationToken cancellationToken = default)
+    {
         var settings = SettingsPersistence.LoadSettings();
 
         if (!settings.IsAiEnabled || string.IsNullOrWhiteSpace(settings.AiEndpoint))
@@ -223,58 +231,44 @@ Return JSON ONLY. Do not use markdown. Do not include explanations.{contextHint}
             return null;
         }
 
+        var now = (clock ?? (() => DateTimeOffset.Now))();
+        var currentDate = now.ToString("yyyy-MM-dd");
+        var currentYear = now.Year;
+        var currentMonth = now.Month;
+
         var contextHint = "";
         if (context != null && context.HasContext)
         {
             contextHint = $"\nConversation context: previous_intent={context.LastResolvedIntent}, previous_language={context.LastLanguage ?? "unknown"}.\nUse this to resolve follow-up questions.\n";
         }
 
-        string plannerPrompt = $@"You are a Semantic Query Planner. Your job is to translate a user's natural language question into a structured SemanticQueryPlan JSON.
-Return JSON ONLY. Do not use markdown. Do not include explanations.
+        string plannerPrompt = $@"You are a Semantic Query Planner. Translate the user question into one SemanticQueryPlan JSON object.
+Return JSON ONLY. No markdown. No explanation. No reasoning tokens.
+
+Today is {currentDate} (year={currentYear}, month={currentMonth}).
+
+Relative-date rules (apply automatically, do not reason about them):
+- 'this month' / 'este mes' -> year={currentYear}, month={currentMonth}
+- 'this year' / 'este año' -> year={currentYear}
+- 'last month' / 'mes pasado' -> year={(currentMonth == 1 ? currentYear - 1 : currentYear)}, month={(currentMonth == 1 ? 12 : currentMonth - 1)}
+
+Domain rules:
+- 'ingresos' / 'income' / 'collected' / 'cobrado' means paidAmount (operation: sum, resource: payments, field: paidAmount).
+- 'pendiente' / 'pending' means unpaid amounts (use pending filter).
+- 'atrasado' / 'late' means overdue (use late filter).
 
 Allowed resources and fields:
-- rooms:
-  - fields: active (bool), occupied (bool), available (bool), currentRent (decimal), name (string)
-  - operations: count, list
-- tenants:
-  - fields: active (bool), fullName (string), currentRoom (string), moveInDate (date), effectiveMoveOutDate (date)
-  - operations: count, list, lookup
-- contracts:
-  - fields: active (bool), tenantName (string), roomName (string), startDate (date), baseEndDate (date), effectiveEndDate (date), hasExtensions (bool), missingFile (bool)
-  - operations: count, list
-- payments:
-  - fields: status (string: 'pending', 'paid', 'late', 'partial'), year (int), month (int), expectedAmount (decimal), paidAmount (decimal), tenantName (string), pending (bool), late (bool)
-  - operations: count, list, sum
-- expenses:
-  - fields: category (string), amount (decimal), date (date)
-  - operations: count, list, sum
-- dashboard:
-  - operations: summary
+- rooms: active(bool), occupied(bool), available(bool), currentRent(decimal), name(string) -> count, list
+- tenants: active(bool), fullName(string), currentRoom(string), moveInDate(date), effectiveMoveOutDate(date) -> count, list, lookup
+- contracts: active(bool), tenantName(string), roomName(string), startDate(date), baseEndDate(date), effectiveEndDate(date), hasExtensions(bool), missingFile(bool) -> count, list
+- payments: status(string), year(int), month(int), expectedAmount(decimal), paidAmount(decimal), tenantName(string), pending(bool), late(bool) -> count, list, sum
+- expenses: category(string), amount(decimal), date(date) -> count, list, sum
+- dashboard: -> summary
 
 Allowed operators: equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, contains, in, between
 
-JSON format to return:
-{{
-  ""language"": ""es"" or ""en"",
-  ""resource"": ""rooms"" | ""tenants"" | ""contracts"" | ""payments"" | ""expenses"" | ""dashboard"",
-  ""operation"": ""count"" | ""list"" | ""lookup"" | ""sum"" | ""summary"",
-  ""filters"": [
-    {{
-      ""field"": ""field_name"",
-      ""operator"": ""equals"" | ""not_equals"" | ""greater_than"" | ""greater_than_or_equal"" | ""less_than"" | ""less_than_or_equal"" | ""contains"" | ""in"" | ""between"",
-      ""value"": value
-    }}
-  ],
-  ""projection"": [],
-  ""sort"": [
-    {{
-      ""field"": ""field_name"",
-      ""direction"": ""asc"" | ""desc""
-    }}
-  ],
-  ""limit"": 20,
-  ""confidence"": 0.95
-}}{contextHint}";
+JSON schema:
+{{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";
 
         var requestBody = new ChatRequest
         {
@@ -285,6 +279,7 @@ JSON format to return:
                 new ChatMessage { Role = "user", Content = userMessage }
             },
             Temperature = 0.0,
+            MaxTokens = 300, // Bounded: a single JSON plan never exceeds ~300 tokens
             Stream = false
         };
 

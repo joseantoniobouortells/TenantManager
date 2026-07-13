@@ -255,7 +255,19 @@ public class SemanticQueryExecutor
 
         var filtered = results.Where(item => plan.Filters.Where(f => !f.Field.Equals("propertyId", StringComparison.OrdinalIgnoreCase)).All(f => EvaluateFilter(GetPaymentFieldValue(item, f.Field), f.Operator, f.Value, f.Field)));
         var sorted = ApplySort(filtered, plan.Sort, GetPaymentFieldValue);
-        return FormatResults(plan.Operation!.Value, sorted, plan.Limit, "expectedAmount", "paidAmount");
+
+        // If the plan specifies a projection, use the first projected field as the sum field.
+        // This allows "ingresos" (income) queries to sum only paidAmount instead of expectedAmount.
+        string primarySumField = "expectedAmount";
+        string? secondarySumField = null;
+        if (plan.Operation == SemanticQueryOperation.Sum && plan.Projection.Count > 0)
+        {
+            primarySumField = plan.Projection[0];
+            secondarySumField = plan.Projection.Count > 1 ? plan.Projection[1] : null;
+        }
+
+        return FormatResults(plan.Operation!.Value, sorted, plan.Limit, primarySumField, secondarySumField);
+
     }
 
     private object? ProcessExpenses(SemanticQueryPlan plan, List<ExpenseInvoice> expenses, List<ExpenseCategory> categories)

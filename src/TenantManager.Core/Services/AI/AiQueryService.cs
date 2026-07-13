@@ -45,26 +45,82 @@ public class AiQueryService
         bool isSpanish = context?.LastLanguage == "es";
 
         // ---- Primary Path: Semantic Query Planner ----
+        bool plannerAttempted = false;
         try
         {
-            var planner = new SemanticQueryPlanner(_aiClient);
-            var plan = await planner.PlanQueryAsync(userMessage, context);
-            if (plan != null)
+            var settings = SettingsPersistence.LoadSettings();
+            if (settings.IsAiEnabled && !string.IsNullOrWhiteSpace(settings.AiEndpoint))
             {
-                var validationResult = SemanticQueryPlanValidator.Validate(plan, propertyId);
-                if (validationResult.IsValid)
-                {
-                    var executor = new SemanticQueryExecutor(_dbContext);
-                    var executionResult = await executor.ExecuteAsync(plan);
-                    string formattedAnswer = SemanticAnswerFormatter.Format(plan, executionResult, plan.Language);
+                plannerAttempted = true;
+                var rawResponse = await _aiClient.BuildQueryPlanAsync(userMessage, context);
 
-                    if (context != null)
+                if (string.IsNullOrWhiteSpace(rawResponse))
+                {
+                    // Timeout or empty content
+                    var plannerErrorMsg = isSpanish
+                        ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
+                        : "Sorry, I could not interpret your question. Please try again or simplify your query.";
+                    return (plannerErrorMsg, isSpanish);
+                }
+
+                var cleanedJson = CleanJsonOutput(rawResponse);
+                bool isLegacyJson = false;
+                try
+                {
+                    using var doc = JsonDocument.Parse(cleanedJson);
+                    if (doc.RootElement.TryGetProperty("intent", out _))
                     {
-                        context.LastResolvedIntent = plan.Resource!.Value.ToString().ToLowerInvariant() + "_" + plan.Operation!.Value.ToString().ToLowerInvariant();
-                        context.LastLanguage = plan.Language;
+                        isLegacyJson = true;
+                    }
+                }
+                catch
+                {
+                    // Invalid/incomplete JSON -> Return planner error
+                    var plannerErrorMsg = isSpanish
+                        ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
+                        : "Sorry, I could not interpret your question. Please try again or simplify your query.";
+                    return (plannerErrorMsg, isSpanish);
+                }
+
+                if (!isLegacyJson)
+                {
+                    SemanticQueryPlan? rawPlan = null;
+                    try
+                    {
+                        rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(cleanedJson);
+                    }
+                    catch
+                    {
+                        // Incomplete/malformed JSON
+                        var plannerErrorMsg = isSpanish
+                            ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
+                            : "Sorry, I could not interpret your question. Please try again or simplify your query.";
+                        return (plannerErrorMsg, isSpanish);
                     }
 
-                    return (formattedAnswer, plan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                    if (rawPlan != null)
+                    {
+                        var validationResult = SemanticQueryPlanValidator.Validate(rawPlan, propertyId);
+                        if (validationResult.IsValid)
+                        {
+                            var executor = new SemanticQueryExecutor(_dbContext);
+                            var executionResult = await executor.ExecuteAsync(rawPlan);
+                            string formattedAnswer = SemanticAnswerFormatter.Format(rawPlan, executionResult, rawPlan.Language);
+
+                            if (context != null)
+                            {
+                                context.LastResolvedIntent = rawPlan.Resource!.Value.ToString().ToLowerInvariant() + "_" + rawPlan.Operation!.Value.ToString().ToLowerInvariant();
+                                context.LastLanguage = rawPlan.Language;
+                            }
+
+                            return (formattedAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                        }
+                        else
+                        {
+                            var errAnswer = SemanticAnswerFormatter.FormatValidationError(validationResult, rawPlan.Language);
+                            return (errAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
                 }
             }
         }
@@ -74,7 +130,13 @@ public class AiQueryService
         }
         catch
         {
-            // Fall back to old intent flow
+            if (plannerAttempted)
+            {
+                var plannerErrorMsg = isSpanish
+                    ? "Lo siento, se ha producido un error al procesar tu consulta."
+                    : "Sorry, an error occurred while processing your query.";
+                return (plannerErrorMsg, isSpanish);
+            }
         }
 
         // ---- Fallback Path: Legacy Intent Extraction ----
@@ -319,5 +381,20 @@ public class AiQueryService
         var noAccents = sb.ToString().Normalize(System.Text.NormalizationForm.FormC);
         return string.Join(" ", noAccents.Split(
             new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string CleanJsonOutput(string rawJson)
+    {
+        var cleaned = rawJson.Trim();
+        if (cleaned.StartsWith("```"))
+        {
+            var firstNewline = cleaned.IndexOf('\n');
+            var lastBackticks = cleaned.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstNewline != -1 && lastBackticks != -1 && lastBackticks > firstNewline)
+            {
+                cleaned = cleaned.Substring(firstNewline + 1, lastBackticks - firstNewline - 1);
+            }
+        }
+        return cleaned.Trim();
     }
 }
