@@ -36,6 +36,10 @@
     <system:String x:Key="AiDisabledMessage">The local AI assistant is disabled. You can enable it in the Settings tab.</system:String>
     <system:String x:Key="AskPlaceholder">Ask a question...</system:String>
     <system:String x:Key="SendButton">Send</system:String>
+    <system:String x:Key="UserRoleLabel">You</system:String>
+    <system:String x:Key="AssistantRoleLabel">Assistant</system:String>
+    <system:String x:Key="CopyResponseTooltip">Copy response</system:String>
+    <system:String x:Key="CopiedLabel">Copied</system:String>
 
     <!-- Global dialogs -->
     <system:String x:Key="ConfirmDeleteTitle">Confirm Deletion</system:String>

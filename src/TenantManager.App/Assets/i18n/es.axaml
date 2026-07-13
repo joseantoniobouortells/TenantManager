@@ -36,6 +36,10 @@
     <system:String x:Key="AiDisabledMessage">El asistente de IA local está desactivado. Puedes activarlo en la pestaña de Ajustes.</system:String>
     <system:String x:Key="AskPlaceholder">Haz una pregunta...</system:String>
     <system:String x:Key="SendButton">Enviar</system:String>
+    <system:String x:Key="UserRoleLabel">Tú</system:String>
+    <system:String x:Key="AssistantRoleLabel">Asistente</system:String>
+    <system:String x:Key="CopyResponseTooltip">Copiar respuesta</system:String>
+    <system:String x:Key="CopiedLabel">Copiado</system:String>
 
     <!-- Diálogos globales -->
     <system:String x:Key="ConfirmDeleteTitle">¿Confirmar eliminación?</system:String>

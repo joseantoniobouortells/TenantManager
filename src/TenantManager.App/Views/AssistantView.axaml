@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:TenantManager.App.ViewModels"
+             xmlns:md="clr-namespace:Markdown.Avalonia;assembly=Markdown.Avalonia"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
              x:Class="TenantManager.App.Views.AssistantView"
              x:DataType="vm:AssistantViewModel"
@@ -29,27 +30,48 @@
                 <ItemsControl ItemsSource="{Binding Messages}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border CornerRadius="8" Padding="12 8" Margin="0 0 0 8" 
-                                    HorizontalAlignment="{Binding IsUser, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=True}"
-                                    Background="{Binding IsUser, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=True}">
-                                <Border.Styles>
-                                    <Style Selector="Border">
-                                        <Setter Property="HorizontalAlignment" Value="Left" />
-                                        <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-                                        <Setter Property="BorderThickness" Value="1" />
-                                        <Setter Property="BorderBrush" Value="{DynamicResource TableBorderBrush}" />
-                                        <Setter Property="MaxWidth" Value="600" />
-                                    </Style>
-                                    <!-- Simple hack without writing a value converter for the binding: just use pseudo-classes or a simpler binding approach. 
-                                         Wait, Avalonia supports inline boolean converters, but let's use DataTriggers or just let the viewmodel expose an alignment.
-                                         Actually, let's keep it simple. We can bind classes if we want, but let's just use the default. -->
-                                </Border.Styles>
-                                
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Role}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Border>
+                            <DockPanel Margin="0,0,0,12" LastChildFill="False">
+                                <!-- User Bubble -->
+                                <Border DockPanel.Dock="Right" IsVisible="{Binding IsUser}" 
+                                        Background="{DynamicResource PrimaryBrush}" 
+                                        CornerRadius="16,16,0,16" 
+                                        Padding="12,8" 
+                                        MaxWidth="600" HorizontalAlignment="Right">
+                                    <StackPanel>
+                                        <TextBlock Text="{DynamicResource UserRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#E0E0E0" Margin="0,0,0,4" HorizontalAlignment="Right" />
+                                        <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="White" />
+                                    </StackPanel>
+                                </Border>
+
+                                <Border DockPanel.Dock="Left" IsVisible="{Binding !IsUser}" 
+                                        Background="{DynamicResource CardBackgroundBrush}" 
+                                        BorderThickness="1" BorderBrush="{DynamicResource TableBorderBrush}"
+                                        CornerRadius="16,16,16,0" 
+                                        Padding="12,8" 
+                                        MaxWidth="600" HorizontalAlignment="Left">
+                                    <StackPanel TextElement.Foreground="{DynamicResource TextPrimaryBrush}">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                                            <TextBlock Grid.Column="0" Text="{DynamicResource AssistantRoleLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            
+                                            <!-- Copy Button -->
+                                            <Button Grid.Column="1" Classes="Action" Padding="4,2" CornerRadius="4" Background="Transparent"
+                                                    Click="CopyButton_OnClick" ToolTip.Tip="{DynamicResource CopyResponseTooltip}" Cursor="Hand">
+                                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                                    <TextBlock Text="📋" FontSize="12" />
+                                                    <TextBlock Text="{DynamicResource CopiedLabel}" FontSize="10" Foreground="Green" IsVisible="{Binding ShowCopiedMessage}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                        
+                                        <!-- Safe Markdown Rendering -->
+                                        <md:MarkdownScrollViewer Markdown="{Binding Content}"
+                                                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <!-- Optional: define minimal styles inside Markdown properties if needed -->
+                                        </md:MarkdownScrollViewer>
+                                    </StackPanel>
+                                </Border>
+                            </DockPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

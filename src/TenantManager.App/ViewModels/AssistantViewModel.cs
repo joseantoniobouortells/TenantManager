@@ -12,6 +12,13 @@ public class ChatMessageViewModel : ViewModelBase
     public string Role { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public bool IsUser => Role == "user";
+
+    private bool _showCopiedMessage;
+    public bool ShowCopiedMessage
+    {
+        get => _showCopiedMessage;
+        set => SetProperty(ref _showCopiedMessage, value);
+    }
 }
 
 public class AssistantViewModel : ViewModelBase
