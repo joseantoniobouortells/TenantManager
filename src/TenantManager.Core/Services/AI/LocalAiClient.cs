@@ -478,6 +478,8 @@ Concise Planning Rules:
 - Date ranges must use the exact filter representation defined by the SemanticQueryPlan contract.
 - Monthly collected income uses: resource `payments`, operation `sum`, projection `paidAmount`, and explicit `year` and `month` filters.
 - Expense totals use: resource `expenses`, operation `sum`, projection `amount`, and only valid date filters from the contract.
+- `tenants` tenant-name field: `fullName`. `contracts` and `payments` tenant-name field: `tenantName`.
+- Tenant follow-ups on the `tenants` resource MUST use `fullName`, NEVER `tenantName`.
 
 JSON schema:
 {{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";

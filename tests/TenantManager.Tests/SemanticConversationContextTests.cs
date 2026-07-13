@@ -327,4 +327,62 @@ public class SemanticConversationContextTests
         Assert.Null(context.LastTenantDisplayName);
         Assert.Equal(prop2.Id, context.LastPropertyId.Value);
     }
+
+    [Fact]
+    public async Task Context_FollowUp_RewritesTenantNameFieldToFullName()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        var prop = new Property { Name = "Active Property" };
+        db.Properties.Add(prop);
+        await db.SaveChangesAsync();
+
+        var tenantArtigas = new Tenant { FullName = "Erik Artigas", PropertyId = prop.Id };
+        var tenantPradas = new Tenant { FullName = "Erik Pradas", PropertyId = prop.Id };
+        db.Tenants.AddRange(tenantArtigas, tenantPradas);
+        await db.SaveChangesAsync();
+
+        var context = new AssistantContext
+        {
+            LastResolvedIntent = "tenants_list",
+            LastLanguage = "es",
+            LastResource = "tenants",
+            LastOperation = "list",
+            LastTenantId = tenantArtigas.Id,
+            LastTenantDisplayName = tenantArtigas.FullName,
+            LastPropertyId = prop.Id
+        };
+        context.LastProjection.Add("effectiveMoveOutDate");
+
+        // The planner generates a plan with field "tenantName"
+        var planJson = JsonSerializer.Serialize(new
+        {
+            language = "es",
+            resource = "tenants",
+            operation = "list",
+            filters = new[] { new { field = "tenantName", @operator = "equals", value = "Erik Pradas" } },
+            projection = new[] { "effectiveMoveOutDate" },
+            sort = Array.Empty<object>(),
+            limit = 20,
+            confidence = 0.95
+        });
+
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse(planJson));
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        var service = new AiQueryService(db, aiClient);
+
+        // Act
+        var (answer, isSpanish) = await service.ResolveIntentAndGetDataAsync("Y Erik Pradas?", context, prop.Id);
+
+        // Assert
+        // We expect execution to succeed (so answer is formatted, not a validation error)
+        Assert.NotNull(answer);
+        Assert.Equal(tenantPradas.Id, context.LastTenantId.Value);
+        Assert.Equal("Erik Pradas", context.LastTenantDisplayName);
+        Assert.Equal("tenants", context.LastResource);
+        Assert.Contains("effectiveMoveOutDate", context.LastProjection);
+    }
 }

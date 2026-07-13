@@ -108,6 +108,18 @@ public class AiQueryService
 
                     if (rawPlan != null)
                     {
+                        // Canonicalize planner mistakes: follow-ups sometimes use "tenantName" instead of "fullName" for the tenants resource
+                        if (rawPlan.Resource == SemanticQueryResource.Tenants)
+                        {
+                            foreach (var filter in rawPlan.Filters)
+                            {
+                                if (filter.Field == "tenantName")
+                                {
+                                    filter.Field = "fullName";
+                                }
+                            }
+                        }
+
                         var validationResult = SemanticQueryPlanValidator.Validate(rawPlan, propertyId);
                         if (validationResult.IsValid)
                         {
