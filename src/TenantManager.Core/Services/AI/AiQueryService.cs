@@ -52,6 +52,21 @@ public class AiQueryService
         }
 
         bool isSpanish = context?.LastLanguage == "es";
+
+        // ---- Fast path: PreviousResultQuery resolution (no LLM query plan needed) ----
+        // Check if the user is simply asking about the previous result's metadata (period, label, etc.)
+        // using lightweight keyword heuristics. This avoids an unnecessary LLM call.
+        if (context?.HasContext == true)
+        {
+            var previousAnswer = SemanticRequestResolver.TryResolvePreviousResultByKeywords(
+                userMessage, context, isSpanish: isSpanish);
+            if (previousAnswer != null)
+            {
+                onProgress?.Invoke(AiProcessingStage.Completed);
+                return (previousAnswer, isSpanish);
+            }
+        }
+
         onProgress?.Invoke(AiProcessingStage.PreparingRequest);
 
         // ---- Primary Path: Semantic Query Planner ----
@@ -155,6 +170,26 @@ public class AiQueryService
                             if (context != null)
                             {
                                 UpdateSemanticContext(context, rawPlan, propertyId);
+                                // Store the last formatted answer and execution result for PreviousResultQuery resolution
+                                context.LastFormattedAnswer = formattedAnswer;
+                                context.LastExecutionResult = executionResult;
+
+                                // Multi-output: if projection requests 'period', append the period to the answer
+                                if (rawPlan.Projection.Contains("period", StringComparer.OrdinalIgnoreCase)
+                                    && context.LastYear.HasValue)
+                                {
+                                    bool es = rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase);
+                                    var ci = System.Globalization.CultureInfo.GetCultureInfo(es ? "es-ES" : "en-US");
+                                    if (context.LastMonth.HasValue)
+                                    {
+                                        var monthName = ci.DateTimeFormat.GetMonthName(context.LastMonth.Value);
+                                        var periodLine = es
+                                            ? $"Período: {monthName} de {context.LastYear}"
+                                            : $"Period: {monthName} {context.LastYear}";
+                                        if (!formattedAnswer.Contains(periodLine))
+                                            formattedAnswer += "\n" + periodLine;
+                                    }
+                                }
                             }
 
                             onProgress?.Invoke(AiProcessingStage.Completed);

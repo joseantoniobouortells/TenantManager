@@ -22,6 +22,15 @@ public class AssistantContext
     public int? LastMonth { get; set; }
     public int? LastPropertyId { get; set; }
 
+    /// <summary>The formatted answer text of the last successful query, used for follow-up resolution.</summary>
+    public string? LastFormattedAnswer { get; set; }
+
+    /// <summary>The SemanticRequest that produced the last successful answer.</summary>
+    public SemanticRequest? LastSemanticRequest { get; set; }
+
+    /// <summary>The raw execution result object of the last successful query (numeric, string, or list).</summary>
+    public object? LastExecutionResult { get; set; }
+
     public bool HasContext => LastResolvedIntent != null;
 
     public void Reset()
@@ -36,5 +45,8 @@ public class AssistantContext
         LastTenantDisplayName = null;
         LastYear = null;
         LastMonth = null;
+        LastFormattedAnswer = null;
+        LastSemanticRequest = null;
+        LastExecutionResult = null;
     }
 }

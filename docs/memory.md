@@ -150,3 +150,8 @@
     - *Decisión:* Se implementó un planificador semántico de consultas (Fases 1-10) en `TenantManager.Core` con un catálogo de operaciones permitidas por recurso (Rooms, Tenants, Contracts, Payments, Expenses, Dashboard).
     - *Motivo:* Evitar la fragilidad de la extracción de keywords del LLM anterior permitiendo responder preguntas estructuradas complejas (conteos, listas filtradas, sumas de facturas/pagos y resúmenes) de forma 100% segura y determinista en español e inglés sin que el LLM genere o ejecute código SQL.
     - *Impacto:* Compilación con 0 advertencias y suite de 82 pruebas unitarias, de seguridad y funcionales ejecutadas con éxito sobre SQLite en memoria. Se controla estrictamente la privacidad omitiendo PII y limitando las consultas al scope de la propiedad activa.
+99. **Capa de Interpretación Semántica (SemanticRequest MVP) (Julio 2026):**
+    - *Decisión:* Se introdujo un paso previo (`SemanticRequest`) antes del pipeline de `SemanticQueryPlan`.
+    - *Motivo:* Permitir al asistente procesar "múltiples salidas" en la misma pregunta (ej. "¿Cuánto se ha ingresado y a qué mes corresponde?") y posibilitar heurísticas deterministas sin DB ni llamadas al LLM para preguntas sobre el periodo del resultado anterior (ej. "¿A qué mes corresponde?").
+    - *Arquitectura:* En `TenantManager.Core` se crearon contratos inmutables (`SemanticRequest`, `RequestedOutput`), constructores (`SemanticRequestBuilder`), y resolvedores deterministas por palabra clave (`SemanticRequestResolver`). `AssistantContext` se extendió para almacenar `LastFormattedAnswer` y `LastExecutionResult`.
+    - *Impacto:* Compilación exitosa y 126 pruebas. Resoluciones directas (fast-path) al preguntar por datos relativos al resultado previo.

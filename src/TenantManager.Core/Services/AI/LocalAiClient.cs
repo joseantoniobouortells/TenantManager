@@ -483,6 +483,7 @@ Concise Planning Rules:
 - Tenant follow-ups on the `tenants` resource MUST use `fullName`, NEVER `tenantName`.
 - `beneficio`, `profit`, `ingresos menos gastos`, and `income minus expenses` map to: resource `dashboard`, operation `summary`, projection `profit`.
 - Never use `dashboard` + `sum` for profit.
+- When the user requests multiple pieces of information in one question (e.g. 'cuánto y de qué mes'), include all requested fields in the projection list.
 - Preserve the previous year and month for elliptical follow-ups unless the current question explicitly replaces them.
 
 JSON schema:
@@ -526,6 +527,100 @@ JSON schema:
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Asks the LLM to produce a lightweight SemanticRequest JSON that classifies
+    /// the user question's intent and extracts requested outputs.
+    /// </summary>
+    public async Task<SemanticRequestDto?> BuildSemanticRequestAsync(
+        string userMessage,
+        AssistantContext? context = null,
+        Func<DateTimeOffset>? clock = null,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = SettingsPersistence.LoadSettings();
+        if (!settings.IsAiEnabled || string.IsNullOrWhiteSpace(settings.AiEndpoint))
+            return null;
+
+        var now = (clock ?? (() => DateTimeOffset.Now))();
+        var currentYear = now.Year;
+        var currentMonth = now.Month;
+        var lastMonth = currentMonth == 1 ? 12 : currentMonth - 1;
+        var lastMonthYear = currentMonth == 1 ? currentYear - 1 : currentYear;
+
+        var contextHint = string.Empty;
+        if (context != null && context.HasContext)
+        {
+            var hints = new List<string>();
+            if (context.LastYear.HasValue) hints.Add($"last_year={context.LastYear}");
+            if (context.LastMonth.HasValue) hints.Add($"last_month={context.LastMonth}");
+            if (!string.IsNullOrEmpty(context.LastResource)) hints.Add($"last_resource={context.LastResource}");
+            if (!string.IsNullOrEmpty(context.LastOperation)) hints.Add($"last_operation={context.LastOperation}");
+            if (!string.IsNullOrWhiteSpace(context.LastFormattedAnswer)) hints.Add($"last_answer={context.LastFormattedAnswer}");
+            if (hints.Count > 0)
+                contextHint = $"\nPrevious successful query context:\n{string.Join("\n", hints)}\n";
+        }
+
+        string prompt = $@"You are a Semantic Request Classifier. Classify the user's question into a JSON SemanticRequest.
+Return JSON ONLY. No markdown. No explanation. No reasoning tokens.
+
+Today: year={currentYear}, month={currentMonth}.
+Last month: year={lastMonthYear}, month={lastMonth}.
+{contextHint}
+intent values:
+- data_query: user wants to query data from the database
+- previous_result_query: user is asking about the period/month/year/label of the PREVIOUS answer (no new DB query needed)
+- unknown: cannot determine
+
+Requested outputs: list every piece of information the user explicitly requests.
+Examples:
+- 'Cuánto se ha ingresado?' → outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}}]
+- 'Cuánto se ha ingresado el último mes? Indica a qué mes corresponde' → outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}},{{""field"":""period"",""label"":""Mes""}}]
+- 'A qué mes corresponde?' (after a previous query) → intent=previous_result_query, outputs: [{{""field"":""period"",""label"":""Mes""}}]
+
+JSON schema:
+{{""language"":""es"",""intent"":""data_query"",""resource"":""payments"",""operation"":""sum"",""period_year"":{currentYear},""period_month"":{currentMonth},""requested_outputs"":[{{""field"":""paidAmount"",""label"":""Importe""}}],""confidence"":0.95}}";
+
+        var completionsEndpoint = NormalizeCompletionsEndpoint(settings.AiEndpoint);
+        var requestBody = new ChatRequest
+        {
+            Model = settings.AiModelName ?? string.Empty,
+            Messages = new List<ChatMessage>
+            {
+                new ChatMessage { Role = "system", Content = prompt },
+                new ChatMessage { Role = "user", Content = userMessage }
+            },
+            Temperature = 0.0,
+            MaxTokens = 256,
+            Stream = false
+        };
+
+        var jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
+        var jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
+        var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var response = await _httpClient.PostAsync(completionsEndpoint, httpContent, cancellationToken);
+            if (!response.IsSuccessStatusCode) return null;
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+            var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
+            var content = chatResponse?.Choices?[0]?.Message?.Content;
+            if (string.IsNullOrWhiteSpace(content)) return null;
+
+            // Strip markdown fences if present
+            var cleaned = content.Trim();
+            if (cleaned.StartsWith("```"))
+            {
+                var nl = cleaned.IndexOf('\n');
+                var last = cleaned.LastIndexOf("```", StringComparison.Ordinal);
+                if (nl != -1 && last > nl) cleaned = cleaned.Substring(nl + 1, last - nl - 1).Trim();
+            }
+
+            return JsonSerializer.Deserialize<SemanticRequestDto>(cleaned);
+        }
+        catch { return null; }
     }
 
     /// <summary>
