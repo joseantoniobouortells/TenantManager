@@ -1,0 +1,36 @@
+[
+  {
+    "id": "tenant-move-out-partial-es",
+    "language": "es",
+    "description": "Tenant move-out lookup using a partial name.",
+    "tags": ["tenants", "move-out", "lookup"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Cuándo se va María?",
+        "expected": {
+          "intent": "tenant_move_out_date",
+          "queryExecution": "required",
+          "answerContains": ["María García", "2026-12-31"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "missing-context-es",
+    "language": "es",
+    "description": "Missing previous-result context when asked about a previous period.",
+    "tags": ["conversations", "previous-result", "error-handling"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿A qué mes correspondía eso?",
+        "expected": {
+          "intent": "previous_result_query",
+          "queryExecution": "forbidden",
+          "answerContains": ["No tengo información", "consulta anterior"]
+        }
+      }
+    ]
+  }
+]

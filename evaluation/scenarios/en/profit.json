@@ -1,0 +1,23 @@
+[
+  {
+    "id": "profit-annual-en",
+    "language": "en",
+    "description": "Calculates the total annual profit.",
+    "tags": ["profit", "annual", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "What is the total profit for 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "dashboard",
+          "operation": "summary",
+          "projection": ["profit"],
+          "resolvedYear": 2026,
+          "queryExecution": "required",
+          "answerContains": ["3200"]
+        }
+      }
+    ]
+  }
+]
