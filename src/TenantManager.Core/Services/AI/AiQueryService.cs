@@ -28,11 +28,13 @@ public class AiQueryService
 {
     private readonly AppDbContext _dbContext;
     private readonly LocalAiClient _aiClient;
+    private readonly IAssistantExecutionObserver? _observer;
 
-    public AiQueryService(AppDbContext dbContext, LocalAiClient aiClient)
+    public AiQueryService(AppDbContext dbContext, LocalAiClient aiClient, IAssistantExecutionObserver? observer = null)
     {
         _dbContext = dbContext;
         _aiClient = aiClient;
+        _observer = observer;
     }
 
     /// <summary>
@@ -52,6 +54,7 @@ public class AiQueryService
         }
 
         bool isSpanish = context?.LastLanguage == "es";
+        _observer?.OnRequestReceived(userMessage);
 
         // ---- Fast path: PreviousResultQuery resolution (no LLM query plan needed) ----
         // Check if the user is simply asking about the previous result's metadata (period, label, etc.)
@@ -151,6 +154,8 @@ public class AiQueryService
                             rawPlan.Operation = SemanticQueryOperation.Summary;
                         }
 
+                        _observer?.OnPlanGenerated(rawPlan);
+
                         onProgress?.Invoke(AiProcessingStage.ValidatingPlan);
                         var validationResult = SemanticQueryPlanValidator.Validate(rawPlan, propertyId);
                         if (validationResult.IsValid)
@@ -158,6 +163,7 @@ public class AiQueryService
                             onProgress?.Invoke(AiProcessingStage.ExecutingQuery);
                             var executor = new SemanticQueryExecutor(_dbContext);
                             var executionResult = await executor.ExecuteAsync(rawPlan);
+                            _observer?.OnQueryExecuted(executionResult is not string);
                             if (executionResult is string errorMsg)
                             {
                                 onProgress?.Invoke(AiProcessingStage.Failed);
@@ -166,6 +172,7 @@ public class AiQueryService
                             
                             onProgress?.Invoke(AiProcessingStage.FormattingResponse);
                             string formattedAnswer = SemanticAnswerFormatter.Format(rawPlan, executionResult, rawPlan.Language);
+                            _observer?.OnResponseFormatted(formattedAnswer);
 
                             if (context != null)
                             {
@@ -512,6 +519,8 @@ public class AiQueryService
         {
             context.LastMonth = null;
         }
+
+        _observer?.OnPeriodResolved(context.LastYear, context.LastMonth);
 
         // Find tenant name filter
         string? tenantName = null;
