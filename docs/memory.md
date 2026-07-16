@@ -155,3 +155,8 @@
     - *Motivo:* Permitir al asistente procesar "múltiples salidas" en la misma pregunta (ej. "¿Cuánto se ha ingresado y a qué mes corresponde?") y posibilitar heurísticas deterministas sin DB ni llamadas al LLM para preguntas sobre el periodo del resultado anterior (ej. "¿A qué mes corresponde?").
     - *Arquitectura:* En `TenantManager.Core` se crearon contratos inmutables (`SemanticRequest`, `RequestedOutput`), constructores (`SemanticRequestBuilder`), y resolvedores deterministas por palabra clave (`SemanticRequestResolver`). `AssistantContext` se extendió para almacenar `LastFormattedAnswer` y `LastExecutionResult`.
     - *Impacto:* Compilación exitosa y 126 pruebas. Resoluciones directas (fast-path) al preguntar por datos relativos al resultado previo.
+100. **AI Evaluation Runner y Test Dataset (Julio 2026):**
+    - *Decisión:* Se creó el proyecto de consola `TenantManager.Evaluation` y el proyecto de pruebas `TenantManager.Evaluation.Tests` para validar el comportamiento y precisión de la IA local determinista y en vivo.
+    - *Arquitectura:* Se introdujo un seam de diagnósticos `IAssistantExecutionObserver` en `AiQueryService` para trazar el request semántico, periodos, planes generados y el resultado final sin afectar el comportamiento central. Se implementaron los modos `validate` y `live`.
+    - *Datos de Prueba:* Se utiliza un `deterministic-fixture.json` que carga en SQLite de memoria un contexto simulado, permitiendo ejecutar y validar escenarios contra LLMs locales a través de LocalAiClient.
+    - *Impacto:* Validación estructural de escenarios JSON y evaluación en vivo contra el modelo de lenguaje de IA habilitada.
