@@ -90,10 +90,7 @@ public class SemanticQueryExecutor
                                 ? $"¿A cuál de los siguientes inquilinos se refiere? {names}."
                                 : $"Which of the following tenants do you mean? {names}.";
                         }
-                        
-                        return isSpanish
-                            ? "No se encontraron datos que coincidan con su consulta."
-                            : "No data was found matching your query.";
+                        return clarification;
                     }
                     else
                     {

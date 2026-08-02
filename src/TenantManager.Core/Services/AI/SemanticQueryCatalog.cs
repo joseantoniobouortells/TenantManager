@@ -143,7 +143,9 @@ public static class SemanticQueryCatalog
             {
                 ["category"] = new SemanticFieldDefinition { Name = "category", Type = typeof(string), AllowedOperators = stringOperators },
                 ["amount"] = new SemanticFieldDefinition { Name = "amount", Type = typeof(decimal), AllowedOperators = numericAndDateOperators },
-                ["date"] = new SemanticFieldDefinition { Name = "date", Type = typeof(DateTimeOffset), AllowedOperators = numericAndDateOperators }
+                ["date"] = new SemanticFieldDefinition { Name = "date", Type = typeof(DateTimeOffset), AllowedOperators = numericAndDateOperators },
+                ["year"] = new SemanticFieldDefinition { Name = "year", Type = typeof(int), AllowedOperators = numericAndDateOperators },
+                ["month"] = new SemanticFieldDefinition { Name = "month", Type = typeof(int), AllowedOperators = numericAndDateOperators }
             }
         };
 

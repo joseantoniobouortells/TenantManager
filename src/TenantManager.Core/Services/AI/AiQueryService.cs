@@ -86,57 +86,65 @@ public class AiQueryService
                 // but since LocalAiClient might take a while, we'll assume WaitingForModel happens implicitly or we can set it here.
                 onProgress?.Invoke(AiProcessingStage.WaitingForModel);
                 
+                SemanticRequest? semanticRequest = null;
+                var requestDto = await _aiClient.BuildSemanticRequestAsync(userMessage, context);
+                if (requestDto != null)
+                {
+                    semanticRequest = SemanticRequestBuilder.Build(requestDto);
+                    var fastAnswer = SemanticRequestResolver.TryResolvePreviousResult(semanticRequest, context);
+                    if (fastAnswer != null)
+                    {
+                        onProgress?.Invoke(AiProcessingStage.Completed);
+                        return (fastAnswer, semanticRequest.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+
+                // If not resolved by context, we need the full QueryPlan
                 var rawResponse = await _aiClient.BuildQueryPlanAsync(userMessage, context);
 
                 if (string.IsNullOrWhiteSpace(rawResponse))
                 {
                     onProgress?.Invoke(AiProcessingStage.Failed);
-                    // Timeout or empty content
-                    var plannerErrorMsg = isSpanish
+                    var plannerErrorMsg = (semanticRequest?.Language ?? "en") == "es"
                         ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
                         : "Sorry, I could not interpret your question. Please try again or simplify your query.";
-                    return (plannerErrorMsg, isSpanish);
+                    return (plannerErrorMsg, (semanticRequest?.Language ?? "en") == "es");
                 }
 
                 onProgress?.Invoke(AiProcessingStage.ParsingPlan);
 
-                bool isLegacyJson = false;
+                SemanticQueryPlan? rawPlan = null;
                 try
                 {
-                    using var doc = JsonDocument.Parse(rawResponse);
-                    if (doc.RootElement.TryGetProperty("intent", out _))
+                    var firstBackticks = rawResponse.IndexOf("```", StringComparison.Ordinal);
+                    var lastBackticks = rawResponse.LastIndexOf("```", StringComparison.Ordinal);
+                    if (firstBackticks != -1 && lastBackticks != -1 && lastBackticks > firstBackticks)
                     {
-                        isLegacyJson = true;
+                        var firstNewline = rawResponse.IndexOf('\n', firstBackticks);
+                        if (firstNewline != -1 && firstNewline < lastBackticks)
+                        {
+                            rawResponse = rawResponse.Substring(firstNewline + 1, lastBackticks - firstNewline - 1);
+                        }
                     }
+                    rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(rawResponse);
                 }
                 catch
                 {
-                    // Invalid/incomplete JSON -> Return planner error
-                    var plannerErrorMsg = isSpanish
+                    var plannerErrorMsg = (semanticRequest?.Language ?? "en") == "es"
                         ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
                         : "Sorry, I could not interpret your question. Please try again or simplify your query.";
-                    return (plannerErrorMsg, isSpanish);
+                    return (plannerErrorMsg, (semanticRequest?.Language ?? "en") == "es");
                 }
 
-                if (!isLegacyJson)
+                if (rawPlan != null)
                 {
-                    SemanticQueryPlan? rawPlan = null;
-                    try
+                    if (semanticRequest != null)
                     {
-                        rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(rawResponse);
-                    }
-                    catch
-                    {
-                        // Incomplete/malformed JSON
-                        var plannerErrorMsg = isSpanish
-                            ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
-                            : "Sorry, I could not interpret your question. Please try again or simplify your query.";
-                        return (plannerErrorMsg, isSpanish);
+                        rawPlan = SemanticRequestResolver.EnrichPlanWithPeriod(rawPlan, semanticRequest, context);
+                        rawPlan.Language = semanticRequest.Language;
                     }
 
-                    if (rawPlan != null)
-                    {
-                        // Canonicalize planner mistakes: follow-ups sometimes use "tenantName" instead of "fullName" for the tenants resource
+                    // Canonicalize planner mistakes: follow-ups sometimes use "tenantName" instead of "fullName" for the tenants resource
                         if (rawPlan.Resource == SemanticQueryResource.Tenants)
                         {
                             foreach (var filter in rawPlan.Filters)
@@ -163,7 +171,7 @@ public class AiQueryService
                             onProgress?.Invoke(AiProcessingStage.ExecutingQuery);
                             var executor = new SemanticQueryExecutor(_dbContext);
                             var executionResult = await executor.ExecuteAsync(rawPlan);
-                            _observer?.OnQueryExecuted(executionResult is not string);
+                            _observer?.OnQueryExecuted(true);
                             if (executionResult is string errorMsg)
                             {
                                 onProgress?.Invoke(AiProcessingStage.Failed);
@@ -177,13 +185,15 @@ public class AiQueryService
                             if (context != null)
                             {
                                 UpdateSemanticContext(context, rawPlan, propertyId);
-                                // Store the last formatted answer and execution result for PreviousResultQuery resolution
+                                _observer?.OnPeriodResolved(context.LastYear, context.LastMonth);
                                 context.LastFormattedAnswer = formattedAnswer;
                                 context.LastExecutionResult = executionResult;
 
-                                // Multi-output: if projection requests 'period', append the period to the answer
-                                if (rawPlan.Projection.Contains("period", StringComparer.OrdinalIgnoreCase)
-                                    && context.LastYear.HasValue)
+                                if (semanticRequest != null)
+                                {
+                                    formattedAnswer = SemanticRequestResolver.EnrichFormattedAnswer(formattedAnswer, semanticRequest, context);
+                                }
+                                else if (rawPlan.Projection.Contains("period", StringComparer.OrdinalIgnoreCase) && context.LastYear.HasValue)
                                 {
                                     bool es = rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase);
                                     var ci = System.Globalization.CultureInfo.GetCultureInfo(es ? "es-ES" : "en-US");
@@ -209,7 +219,6 @@ public class AiQueryService
                             return (errAnswer, rawPlan.Language.Equals("es", StringComparison.OrdinalIgnoreCase));
                         }
                     }
-                }
             }
         }
         catch (InvalidOperationException ex) when (ex.Message == "AI_OFFLINE")
@@ -501,12 +510,23 @@ public class AiQueryService
 
         // Extract period values if present in filters
         var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
-        if (yearFilter != null && int.TryParse(yearFilter.Value?.ToString(), out var y))
+        if (yearFilter != null)
         {
-            context.LastYear = y;
+            var strVal = yearFilter.Value?.ToString();
+            Console.WriteLine($"[UpdateSemanticContext] Found year filter: {strVal}");
+            if (int.TryParse(strVal, out var y))
+            {
+                context.LastYear = y;
+            }
+            else
+            {
+                Console.WriteLine($"[UpdateSemanticContext] TryParse failed for: {strVal}");
+                context.LastYear = null;
+            }
         }
         else
         {
+            Console.WriteLine("[UpdateSemanticContext] No year filter found in plan.");
             context.LastYear = null;
         }
 

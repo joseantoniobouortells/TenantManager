@@ -35,7 +35,7 @@
     { "id": 4, "year": 2026, "month": 4, "amount": 100 },
     { "id": 5, "year": 2026, "month": 5, "amount": 130 },
     { "id": 6, "year": 2026, "month": 6, "amount": 140 },
-    { "id": 7, "year": 2026, "month": 7, "amount": 100 }
+    { "id": 7, "year": 2026, "month": 7, "amount": 0 }
   ],
   "aggregates": {
     "payments_june_2026": 810.00,

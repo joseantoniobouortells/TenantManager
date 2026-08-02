@@ -468,7 +468,7 @@ Allowed resources and fields:
 - tenants: active(bool), fullName(string), currentRoom(string), moveInDate(date), effectiveMoveOutDate(date) -> count, list, lookup
 - contracts: active(bool), tenantName(string), roomName(string), startDate(date), baseEndDate(date), effectiveEndDate(date), hasExtensions(bool), missingFile(bool) -> count, list
 - payments: status(string), year(int), month(int), expectedAmount(decimal), paidAmount(decimal), tenantName(string), pending(bool), late(bool) -> count, list, sum
-- expenses: category(string), amount(decimal), date(date) -> count, list, sum
+- expenses: category(string), amount(decimal), date(date), year(int), month(int) -> count, list, sum
 - dashboard: -> summary
 
 Allowed operators: equals, not_equals, greater_than, greater_than_or_equal, less_than, less_than_or_equal, contains, in, between
@@ -487,7 +487,7 @@ Concise Planning Rules:
 - Preserve the previous year and month for elliptical follow-ups unless the current question explicitly replaces them.
 
 JSON schema:
-{{""language"": ""es"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}, {{""field"": ""month"", ""operator"": ""equals"", ""value"": {currentMonth}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";
+{{""language"": ""detect 'es' or 'en'"", ""resource"": ""payments"", ""operation"": ""sum"", ""filters"": [{{""field"": ""year"", ""operator"": ""equals"", ""value"": {currentYear}}}], ""projection"": [""paidAmount""], ""sort"": [], ""limit"": 20, ""confidence"": 0.95}}{contextHint}";
 
         var completionsEndpoint = NormalizeCompletionsEndpoint(settings.AiEndpoint);
 
@@ -569,18 +569,21 @@ Today: year={currentYear}, month={currentMonth}.
 Last month: year={lastMonthYear}, month={lastMonth}.
 {contextHint}
 intent values:
-- data_query: user wants to query data from the database
-- previous_result_query: user is asking about the period/month/year/label of the PREVIOUS answer (no new DB query needed)
+- data_query: user wants to calculate or query data from the database. Use this even for follow-up questions that change the filter (e.g., ""What about April?"", ""What were the expenses?""). If the user asks ""how much"", ""when"", or ""who"", it is ALWAYS a data_query.
+- previous_result_query: user is asking strictly about the metadata (period, month, year, label) of the PREVIOUSly answered query. They are NOT asking for a new calculation. Example: ""A qué mes corresponde?"" or ""Which month was that?"".
 - unknown: cannot determine
 
 Requested outputs: list every piece of information the user explicitly requests.
 Examples:
-- 'Cuánto se ha ingresado?' → outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}}]
-- 'Cuánto se ha ingresado el último mes? Indica a qué mes corresponde' → outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}},{{""field"":""period"",""label"":""Mes""}}]
+- 'Cuánto se ha ingresado?' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}}]
+- 'Cuánto se ha ingresado el último mes? Indica a qué mes corresponde' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}},{{""field"":""period"",""label"":""Mes""}}]
+- 'How much was collected last month? Indicate which month it was.' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Total collected""}},{{""field"":""period"",""label"":""Month""}}]
+- '¿Y cuáles han sido los gastos?' (after income query) → intent=data_query, outputs: [{{""field"":""amount"",""label"":""Gastos""}}]
+- 'What about April?' (after March query) → intent=data_query, outputs: [{{""field"":""amount"",""label"":""Total""}}]
 - 'A qué mes corresponde?' (after a previous query) → intent=previous_result_query, outputs: [{{""field"":""period"",""label"":""Mes""}}]
 
 JSON schema:
-{{""language"":""es"",""intent"":""data_query"",""resource"":""payments"",""operation"":""sum"",""period_year"":{currentYear},""period_month"":{currentMonth},""requested_outputs"":[{{""field"":""paidAmount"",""label"":""Importe""}}],""confidence"":0.95}}";
+{{""language"":""detect 'es' or 'en'"",""intent"":""data_query"",""resource"":""payments"",""operation"":""sum"",""requested_outputs"":[{{""field"":""paidAmount"",""label"":""Importe""}}],""confidence"":0.95}}";
 
         var completionsEndpoint = NormalizeCompletionsEndpoint(settings.AiEndpoint);
         var requestBody = new ChatRequest
@@ -600,27 +603,36 @@ JSON schema:
         var jsonContent = JsonSerializer.Serialize(requestBody, jsonOptions);
         var httpContent = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
+        string? rawResponse = null;
         try
         {
             var response = await _httpClient.PostAsync(completionsEndpoint, httpContent, cancellationToken);
             if (!response.IsSuccessStatusCode) return null;
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
-            var content = chatResponse?.Choices?[0]?.Message?.Content;
-            if (string.IsNullOrWhiteSpace(content)) return null;
+            rawResponse = chatResponse?.Choices?[0]?.Message?.Content;
+            if (string.IsNullOrWhiteSpace(rawResponse))
+                return null;
 
-            // Strip markdown fences if present
-            var cleaned = content.Trim();
-            if (cleaned.StartsWith("```"))
+            var firstBackticks = rawResponse.IndexOf("```", StringComparison.Ordinal);
+            var lastBackticks = rawResponse.LastIndexOf("```", StringComparison.Ordinal);
+            if (firstBackticks != -1 && lastBackticks != -1 && lastBackticks > firstBackticks)
             {
-                var nl = cleaned.IndexOf('\n');
-                var last = cleaned.LastIndexOf("```", StringComparison.Ordinal);
-                if (nl != -1 && last > nl) cleaned = cleaned.Substring(nl + 1, last - nl - 1).Trim();
+                var firstNewline = rawResponse.IndexOf('\n', firstBackticks);
+                if (firstNewline != -1 && firstNewline < lastBackticks)
+                {
+                    rawResponse = rawResponse.Substring(firstNewline + 1, lastBackticks - firstNewline - 1);
+                }
             }
 
-            return JsonSerializer.Deserialize<SemanticRequestDto>(cleaned);
+            return JsonSerializer.Deserialize<SemanticRequestDto>(rawResponse);
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SemanticRequest Deserialization Error]: {ex.Message}");
+            Console.WriteLine($"[Raw Response]: {rawResponse}");
+            return null;
+        }
     }
 
     /// <summary>

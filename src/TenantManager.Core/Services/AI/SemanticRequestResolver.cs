@@ -64,31 +64,34 @@ public static class SemanticRequestResolver
     /// Enriches a SemanticQueryPlan's filter list with the period from a SemanticRequest
     /// when the plan is missing year/month filters that can be inferred from the request.
     /// </summary>
-    public static SemanticQueryPlan EnrichPlanWithPeriod(SemanticQueryPlan plan, SemanticRequest request)
+    public static SemanticQueryPlan EnrichPlanWithPeriod(SemanticQueryPlan plan, SemanticRequest request, AssistantContext context)
     {
-        if (!request.Period.HasPeriod)
+        if (plan == null || request == null)
             return plan;
 
         bool hasYear = plan.Filters.Exists(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
         bool hasMonth = plan.Filters.Exists(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
 
-        if (request.Period.Year.HasValue && !hasYear)
+        int? yearToApply = request.Period.Year ?? context?.LastYear;
+        int? monthToApply = request.Period.Month ?? context?.LastMonth;
+
+        if (yearToApply.HasValue && !hasYear)
         {
             plan.Filters.Add(new SemanticQueryFilter
             {
                 Field = "year",
                 Operator = SemanticQueryOperator.Equals,
-                Value = request.Period.Year.Value
+                Value = yearToApply.Value
             });
         }
 
-        if (request.Period.Month.HasValue && !hasMonth)
+        if (monthToApply.HasValue && !hasMonth)
         {
             plan.Filters.Add(new SemanticQueryFilter
             {
                 Field = "month",
                 Operator = SemanticQueryOperator.Equals,
-                Value = request.Period.Month.Value
+                Value = monthToApply.Value
             });
         }
 
@@ -104,9 +107,6 @@ public static class SemanticRequestResolver
         SemanticRequest request,
         AssistantContext? context)
     {
-        if (request.RequestedOutputs.Count <= 1)
-            return primaryAnswer;
-
         bool isEs = request.Language.Equals("es", StringComparison.OrdinalIgnoreCase);
         var extras = new List<string>();
 

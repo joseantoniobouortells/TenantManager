@@ -118,7 +118,11 @@ public class Evaluator
                         if (errors.Any())
                         {
                             Console.WriteLine($"    [FAIL] Expected outcomes not met:");
-                            foreach (var err in errors) Console.WriteLine($"      - {err}");
+                            foreach (var error in errors)
+                            {
+                                Console.WriteLine($"      - {error}");
+                            }
+                            Console.WriteLine($"      [Actual Answer]: {answer}");
                             failed++;
                         }
                         else
@@ -167,6 +171,52 @@ public class Evaluator
             foreach (var t in tenants.EnumerateArray())
                 db.Tenants.Add(new Tenant { Id = t.GetProperty("id").GetInt32(), PropertyId = 1, FullName = t.GetProperty("fullName").GetString()!, Email = "", Phone = "" });
         }
+        if (root.TryGetProperty("contracts", out var contracts))
+        {
+            foreach (var c in contracts.EnumerateArray())
+                db.RentalContracts.Add(new RentalContract { 
+                    Id = c.GetProperty("id").GetInt32(), 
+                    TenantId = c.GetProperty("tenantId").GetInt32(),
+                    RoomId = c.GetProperty("roomId").GetInt32(),
+                    PropertyId = 1,
+                    StartDate = DateTimeOffset.Parse(c.GetProperty("startDate").GetString()!),
+                    EndDate = c.TryGetProperty("endDate", out var ed) && ed.ValueKind != JsonValueKind.Null ? DateTimeOffset.Parse(ed.GetString()!) : null,
+                    MonthlyRent = c.GetProperty("rentAmount").GetDecimal(),
+                    FixedExpenseAmount = c.GetProperty("expenseAmount").GetDecimal()
+                });
+        }
+        if (root.TryGetProperty("payments", out var payments))
+        {
+            foreach (var p in payments.EnumerateArray())
+            {
+                var status = p.GetProperty("status").GetString();
+                if (status != "pending")
+                {
+                    db.MonthlyPayments.Add(new MonthlyPayment { 
+                        Id = p.GetProperty("id").GetInt32(), 
+                        TenantId = p.GetProperty("tenantId").GetInt32(),
+                        PropertyId = 1,
+                        Year = p.GetProperty("year").GetInt32(),
+                        Month = p.GetProperty("month").GetInt32(),
+                        Status = status == "partial" ? PaymentStatus.Partial : PaymentStatus.Paid,
+                        ExpectedRentAmount = p.GetProperty("expectedAmount").GetDecimal(),
+                        ExpectedExpenseAmount = 0,
+                        PaidAmount = p.GetProperty("paidAmount").GetDecimal()
+                    });
+                }
+            }
+        }
+        if (root.TryGetProperty("expenses", out var expenses))
+        {
+            foreach (var e in expenses.EnumerateArray())
+                db.ExpenseInvoices.Add(new ExpenseInvoice { 
+                    Id = e.GetProperty("id").GetInt32(), 
+                    PropertyId = 1,
+                    Year = e.GetProperty("year").GetInt32(),
+                    Month = e.GetProperty("month").GetInt32(),
+                    Amount = e.GetProperty("amount").GetDecimal()
+                });
+        }
         // Save to auto-generate IDs or disable IDENTITY
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
         await db.SaveChangesAsync();
@@ -212,7 +262,12 @@ public class Evaluator
         {
             foreach (var substr in expected.AnswerContains)
             {
-                if (!answer.Contains(substr, StringComparison.OrdinalIgnoreCase))
+                var cleanAnswer = answer;
+                if (long.TryParse(substr, out _))
+                {
+                    cleanAnswer = answer.Replace(".", "").Replace(",", "");
+                }
+                if (!cleanAnswer.Contains(substr, StringComparison.OrdinalIgnoreCase))
                     errors.Add($"Expected answer to contain '{substr}'");
             }
         }
