@@ -110,6 +110,7 @@ public class Evaluator
                     Console.WriteLine($"  Msg: {message.Text}");
                     observer.Reset();
                     
+<<<<<<< HEAD
                     try
                     {
                         var (answer, isEs) = await aiService.ResolveIntentAndGetDataAsync(message.Text, context, propertyId: 1);
@@ -141,12 +142,31 @@ public class Evaluator
                         Console.WriteLine($"    [ERROR] {ex.Message}");
                         failed++;
                     }
+=======
+                    var (answer, isEs) = await aiService.ResolveIntentAndGetDataAsync(message.Text, context, propertyId: 1);
+                    
+                    var errors = Evaluator.AssertOutcome(message.Expected, observer, answer);
+                    if (errors.Any())
+                    {
+                        Console.WriteLine($"    [FAIL] Expected outcomes not met:");
+                        foreach (var err in errors) Console.WriteLine($"      - {err}");
+                        failed++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"    [PASS]");
+                        passed++;
+                    }
+>>>>>>> 6596bddfd66f2bfb9603b2fa8634a936ba2a6fed
                 }
             }
         }
         
         Console.WriteLine($"\nLive evaluation complete. Passed: {passed}, Failed: {failed}");
+<<<<<<< HEAD
         return failed > 0 ? 1 : 0;
+=======
+>>>>>>> 6596bddfd66f2bfb9603b2fa8634a936ba2a6fed
     }
     
     private async Task LoadFixtureAsync(AppDbContext db, string path)
@@ -171,6 +191,7 @@ public class Evaluator
             foreach (var t in tenants.EnumerateArray())
                 db.Tenants.Add(new Tenant { Id = t.GetProperty("id").GetInt32(), PropertyId = 1, FullName = t.GetProperty("fullName").GetString()!, Email = "", Phone = "" });
         }
+<<<<<<< HEAD
         if (root.TryGetProperty("contracts", out var contracts))
         {
             foreach (var c in contracts.EnumerateArray())
@@ -217,6 +238,8 @@ public class Evaluator
                     Amount = e.GetProperty("amount").GetDecimal()
                 });
         }
+=======
+>>>>>>> 6596bddfd66f2bfb9603b2fa8634a936ba2a6fed
         // Save to auto-generate IDs or disable IDENTITY
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
         await db.SaveChangesAsync();
@@ -262,12 +285,16 @@ public class Evaluator
         {
             foreach (var substr in expected.AnswerContains)
             {
+<<<<<<< HEAD
                 var cleanAnswer = answer;
                 if (long.TryParse(substr, out _))
                 {
                     cleanAnswer = answer.Replace(".", "").Replace(",", "");
                 }
                 if (!cleanAnswer.Contains(substr, StringComparison.OrdinalIgnoreCase))
+=======
+                if (!answer.Contains(substr, StringComparison.OrdinalIgnoreCase))
+>>>>>>> 6596bddfd66f2bfb9603b2fa8634a936ba2a6fed
                     errors.Add($"Expected answer to contain '{substr}'");
             }
         }

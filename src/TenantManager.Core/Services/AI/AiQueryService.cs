@@ -171,7 +171,7 @@ public class AiQueryService
                             onProgress?.Invoke(AiProcessingStage.ExecutingQuery);
                             var executor = new SemanticQueryExecutor(_dbContext);
                             var executionResult = await executor.ExecuteAsync(rawPlan);
-                            _observer?.OnQueryExecuted(true);
+                            _observer?.OnQueryExecuted(executionResult is not string);
                             if (executionResult is string errorMsg)
                             {
                                 onProgress?.Invoke(AiProcessingStage.Failed);
