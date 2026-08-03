@@ -641,10 +641,13 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
 
-        // Suma todos los gastos del piso en ese mes que sean imputables
+        var targetDate = new DateTime(year, month, 1).AddMonths(-1);
+        var targetYear = targetDate.Year;
+        var targetMonth = targetDate.Month;
+
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
         var totalExpense = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
+            .Where(i => i.Year == targetYear && i.Month == targetMonth && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
             .Sum(i => i.Amount);
 
         var variableExpense = totalExpense * (variableExpensePercentage / 100m);
