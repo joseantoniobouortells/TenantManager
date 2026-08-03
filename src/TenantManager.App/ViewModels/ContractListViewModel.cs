@@ -41,6 +41,7 @@ public class ContractListViewModel : ViewModelBase
     private decimal _editDepositAmount;
     private ExpensePaymentType _editExpensePaymentType;
     private decimal _editFixedExpenseAmount;
+    private decimal _editVariableExpensePercentage;
     private string? _editNotes;
     private int _currentPropertyId;
 
@@ -191,6 +192,12 @@ public class ContractListViewModel : ViewModelBase
         set => SetProperty(ref _editFixedExpenseAmount, value);
     }
 
+    public decimal EditVariableExpensePercentage
+    {
+        get => _editVariableExpensePercentage;
+        set => SetProperty(ref _editVariableExpensePercentage, value);
+    }
+
     public string? EditNotes
     {
         get => _editNotes;
@@ -251,6 +258,13 @@ public class ContractListViewModel : ViewModelBase
     {
         get => _extensionEditFixedExpenseAmount;
         set => SetProperty(ref _extensionEditFixedExpenseAmount, value);
+    }
+
+    private decimal _extensionEditVariableExpensePercentage;
+    public decimal ExtensionEditVariableExpensePercentage
+    {
+        get => _extensionEditVariableExpensePercentage;
+        set => SetProperty(ref _extensionEditVariableExpensePercentage, value);
     }
 
     private string _extensionEditFilePath = string.Empty;
@@ -450,6 +464,8 @@ public class ContractListViewModel : ViewModelBase
         EditDepositAmount = 0;
         EditExpensePaymentType = ExpensePaymentType.Variable;
         EditFixedExpenseAmount = 0;
+        var roomCount = AvailableRooms.Count;
+        EditVariableExpensePercentage = roomCount > 0 ? 100m / roomCount : 0m;
         EditNotes = null;
         IsEditing = true;
     }
@@ -475,6 +491,7 @@ public class ContractListViewModel : ViewModelBase
         EditPaymentDay = _editingContract.PaymentDay;
         EditExpensePaymentType = _editingContract.ExpensePaymentType;
         EditFixedExpenseAmount = _editingContract.FixedExpenseAmount;
+        EditVariableExpensePercentage = _editingContract.VariableExpensePercentage;
         EditNotes = _editingContract.Notes;
         IsEditing = true;
     }
@@ -500,6 +517,7 @@ public class ContractListViewModel : ViewModelBase
                 PaymentDay = EditPaymentDay,
                 ExpensePaymentType = EditExpensePaymentType,
                 FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0,
+                VariableExpensePercentage = EditExpensePaymentType == ExpensePaymentType.Variable ? EditVariableExpensePercentage : 0,
                 Notes = EditNotes?.Trim()
             };
             _db.RentalContracts.Add(contract);
@@ -517,6 +535,7 @@ public class ContractListViewModel : ViewModelBase
             _editingContract.PaymentDay = EditPaymentDay;
             _editingContract.ExpensePaymentType = EditExpensePaymentType;
             _editingContract.FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0;
+            _editingContract.VariableExpensePercentage = EditExpensePaymentType == ExpensePaymentType.Variable ? EditVariableExpensePercentage : 0;
             _editingContract.Notes = EditNotes?.Trim();
         }
 
@@ -643,6 +662,8 @@ public class ContractListViewModel : ViewModelBase
         ExtensionEditMonthlyRent = 0;
         ExtensionEditExpensePaymentType = ExpensePaymentType.Variable;
         ExtensionEditFixedExpenseAmount = 0;
+        var roomCount = AvailableRooms.Count;
+        ExtensionEditVariableExpensePercentage = roomCount > 0 ? 100m / roomCount : 0m;
         ExtensionEditFilePath = string.Empty;
         ExtensionEditFileContent = null;
         ExtensionEditNotes = null;
@@ -659,6 +680,7 @@ public class ContractListViewModel : ViewModelBase
         ExtensionEditMonthlyRent = _editingExtension.MonthlyRent;
         ExtensionEditExpensePaymentType = _editingExtension.ExpensePaymentType;
         ExtensionEditFixedExpenseAmount = _editingExtension.FixedExpenseAmount;
+        ExtensionEditVariableExpensePercentage = _editingExtension.VariableExpensePercentage;
         ExtensionEditFilePath = _editingExtension.FilePath ?? string.Empty;
         ExtensionEditFileContent = _editingExtension.FileContent;
         ExtensionEditNotes = _editingExtension.Notes;
@@ -680,6 +702,7 @@ public class ContractListViewModel : ViewModelBase
                 MonthlyRent = ExtensionEditMonthlyRent,
                 ExpensePaymentType = ExtensionEditExpensePaymentType,
                 FixedExpenseAmount = ExtensionEditExpensePaymentType == ExpensePaymentType.Fixed ? ExtensionEditFixedExpenseAmount : 0,
+                VariableExpensePercentage = ExtensionEditExpensePaymentType == ExpensePaymentType.Variable ? ExtensionEditVariableExpensePercentage : 0,
                 FilePath = ExtensionEditFilePath.Trim(),
                 FileContent = ExtensionEditFileContent,
                 Notes = ExtensionEditNotes?.Trim()
@@ -693,6 +716,7 @@ public class ContractListViewModel : ViewModelBase
             _editingExtension.MonthlyRent = ExtensionEditMonthlyRent;
             _editingExtension.ExpensePaymentType = ExtensionEditExpensePaymentType;
             _editingExtension.FixedExpenseAmount = ExtensionEditExpensePaymentType == ExpensePaymentType.Fixed ? ExtensionEditFixedExpenseAmount : 0;
+            _editingExtension.VariableExpensePercentage = ExtensionEditExpensePaymentType == ExpensePaymentType.Variable ? ExtensionEditVariableExpensePercentage : 0;
             _editingExtension.FilePath = ExtensionEditFilePath.Trim();
             _editingExtension.FileContent = ExtensionEditFileContent;
             _editingExtension.Notes = ExtensionEditNotes?.Trim();

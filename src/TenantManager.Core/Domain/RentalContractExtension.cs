@@ -14,6 +14,7 @@ public class RentalContractExtension
     public decimal MonthlyRent { get; set; }
     public ExpensePaymentType ExpensePaymentType { get; set; } = ExpensePaymentType.Variable;
     public decimal FixedExpenseAmount { get; set; }
+    public decimal VariableExpensePercentage { get; set; }
 
     public string? FilePath { get; set; }
     public byte[]? FileContent { get; set; }

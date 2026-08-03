@@ -452,7 +452,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = activeExtension.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? activeExtension.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                            : ComputeVariableExpense(propertyId, activeExtension.VariableExpensePercentage, cursor.Year, cursor.Month);
                     }
                     else
                     {
@@ -460,7 +460,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = contract.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? contract.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                            : ComputeVariableExpense(propertyId, contract.VariableExpensePercentage, cursor.Year, cursor.Month);
                     }
 
                     pendingList.Add(new ComputedPendingPayment
@@ -695,7 +695,7 @@ public class DashboardViewModel : ViewModelBase
     /// Computes the variable expense share for a given property month by splitting
     /// chargeable invoices across occupied rooms, matching the logic in MonthlyPaymentListViewModel.
     /// </summary>
-    private decimal ComputeVariableExpense(int propertyId, int year, int month)
+    private decimal ComputeVariableExpense(int propertyId, decimal variableExpensePercentage, int year, int month)
     {
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
 
@@ -705,15 +705,7 @@ public class DashboardViewModel : ViewModelBase
             .ToList()
             .Sum(i => i.Amount);
 
-        var occupiedRooms = _db.RentalContracts
-            .Where(c => c.PropertyId == propertyId)
-            .ToList()
-            .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
-            .Select(c => c.RoomId)
-            .Distinct()
-            .Count();
-
-        return occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
+        return invoicesTotal * (variableExpensePercentage / 100m);
     }
 }
 
