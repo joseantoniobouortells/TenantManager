@@ -168,16 +168,19 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         {
             if (SetProperty(ref _editStatus, value))
             {
+                decimal balance = EditSelectedTenant != null ? GetTenantBalance(EditSelectedTenant.Id) : 0m;
+                decimal expectedTotal = EditExpectedRentAmount + EditExpectedExpenseAmount;
+
                 if (value == PaymentStatus.Paid)
                 {
-                    EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
+                    EditPaidAmount = expectedTotal - balance;
                     if (EditPaidDate == null)
                         EditPaidDate = DateTimeOffset.Now;
                 }
                 else if (value == PaymentStatus.Partial)
                 {
-                    if (EditPaidAmount == 0)
-                        EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
+                    if (EditPaidAmount == 0 || EditPaidAmount == expectedTotal)
+                        EditPaidAmount = expectedTotal - balance;
                     if (EditPaidDate == null)
                         EditPaidDate = DateTimeOffset.Now;
                 }
@@ -186,7 +189,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         }
     }
 
-    public bool IsPaidAmountEnabled => EditStatus == PaymentStatus.Partial;
+    public bool IsPaidAmountEnabled => EditStatus == PaymentStatus.Partial || EditStatus == PaymentStatus.Paid;
 
     public DateTimeOffset? EditPaidDate
     {
@@ -381,6 +384,14 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
     // ─── Register pending payment ────────────────────────────────────────────
 
+    private decimal GetTenantBalance(int tenantId)
+    {
+        var payments = _db.MonthlyPayments.Where(p => p.TenantId == tenantId && p.PropertyId == _currentPropertyId).ToList();
+        var totalExpected = payments.Sum(p => p.ExpectedRentAmount + p.ExpectedExpenseAmount);
+        var totalPaid = payments.Sum(p => p.PaidAmount);
+        return totalPaid - totalExpected;
+    }
+
     private void StartRegisterPending(ComputedPendingPayment? pending)
     {
         if (pending == null) return;
@@ -394,8 +405,14 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditMonth = pending.Month;
         EditExpectedRentAmount = pending.ExpectedRentAmount;
         EditExpectedExpenseAmount = pending.ExpectedExpenseAmount;
-        EditPaidAmount = pending.TotalExpected;
-        EditStatus = PaymentStatus.Paid;
+        
+        decimal balance = GetTenantBalance(pending.TenantId);
+        EditPaidAmount = (pending.ExpectedRentAmount + pending.ExpectedExpenseAmount) - balance;
+        
+        _editStatus = PaymentStatus.Paid;
+        OnPropertyChanged(nameof(EditStatus));
+        OnPropertyChanged(nameof(IsPaidAmountEnabled));
+        
         EditPaidDate = DateTimeOffset.Now;
         EditNotes = null;
         IsRegisteringPending = true;
