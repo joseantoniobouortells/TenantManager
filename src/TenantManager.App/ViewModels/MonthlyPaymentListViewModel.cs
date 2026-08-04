@@ -612,7 +612,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                 .OrderByDescending(e => e.StartDate)
                 .FirstOrDefault();
             if (standaloneExtension == null) return null;
-            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, standaloneExtension.VariableExpensePercentage, year, month);
+            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, standaloneExtension.VariableExpensePercentage, year, month, standaloneExtension.StartDate);
         }
 
         var activeExtension = extensions
@@ -621,9 +621,9 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             .FirstOrDefault();
 
         if (activeExtension != null)
-            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, activeExtension.VariableExpensePercentage, year, month);
+            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, activeExtension.VariableExpensePercentage, year, month, activeExtension.StartDate);
 
-        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, activeContract.VariableExpensePercentage, year, month);
+        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, activeContract.VariableExpensePercentage, year, month, activeContract.StartDate);
     }
 
     // Overload used from SavePayment for validation
@@ -636,7 +636,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     }
 
     private (decimal rent, decimal expense, ExpensePaymentType expenseType) ComputeExpense(
-        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, decimal variableExpensePercentage, int year, int month)
+        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate)
     {
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
@@ -644,6 +644,11 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         var targetDate = new DateTime(year, month, 1).AddMonths(-1);
         var targetYear = targetDate.Year;
         var targetMonth = targetDate.Month;
+
+        if (targetYear < startDate.Year || (targetYear == startDate.Year && targetMonth < startDate.Month))
+        {
+            return (rent, fixedExpenseAmount, expenseType); // Return without variable expenses
+        }
 
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
         var totalExpense = _db.ExpenseInvoices
