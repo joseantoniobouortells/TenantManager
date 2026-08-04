@@ -1,5 +1,5 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="Tenant Manager" Manufacturer="Tenant Manager" Version="1.0.8" UpgradeCode="a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d">
+  <Package Name="Tenant Manager" Manufacturer="Tenant Manager" Version="1.0.9" UpgradeCode="a1b2c3d4-e5f6-4a5b-8c7d-9e0f1a2b3c4d">
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
     <MediaTemplate EmbedCab="yes" />
     
