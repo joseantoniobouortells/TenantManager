@@ -10,9 +10,10 @@
         <DockPanel IsEnabled="{Binding !PaymentList.IsConfirmingDeletePayment}">
 
             <!-- Title -->
-            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0 0 0 24">
                 <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource PaymentsTitle}" Margin="0" VerticalAlignment="Center" />
-                <TextBox Grid.Column="1" Text="{Binding PaymentList.SearchQuery}" PlaceholderText="{DynamicResource SearchPaymentPlaceholder}" Width="220" VerticalAlignment="Center" HorizontalAlignment="Right" />
+                <TextBox Grid.Column="1" Text="{Binding PaymentList.SearchQuery}" PlaceholderText="{DynamicResource SearchPaymentPlaceholder}" Width="220" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 12 0" />
+                <Button Grid.Column="2" Content="{DynamicResource NewPaymentButton}" Command="{Binding PaymentList.NewPaymentCommand}" Classes="Primary" VerticalAlignment="Center" />
             </Grid>
 
             <!-- EDIT FORM (shown when editing an existing record or registering a pending) -->
@@ -23,16 +24,16 @@
                         <!-- Col 1 -->
                         <StackPanel Grid.Column="0" Grid.Row="0" Margin="0 0 8 12">
                             <TextBlock Text="{DynamicResource SelectTenantLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                            <ComboBox ItemsSource="{Binding PaymentList.AvailableTenants}" SelectedItem="{Binding PaymentList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" IsEnabled="{Binding PaymentList.IsRegisteringPending}" />
+                            <ComboBox ItemsSource="{Binding PaymentList.AvailableTenants}" SelectedItem="{Binding PaymentList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" IsEnabled="{Binding PaymentList.IsNewManualPayment}" />
                         </StackPanel>
                         <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 0 8 12" Orientation="Horizontal" Spacing="8">
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource YearLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <NumericUpDown Value="{Binding PaymentList.EditYear}" Minimum="2000" Maximum="2100" FormatString="0" IsEnabled="False" />
+                                <NumericUpDown Value="{Binding PaymentList.EditYear}" Minimum="2000" Maximum="2100" FormatString="0" IsEnabled="{Binding PaymentList.IsNewManualPayment}" />
                             </StackPanel>
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource MonthLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <NumericUpDown Value="{Binding PaymentList.EditMonth}" Minimum="1" Maximum="12" FormatString="0" IsEnabled="False" />
+                                <NumericUpDown Value="{Binding PaymentList.EditMonth}" Minimum="1" Maximum="12" FormatString="0" IsEnabled="{Binding PaymentList.IsNewManualPayment}" />
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="0" Grid.Row="2" Margin="0 0 8 12">

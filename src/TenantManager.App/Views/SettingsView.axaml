@@ -41,6 +41,57 @@
                     </StackPanel>
                 </Border>
 
+                <!-- AI Settings Section -->
+                <Border Classes="Card">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource AiSettingsLabel}" />
+                        <TextBlock Text="{DynamicResource AiSettingsDesc}" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                        
+                        <ToggleSwitch Content="{DynamicResource EnableAiLabel}" IsChecked="{Binding Settings.IsAiEnabled, Mode=TwoWay}" Margin="0 8 0 0" />
+
+                        <StackPanel Spacing="8" IsVisible="{Binding Settings.IsAiEnabled}">
+                            <TextBlock Text="{DynamicResource AiEndpointLabel}" FontWeight="Medium" Margin="0 8 0 0" />
+                            <TextBox Text="{Binding Settings.AiEndpoint, Mode=TwoWay}" />
+
+                            <TextBlock Text="{DynamicResource AiModelSelectLabel}" FontWeight="Medium" Margin="0 8 0 0" />
+
+                            <!-- Combo row: ComboBox + Refresh button -->
+                            <Grid ColumnDefinitions="*,Auto" Margin="0 0 0 4">
+                                <ComboBox Grid.Column="0"
+                                          ItemsSource="{Binding Settings.AvailableModels}"
+                                          SelectedItem="{Binding Settings.SelectedAiModel, Mode=TwoWay}"
+                                          PlaceholderText="{DynamicResource AiModelSelectPlaceholder}"
+                                          HorizontalAlignment="Stretch" />
+                                <Button Grid.Column="1"
+                                        Command="{Binding Settings.LoadModelsCommand}"
+                                        Classes="Secondary"
+                                        Margin="8 0 0 0"
+                                        Padding="12,0"
+                                        MinHeight="38"
+                                        ToolTip.Tip="{DynamicResource AiLoadModelsTooltip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <TextBlock Text="⟳" FontSize="16" IsVisible="{Binding !Settings.IsLoadingModels}" VerticalAlignment="Center" />
+                                        <TextBlock Text="…" FontSize="16" IsVisible="{Binding Settings.IsLoadingModels}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{DynamicResource AiLoadModelsButton}" FontWeight="Medium" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Status message (loaded count / error) -->
+                            <TextBlock Text="{Binding Settings.ModelsStatusMessage}"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       IsVisible="{Binding Settings.ModelsStatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+
+                            <!-- Manual fallback text field when no combo selection -->
+                            <TextBlock Text="{DynamicResource AiModelManualLabel}" FontSize="11"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 4 0 0" />
+                            <TextBox Text="{Binding Settings.AiModelName, Mode=TwoWay}"
+                                     PlaceholderText="{DynamicResource AiModelManualPlaceholder}" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- Information Section -->
                 <Border Classes="Card">
                     <StackPanel Spacing="16">

@@ -1,0 +1,45 @@
+[
+  {
+    "id": "payments-monthly-income-en",
+    "language": "en",
+    "description": "Calculates the collected income for a specific month.",
+    "tags": ["payments", "monthly", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "How much was collected in March 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "operation": "sum",
+          "resolvedYear": 2026,
+          "resolvedMonth": 3,
+          "queryExecution": "required",
+          "answerContains": ["810"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "payments-last-complete-month-multi-en",
+    "language": "en",
+    "description": "Calculates the collected income for the last complete month and outputs the period.",
+    "tags": ["payments", "relative-period", "multi-output", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "How much was collected last month? Indicate which month it was.",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "operation": "sum",
+          "resolvedYear": 2026,
+          "resolvedMonth": 6,
+          "requestedOutputs": ["value", "period"],
+          "queryExecution": "required",
+          "answerContains": ["810", "June", "2026"]
+        }
+      }
+    ]
+  }
+]

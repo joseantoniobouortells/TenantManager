@@ -12,8 +12,9 @@ Local-first desktop app for property owners to manage rooms, tenants, rental con
 3. **UI:** Preserve ViewModel-per-tab pattern in `MainWindow.axaml`. Default to `x:CompileBindings="False"`.
 4. **Testing:** Domain tests use strictly in-memory SQLite (`SqliteConnection("Data Source=:memory:")`). No UI automation.
 5. **Zero-Leak Policy:** NEVER commit PII (names/contacts), local DB files (`.db*`, `.sqlite*`), real contract documents, or `bin`/`obj` folders.
-6. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation first.
+6. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation and approval first, or unless explicitly requested by the user. All commit messages must be written in English and must be highly detailed, listing key files changed, the purpose of the changes, classes modified, test suites added, and implementation achievements.
 7. **Documentos y Planes:** Cualquier plan de implementación, especificación (`*_plan.md`, `*_spec.md`) o archivo generado para revisión humana DEBE guardarse SIEMPRE dentro de la carpeta `docs/specs/` (no en la raíz ni en los artefactos temporales).
+8. **Core library:** All reusable application/domain logic that is not purely UI-specific must live in `TenantManager.Core`. This includes: business rules, prompt builders, intent parsers, tenant matching, deterministic answer generation, data-query services, AI request/response DTOs, and AI conversation context. The Avalonia app (`TenantManager.App`) must stay focused on UI, ViewModels, Views, XAML styling, app startup, and UI-specific composition. `TenantManager.Core` must NOT reference Avalonia or any UI framework. Future web/mobile frontends must be able to reuse Core logic without changes.
 
 ## Validation Pipeline
 Run after changes:
@@ -21,3 +22,12 @@ Run after changes:
 dotnet build src/TenantManager.App/TenantManager.App.csproj && dotnet test
 git status -s
 git ls-files | grep -E '(/bin/|/obj/|\.(db|db-shm|db-wal|sqlite|sqlite3)$)' || true
+```
+
+## Specification Tracking and Commits
+
+9. **Spec files are repository artifacts:** Hard-spec (`*.hard-spec.md`) and Gherkin (`*.gherkin.md`) files under `docs/specs/` are first-class repository artifacts and must always be tracked by Git. They must never be left untracked after the corresponding feature work.
+10. **Spec + implementation commits:** When a feature changes behavior, its hard-spec and Gherkin must be updated and included in the same commit, or in a clearly preceding specification commit. Implementation commits must not silently omit relevant spec changes.
+11. **Check for untracked specs before committing:** Agents must run `git status --short` and check for untracked `docs/specs/` files before creating any commit. Untracked spec files must be staged and included.
+12. **Detailed commit messages in English:** All commit messages must be highly detailed (describing modified classes, added test suites, resolved warnings, and implementation phase achievements) and must be written in English.
+13. **AI query planning in Core:** AI query planning logic, QueryPlan models, the semantic query catalog, query validators, query executors, domain semantic resolvers, and answer formatters must all reside in `TenantManager.Core` with no Avalonia dependency.

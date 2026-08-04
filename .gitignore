@@ -36,3 +36,8 @@ packages/
 # macOS bundle outputs
 publish/
 dist/
+
+## Evaluation
+evaluation/results/
+
+settings.json

@@ -194,6 +194,9 @@ namespace TenantManager.App.Migrations
                     b.Property<int>("TenantId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal>("VariableExpensePercentage")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("RentalContracts");
@@ -233,6 +236,9 @@ namespace TenantManager.App.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset>("StartDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("VariableExpensePercentage")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

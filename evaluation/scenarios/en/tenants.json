@@ -1,0 +1,19 @@
+[
+  {
+    "id": "tenant-unknown-en",
+    "language": "en",
+    "description": "Lookup for an unknown tenant.",
+    "tags": ["tenants", "lookup", "error-handling"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "When does Alice move out?",
+        "expected": {
+          "intent": "tenant_move_out_date",
+          "queryExecution": "required",
+          "answerContains": ["cannot find", "Alice"]
+        }
+      }
+    ]
+  }
+]

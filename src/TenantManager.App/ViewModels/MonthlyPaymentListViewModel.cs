@@ -25,6 +25,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     private MonthlyPayment? _editingPayment;
     private bool _isEditing;
     private bool _isRegisteringPending;
+    private bool _isNewManualPayment;
     private Tenant? _editSelectedTenant;
     private decimal _editYear;
     private decimal _editMonth;
@@ -59,6 +60,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ClearPaidDateCommand = new RelayCommand(_ => EditPaidDate = null);
         RegisterPendingCommand = new RelayCommand(param => StartRegisterPending(param as ComputedPendingPayment));
+        NewPaymentCommand = new RelayCommand(_ => StartNewPayment());
 
         DeletePaymentCommand = new RelayCommand(param => DeletePayment(param));
         ConfirmDeletePaymentCommand = new RelayCommand(_ => ConfirmDeletePayment());
@@ -76,6 +78,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ClearPaidDateCommand { get; }
     public RelayCommand RegisterPendingCommand { get; }
+    public RelayCommand NewPaymentCommand { get; }
     public RelayCommand DeletePaymentCommand { get; }
     public RelayCommand ConfirmDeletePaymentCommand { get; }
     public RelayCommand CancelDeletePaymentCommand { get; }
@@ -103,6 +106,12 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     {
         get => _isRegisteringPending;
         set => SetProperty(ref _isRegisteringPending, value);
+    }
+
+    public bool IsNewManualPayment
+    {
+        get => _isNewManualPayment;
+        set => SetProperty(ref _isNewManualPayment, value);
     }
 
     public bool HasPendingPayments => PendingPayments.Count > 0;
@@ -168,16 +177,19 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         {
             if (SetProperty(ref _editStatus, value))
             {
+                decimal balance = EditSelectedTenant != null ? GetTenantBalance(EditSelectedTenant.Id) : 0m;
+                decimal expectedTotal = EditExpectedRentAmount + EditExpectedExpenseAmount;
+
                 if (value == PaymentStatus.Paid)
                 {
-                    EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
+                    EditPaidAmount = expectedTotal - balance;
                     if (EditPaidDate == null)
                         EditPaidDate = DateTimeOffset.Now;
                 }
                 else if (value == PaymentStatus.Partial)
                 {
-                    if (EditPaidAmount == 0)
-                        EditPaidAmount = EditExpectedRentAmount + EditExpectedExpenseAmount;
+                    if (EditPaidAmount == 0 || EditPaidAmount == expectedTotal)
+                        EditPaidAmount = expectedTotal - balance;
                     if (EditPaidDate == null)
                         EditPaidDate = DateTimeOffset.Now;
                 }
@@ -186,7 +198,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         }
     }
 
-    public bool IsPaidAmountEnabled => EditStatus == PaymentStatus.Partial;
+    public bool IsPaidAmountEnabled => EditStatus == PaymentStatus.Partial || EditStatus == PaymentStatus.Paid;
 
     public DateTimeOffset? EditPaidDate
     {
@@ -381,6 +393,14 @@ public class MonthlyPaymentListViewModel : ViewModelBase
 
     // ─── Register pending payment ────────────────────────────────────────────
 
+    private decimal GetTenantBalance(int tenantId)
+    {
+        var payments = _db.MonthlyPayments.Where(p => p.TenantId == tenantId && p.PropertyId == _currentPropertyId).ToList();
+        var totalExpected = payments.Sum(p => p.ExpectedRentAmount + p.ExpectedExpenseAmount);
+        var totalPaid = payments.Sum(p => p.PaidAmount);
+        return totalPaid - totalExpected;
+    }
+
     private void StartRegisterPending(ComputedPendingPayment? pending)
     {
         if (pending == null) return;
@@ -394,11 +414,45 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditMonth = pending.Month;
         EditExpectedRentAmount = pending.ExpectedRentAmount;
         EditExpectedExpenseAmount = pending.ExpectedExpenseAmount;
-        EditPaidAmount = pending.TotalExpected;
-        EditStatus = PaymentStatus.Paid;
+        
+        decimal balance = GetTenantBalance(pending.TenantId);
+        EditPaidAmount = (pending.ExpectedRentAmount + pending.ExpectedExpenseAmount) - balance;
+        
+        _editStatus = PaymentStatus.Paid;
+        OnPropertyChanged(nameof(EditStatus));
+        OnPropertyChanged(nameof(IsPaidAmountEnabled));
+        
         EditPaidDate = DateTimeOffset.Now;
         EditNotes = null;
         IsRegisteringPending = true;
+        IsNewManualPayment = false;
+        IsEditing = true;
+    }
+
+    // ─── New manual payment ──────────────────────────────────────────────────
+
+    private void StartNewPayment()
+    {
+        _pendingBeingRegistered = null;
+        _editingPayment = null;
+
+        LoadAvailableTenants(null);
+        EditSelectedTenant = null;
+        EditYear = DateTime.Today.Year;
+        EditMonth = DateTime.Today.Month;
+        EditExpectedRentAmount = 0;
+        EditExpectedExpenseAmount = 0;
+        
+        _editStatus = PaymentStatus.Paid;
+        OnPropertyChanged(nameof(EditStatus));
+        OnPropertyChanged(nameof(IsPaidAmountEnabled));
+        
+        EditPaidAmount = 0;
+        EditPaidDate = DateTimeOffset.Now;
+        EditNotes = null;
+        
+        IsRegisteringPending = false;
+        IsNewManualPayment = true;
         IsEditing = true;
     }
 
@@ -421,6 +475,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditPaidDate = _editingPayment.PaidDate is DateTime pd ? new DateTimeOffset(pd) : null;
         EditNotes = _editingPayment.Notes;
         IsRegisteringPending = false;
+        IsNewManualPayment = false;
         IsEditing = true;
     }
 
@@ -493,6 +548,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditNotes = null;
         IsEditing = false;
         IsRegisteringPending = false;
+        IsNewManualPayment = false;
     }
 
     // ─── Delete ──────────────────────────────────────────────────────────────
@@ -612,7 +668,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                 .OrderByDescending(e => e.StartDate)
                 .FirstOrDefault();
             if (standaloneExtension == null) return null;
-            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, year, month);
+            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, standaloneExtension.VariableExpensePercentage, year, month, standaloneExtension.StartDate);
         }
 
         var activeExtension = extensions
@@ -621,9 +677,9 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             .FirstOrDefault();
 
         if (activeExtension != null)
-            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, year, month);
+            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, activeExtension.VariableExpensePercentage, year, month, activeExtension.StartDate);
 
-        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, year, month);
+        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, activeContract.VariableExpensePercentage, year, month, activeContract.StartDate);
     }
 
     // Overload used from SavePayment for validation
@@ -636,27 +692,26 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     }
 
     private (decimal rent, decimal expense, ExpensePaymentType expenseType) ComputeExpense(
-        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, int year, int month)
+        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate)
     {
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
 
-        // Suma todos los gastos del piso en ese mes que sean imputables
+        var targetDate = new DateTime(year, month, 1).AddMonths(-1);
+        var targetYear = targetDate.Year;
+        var targetMonth = targetDate.Month;
+
+        if (targetYear < startDate.Year || (targetYear == startDate.Year && targetMonth < startDate.Month))
+        {
+            return (rent, fixedExpenseAmount, expenseType); // Return without variable expenses
+        }
+
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
         var totalExpense = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
+            .Where(i => i.Year == targetYear && i.Month == targetMonth && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
             .Sum(i => i.Amount);
 
-        var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
-        var occupiedRooms = _db.RentalContracts
-            .Where(c => c.PropertyId == _currentPropertyId)
-            .ToList()
-            .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
-            .Select(c => c.RoomId)
-            .Distinct()
-            .Count();
-
-        var variableExpense = occupiedRooms > 0 ? totalExpense / occupiedRooms : 0m;
+        var variableExpense = totalExpense * (variableExpensePercentage / 100m);
         return (rent, fixedExpenseAmount + variableExpense, expenseType);
     }
 }

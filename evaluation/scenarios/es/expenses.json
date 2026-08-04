@@ -1,0 +1,22 @@
+[
+  {
+    "id": "expenses-annual-es",
+    "language": "es",
+    "description": "Calculates the total annual expenses.",
+    "tags": ["expenses", "annual", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿A cuánto ascienden los gastos del año 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "expenses",
+          "operation": "sum",
+          "resolvedYear": 2026,
+          "queryExecution": "required",
+          "answerContains": ["740"]
+        }
+      }
+    ]
+  }
+]

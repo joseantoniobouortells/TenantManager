@@ -1,0 +1,43 @@
+[
+  {
+    "id": "payments-annual-income-es",
+    "language": "es",
+    "description": "Calculates the total annual collected income.",
+    "tags": ["payments", "annual", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Cuánto se ha ingresado en total en 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "operation": "sum",
+          "resolvedYear": 2026,
+          "queryExecution": "required",
+          "answerContains": ["3940"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "payments-last-complete-month-es",
+    "language": "es",
+    "description": "Calculates the collected income for the last complete month.",
+    "tags": ["payments", "relative-period", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Cuánto se ingresó el mes pasado?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "operation": "sum",
+          "resolvedYear": 2026,
+          "resolvedMonth": 6,
+          "queryExecution": "required",
+          "answerContains": ["810"]
+        }
+      }
+    ]
+  }
+]

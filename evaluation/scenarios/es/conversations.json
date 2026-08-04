@@ -1,0 +1,57 @@
+[
+  {
+    "id": "payments-previous-period-reference-es",
+    "language": "es",
+    "description": "Follow-up asking which period was used in the previous answer.",
+    "tags": ["conversations", "previous-result", "multi-turn"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Cuánto se ingresó el último mes?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "resolvedYear": 2026,
+          "resolvedMonth": 6,
+          "queryExecution": "required"
+        }
+      },
+      {
+        "text": "¿A qué mes corresponden esos ingresos?",
+        "expected": {
+          "intent": "previous_result_query",
+          "queryExecution": "forbidden",
+          "answerContains": ["junio", "2026"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "income-to-expenses-es",
+    "language": "es",
+    "description": "Follow-up changing from income to expenses while preserving the year.",
+    "tags": ["conversations", "context-preservation", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Cuánto se ha ingresado en 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "resolvedYear": 2026,
+          "queryExecution": "required"
+        }
+      },
+      {
+        "text": "¿Y cuáles han sido los gastos?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "expenses",
+          "resolvedYear": 2026,
+          "queryExecution": "required",
+          "answerContains": ["740"]
+        }
+      }
+    ]
+  }
+]

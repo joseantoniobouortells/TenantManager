@@ -1,0 +1,48 @@
+{
+  "property": { "id": 1, "name": "Casa Ejemplo" },
+  "rooms": [
+    { "id": 1, "name": "Habitación A" },
+    { "id": 2, "name": "Habitación B" }
+  ],
+  "tenants": [
+    { "id": 1, "fullName": "María García" },
+    { "id": 2, "fullName": "John Doe" },
+    { "id": 3, "fullName": "Elena Santos" }
+  ],
+  "contracts": [
+    { "id": 1, "tenantId": 1, "roomId": 1, "startDate": "2026-01-01", "endDate": "2026-12-31", "rentAmount": 300, "expenseAmount": 50 },
+    { "id": 2, "tenantId": 2, "roomId": 2, "startDate": "2026-03-01", "endDate": "2026-08-31", "rentAmount": 400, "expenseAmount": 60 },
+    { "id": 3, "tenantId": 3, "roomId": 1, "startDate": "2025-01-01", "endDate": "2025-12-31", "rentAmount": 300, "expenseAmount": 50 }
+  ],
+  "payments": [
+    { "id": 1, "tenantId": 1, "year": 2026, "month": 1, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 2, "tenantId": 1, "year": 2026, "month": 2, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 3, "tenantId": 1, "year": 2026, "month": 3, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 4, "tenantId": 2, "year": 2026, "month": 3, "status": "paid", "expectedAmount": 460, "paidAmount": 460 },
+    { "id": 5, "tenantId": 1, "year": 2026, "month": 4, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 6, "tenantId": 2, "year": 2026, "month": 4, "status": "paid", "expectedAmount": 460, "paidAmount": 460 },
+    { "id": 7, "tenantId": 1, "year": 2026, "month": 5, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 8, "tenantId": 2, "year": 2026, "month": 5, "status": "paid", "expectedAmount": 460, "paidAmount": 460 },
+    { "id": 9, "tenantId": 1, "year": 2026, "month": 6, "status": "paid", "expectedAmount": 350, "paidAmount": 350 },
+    { "id": 10, "tenantId": 2, "year": 2026, "month": 6, "status": "paid", "expectedAmount": 460, "paidAmount": 460 },
+    { "id": 11, "tenantId": 1, "year": 2026, "month": 7, "status": "pending", "expectedAmount": 350, "paidAmount": 0 },
+    { "id": 12, "tenantId": 2, "year": 2026, "month": 7, "status": "pending", "expectedAmount": 460, "paidAmount": 0 }
+  ],
+  "expenses": [
+    { "id": 1, "year": 2026, "month": 1, "amount": 100 },
+    { "id": 2, "year": 2026, "month": 2, "amount": 150 },
+    { "id": 3, "year": 2026, "month": 3, "amount": 120 },
+    { "id": 4, "year": 2026, "month": 4, "amount": 100 },
+    { "id": 5, "year": 2026, "month": 5, "amount": 130 },
+    { "id": 6, "year": 2026, "month": 6, "amount": 140 },
+    { "id": 7, "year": 2026, "month": 7, "amount": 0 }
+  ],
+  "aggregates": {
+    "payments_june_2026": 810.00,
+    "payments_july_2026_collected": 0.00,
+    "payments_july_2026_pending": 810.00,
+    "payments_2026_collected_to_june": 3940.00,
+    "expenses_2026_to_june": 740.00,
+    "profit_2026_to_june": 3200.00
+  }
+}

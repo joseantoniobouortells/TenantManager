@@ -58,7 +58,7 @@ cp -r "$APP_BUNDLE" "$PAYLOAD_DIR/"
 
 pkgbuild --root "$PAYLOAD_DIR" \
          --identifier com.tenantmanager.app \
-         --version 1.0.7 \
+         --version 1.0.9 \
          --install-location /Applications \
          --scripts installer/macos/scripts \
          "$PKG_NAME"

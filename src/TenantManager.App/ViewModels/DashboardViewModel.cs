@@ -452,7 +452,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = activeExtension.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? activeExtension.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                            : ComputeVariableExpense(propertyId, activeExtension.VariableExpensePercentage, cursor.Year, cursor.Month, activeExtension.StartDate);
                     }
                     else
                     {
@@ -460,7 +460,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = contract.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? contract.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, cursor.Year, cursor.Month);
+                            : ComputeVariableExpense(propertyId, contract.VariableExpensePercentage, cursor.Year, cursor.Month, contract.StartDate);
                     }
 
                     pendingList.Add(new ComputedPendingPayment
@@ -695,25 +695,26 @@ public class DashboardViewModel : ViewModelBase
     /// Computes the variable expense share for a given property month by splitting
     /// chargeable invoices across occupied rooms, matching the logic in MonthlyPaymentListViewModel.
     /// </summary>
-    private decimal ComputeVariableExpense(int propertyId, int year, int month)
+    private decimal ComputeVariableExpense(int propertyId, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate)
     {
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
 
+        var expenseDate = new DateTime(year, month, 1).AddMonths(-1);
+        var expenseYear = expenseDate.Year;
+        var expenseMonth = expenseDate.Month;
+
+        if (expenseYear < startDate.Year || (expenseYear == startDate.Year && expenseMonth < startDate.Month))
+        {
+            return 0m; // Target invoice month is before contract start
+        }
+
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
         var invoicesTotal = _db.ExpenseInvoices
-            .Where(i => i.Year == year && i.Month == month && i.PropertyId == propertyId && chargeableCategories.Contains(i.CategoryId))
+            .Where(i => i.Year == expenseYear && i.Month == expenseMonth && i.PropertyId == propertyId && chargeableCategories.Contains(i.CategoryId))
             .ToList()
             .Sum(i => i.Amount);
 
-        var occupiedRooms = _db.RentalContracts
-            .Where(c => c.PropertyId == propertyId)
-            .ToList()
-            .Where(c => c.StartDate <= targetDate && (c.EndDate == null || c.EndDate >= targetDate))
-            .Select(c => c.RoomId)
-            .Distinct()
-            .Count();
-
-        return occupiedRooms > 0 ? invoicesTotal / occupiedRooms : 0m;
+        return invoicesTotal * (variableExpensePercentage / 100m);
     }
 }
 

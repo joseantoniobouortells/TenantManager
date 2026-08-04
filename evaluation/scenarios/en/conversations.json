@@ -1,0 +1,76 @@
+[
+  {
+    "id": "payments-change-month-en",
+    "language": "en",
+    "description": "Follow-up changing to another explicit month.",
+    "tags": ["conversations", "context-switching", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "How much did we collect in March?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "resolvedMonth": 3,
+          "queryExecution": "required"
+        }
+      },
+      {
+        "text": "What about April?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "payments",
+          "resolvedMonth": 4,
+          "queryExecution": "required",
+          "answerContains": ["810"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "expenses-to-profit-en",
+    "language": "en",
+    "description": "Follow-up changing from expenses to profit while preserving the year.",
+    "tags": ["conversations", "context-preservation", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "What were the total expenses for 2026?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "expenses",
+          "resolvedYear": 2026,
+          "queryExecution": "required"
+        }
+      },
+      {
+        "text": "And what is the profit?",
+        "expected": {
+          "intent": "data_query",
+          "resource": "dashboard",
+          "operation": "summary",
+          "projection": ["profit"],
+          "resolvedYear": 2026,
+          "queryExecution": "required",
+          "answerContains": ["3200"]
+        }
+      }
+    ]
+  },
+  {
+    "id": "unsupported-request-en",
+    "language": "en",
+    "description": "An unsupported request such as arbitrary grouping or table generation.",
+    "tags": ["error-handling", "unsupported"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "Generate a pivot table of payments grouped by tenant and month.",
+        "expected": {
+          "queryExecution": "forbidden",
+          "answerNotContains": ["pivot table"]
+        }
+      }
+    ]
+  }
+]

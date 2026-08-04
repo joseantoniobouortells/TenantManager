@@ -1,10 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Styling;
 using TenantManager.App.Data;
+using TenantManager.Core.Services.AI;
 
 namespace TenantManager.App.ViewModels;
 
@@ -44,6 +48,43 @@ public class SettingsViewModel : ViewModelBase
         new LanguageOption("es", "Español")
     };
 
+    private bool _isAiEnabled;
+    private string _aiEndpoint = "";
+    private string _aiModelName = "";
+    private string? _selectedAiModel;
+    private bool _isLoadingModels;
+    private string _modelsStatusMessage = "";
+
+    public ObservableCollection<string> AvailableModels { get; } = new();
+
+    public string? SelectedAiModel
+    {
+        get => _selectedAiModel;
+        set
+        {
+            if (SetProperty(ref _selectedAiModel, value) && value != null)
+            {
+                _aiModelName = value;
+                OnPropertyChanged(nameof(AiModelName));
+                SaveCurrentSettings();
+            }
+        }
+    }
+
+    public bool IsLoadingModels
+    {
+        get => _isLoadingModels;
+        set => SetProperty(ref _isLoadingModels, value);
+    }
+
+    public string ModelsStatusMessage
+    {
+        get => _modelsStatusMessage;
+        set => SetProperty(ref _modelsStatusMessage, value);
+    }
+
+    public ICommand LoadModelsCommand { get; }
+
     public SettingsViewModel()
     {
         Log("SettingsViewModel constructor started");
@@ -72,6 +113,17 @@ public class SettingsViewModel : ViewModelBase
         var lang = SupportedLanguages.Find(l => l.Code == settings.Language) ?? SupportedLanguages[0];
         _selectedLanguage = lang;
         ApplyLanguage(lang.Code);
+        
+        // 3. Initialize AI Settings
+        _isAiEnabled = settings.IsAiEnabled;
+        _aiEndpoint = settings.AiEndpoint;
+        _aiModelName = settings.AiModelName;
+        _selectedAiModel = settings.AiModelName;
+
+        LoadModelsCommand = new RelayCommand(
+            _ => { _ = LoadModelsAsync(); },
+            _ => !IsLoadingModels && IsAiEnabled && !string.IsNullOrWhiteSpace(AiEndpoint)
+        );
     }
 
     public string DbPath => DatabasePath.FullPath;
@@ -141,6 +193,83 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
+    public bool IsAiEnabled
+    {
+        get => _isAiEnabled;
+        set
+        {
+            if (SetProperty(ref _isAiEnabled, value))
+                SaveCurrentSettings();
+        }
+    }
+
+    public string AiEndpoint
+    {
+        get => _aiEndpoint;
+        set
+        {
+            if (SetProperty(ref _aiEndpoint, value))
+            {
+                SaveCurrentSettings();
+                (LoadModelsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string AiModelName
+    {
+        get => _aiModelName;
+        set
+        {
+            if (SetProperty(ref _aiModelName, value))
+            {
+                _selectedAiModel = value;
+                OnPropertyChanged(nameof(SelectedAiModel));
+                SaveCurrentSettings();
+            }
+        }
+    }
+
+    private async Task LoadModelsAsync()
+    {
+        IsLoadingModels = true;
+        ModelsStatusMessage = "";
+        (LoadModelsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        try
+        {
+            var client = new LocalAiClient();
+            var models = await client.GetAvailableModelsAsync();
+            AvailableModels.Clear();
+            if (models.Count == 0)
+            {
+                ModelsStatusMessage = "No models found. Check endpoint.";
+            }
+            else
+            {
+                foreach (var m in models)
+                    AvailableModels.Add(m);
+
+                // Auto-select the currently saved model if it exists in the list,
+                // otherwise select the first available one.
+                if (!string.IsNullOrWhiteSpace(_aiModelName) && AvailableModels.Contains(_aiModelName))
+                    SelectedAiModel = _aiModelName;
+                else
+                    SelectedAiModel = AvailableModels[0];
+
+                ModelsStatusMessage = $"{models.Count} model(s) loaded.";
+            }
+        }
+        catch
+        {
+            ModelsStatusMessage = "Error connecting to server.";
+        }
+        finally
+        {
+            IsLoadingModels = false;
+            (LoadModelsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+    }
+
     private void SaveCurrentSettings()
     {
         var themeStr = "Default";
@@ -151,7 +280,10 @@ public class SettingsViewModel : ViewModelBase
         var settings = new AppSettings
         {
             Theme = themeStr,
-            Language = SelectedLanguage?.Code ?? "en"
+            Language = SelectedLanguage?.Code ?? "en",
+            IsAiEnabled = this.IsAiEnabled,
+            AiEndpoint = this.AiEndpoint,
+            AiModelName = this.AiModelName
         };
         SettingsPersistence.SaveSettings(settings);
     }

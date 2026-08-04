@@ -13,6 +13,19 @@
     <system:String x:Key="DatabasePathLabel">Ruta Base de Datos:</system:String>
     <system:String x:Key="AppVersionLabel">Versión de App:</system:String>
 
+    <!-- AI Settings -->
+    <system:String x:Key="AiSettingsLabel">Asistente IA (Local)</system:String>
+    <system:String x:Key="AiSettingsDesc">Configura el asistente IA local. Asegúrate de tener un servidor de IA local ejecutándose.</system:String>
+    <system:String x:Key="EnableAiLabel">Habilitar Asistente IA</system:String>
+    <system:String x:Key="AiEndpointLabel">Endpoint API Local</system:String>
+    <system:String x:Key="AiModelNameLabel">Nombre del Modelo (opcional)</system:String>
+    <system:String x:Key="AiModelSelectLabel">Seleccionar Modelo</system:String>
+    <system:String x:Key="AiModelSelectPlaceholder">Haz clic en Cargar para ver los modelos disponibles…</system:String>
+    <system:String x:Key="AiLoadModelsButton">Cargar</system:String>
+    <system:String x:Key="AiLoadModelsTooltip">Obtener modelos disponibles del servidor configurado</system:String>
+    <system:String x:Key="AiModelManualLabel">O escribe el nombre del modelo manualmente:</system:String>
+    <system:String x:Key="AiModelManualPlaceholder">ej. llama3, mistral:instruct…</system:String>
+
     <!-- Tabs de navegación -->
     <system:String x:Key="DashboardTab">Panel</system:String>
     <system:String x:Key="RoomsTab">Habitaciones</system:String>
@@ -22,6 +35,26 @@
     <system:String x:Key="SettingsTab">Ajustes</system:String>
     <system:String x:Key="PropertiesTab">Viviendas</system:String>
     <system:String x:Key="ExpensesTab">Gastos</system:String>
+    <system:String x:Key="AssistantTab">Asistente</system:String>
+
+    <!-- Assistant -->
+    <system:String x:Key="AssistantTitle">Asistente IA</system:String>
+    <system:String x:Key="AiDisabledMessage">El asistente de IA local está desactivado. Puedes activarlo en la pestaña de Ajustes.</system:String>
+    <system:String x:Key="AskPlaceholder">Haz una pregunta...</system:String>
+    <system:String x:Key="SendButton">Enviar mensaje</system:String>
+    <system:String x:Key="UserRoleLabel">Tú</system:String>
+    <system:String x:Key="AssistantRoleLabel">Asistente</system:String>
+    <system:String x:Key="CopyResponseTooltip">Copiar respuesta</system:String>
+    <system:String x:Key="CopiedLabel">Copiado</system:String>
+
+    <!-- AI Processing Stages -->
+    <system:String x:Key="Stage_PreparingRequest">Preparando consulta…</system:String>
+    <system:String x:Key="Stage_SendingToServer">Enviando petición…</system:String>
+    <system:String x:Key="Stage_WaitingForModel">La IA está procesando…</system:String>
+    <system:String x:Key="Stage_ParsingPlan">Interpretando la respuesta…</system:String>
+    <system:String x:Key="Stage_ValidatingPlan">Validando la consulta…</system:String>
+    <system:String x:Key="Stage_ExecutingQuery">Consultando los datos…</system:String>
+    <system:String x:Key="Stage_FormattingResponse">Preparando la respuesta…</system:String>
 
     <!-- Diálogos globales -->
     <system:String x:Key="ConfirmDeleteTitle">¿Confirmar eliminación?</system:String>

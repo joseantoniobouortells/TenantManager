@@ -13,6 +13,19 @@
     <system:String x:Key="DatabasePathLabel">Database Path:</system:String>
     <system:String x:Key="AppVersionLabel">App Version:</system:String>
 
+    <!-- AI Settings -->
+    <system:String x:Key="AiSettingsLabel">AI Assistant (Local)</system:String>
+    <system:String x:Key="AiSettingsDesc">Configure the local AI assistant. Ensure a local AI server is running.</system:String>
+    <system:String x:Key="EnableAiLabel">Enable AI Assistant</system:String>
+    <system:String x:Key="AiEndpointLabel">Local API Endpoint</system:String>
+    <system:String x:Key="AiModelNameLabel">Model Name (optional)</system:String>
+    <system:String x:Key="AiModelSelectLabel">Select Model</system:String>
+    <system:String x:Key="AiModelSelectPlaceholder">Click ⋯ Load to see available models…</system:String>
+    <system:String x:Key="AiLoadModelsButton">Load</system:String>
+    <system:String x:Key="AiLoadModelsTooltip">Fetch available models from the configured server</system:String>
+    <system:String x:Key="AiModelManualLabel">Or type a model name manually:</system:String>
+    <system:String x:Key="AiModelManualPlaceholder">e.g. llama3, mistral:instruct…</system:String>
+
     <!-- Navigation tabs -->
     <system:String x:Key="DashboardTab">Dashboard</system:String>
     <system:String x:Key="RoomsTab">Rooms</system:String>
@@ -22,6 +35,26 @@
     <system:String x:Key="SettingsTab">Settings</system:String>
     <system:String x:Key="PropertiesTab">Properties</system:String>
     <system:String x:Key="ExpensesTab">Expenses</system:String>
+    <system:String x:Key="AssistantTab">Assistant</system:String>
+
+    <!-- Assistant -->
+    <system:String x:Key="AssistantTitle">AI Assistant</system:String>
+    <system:String x:Key="AiDisabledMessage">The local AI assistant is disabled. You can enable it in the Settings tab.</system:String>
+    <system:String x:Key="AskPlaceholder">Ask a question...</system:String>
+    <system:String x:Key="SendButton">Send message</system:String>
+    <system:String x:Key="UserRoleLabel">You</system:String>
+    <system:String x:Key="AssistantRoleLabel">Assistant</system:String>
+    <system:String x:Key="CopyResponseTooltip">Copy response</system:String>
+    <system:String x:Key="CopiedLabel">Copied</system:String>
+
+    <!-- AI Processing Stages -->
+    <system:String x:Key="Stage_PreparingRequest">Preparing query…</system:String>
+    <system:String x:Key="Stage_SendingToServer">Sending request…</system:String>
+    <system:String x:Key="Stage_WaitingForModel">AI is processing…</system:String>
+    <system:String x:Key="Stage_ParsingPlan">Interpreting the response…</system:String>
+    <system:String x:Key="Stage_ValidatingPlan">Validating the query…</system:String>
+    <system:String x:Key="Stage_ExecutingQuery">Querying data…</system:String>
+    <system:String x:Key="Stage_FormattingResponse">Preparing response…</system:String>
 
     <!-- Global dialogs -->
     <system:String x:Key="ConfirmDeleteTitle">Confirm Deletion</system:String>

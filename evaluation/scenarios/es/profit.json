@@ -1,0 +1,25 @@
+[
+  {
+    "id": "profit-multi-output-es",
+    "language": "es",
+    "description": "Calculates the total profit and explicitly requests the period.",
+    "tags": ["profit", "relative-period", "multi-output", "financial"],
+    "referenceDate": "2026-07-16",
+    "messages": [
+      {
+        "text": "¿Qué beneficio tuvimos el mes pasado? Dime a qué mes corresponde",
+        "expected": {
+          "intent": "data_query",
+          "resource": "dashboard",
+          "operation": "summary",
+          "projection": ["profit", "period"],
+          "resolvedYear": 2026,
+          "resolvedMonth": 6,
+          "requestedOutputs": ["value", "period"],
+          "queryExecution": "required",
+          "answerContains": ["670", "junio", "2026"]
+        }
+      }
+    ]
+  }
+]

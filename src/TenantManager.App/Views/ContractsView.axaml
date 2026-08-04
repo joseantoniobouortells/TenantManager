@@ -71,6 +71,10 @@
                                 <TextBlock Text="{DynamicResource FixedExpensesLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                                 <NumericUpDown Value="{Binding ContractList.EditFixedExpenseAmount}" Minimum="0" FormatString="0.00" />
                             </StackPanel>
+                            <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
+                                <TextBlock Text="Variable %" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <NumericUpDown Value="{Binding ContractList.EditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00" />
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
@@ -230,6 +234,10 @@
                                 <StackPanel IsVisible="{Binding ContractList.ExtensionEditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Fixed}">
                                     <TextBlock Text="{DynamicResource FixedLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                                     <NumericUpDown Value="{Binding ContractList.ExtensionEditFixedExpenseAmount}" Minimum="0" FormatString="0.00" Width="90" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding ContractList.ExtensionEditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
+                                    <TextBlock Text="Variable %" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.ExtensionEditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00" Width="90" />
                                 </StackPanel>
                             </StackPanel>
                             <StackPanel>

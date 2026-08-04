@@ -14,6 +14,7 @@ public class RentalContract
     public decimal MonthlyRent { get; set; }
     public ExpensePaymentType ExpensePaymentType { get; set; } = ExpensePaymentType.Variable;
     public decimal FixedExpenseAmount { get; set; }
+    public decimal VariableExpensePercentage { get; set; }
     public int PaymentDay { get; set; } = 1;
 
     public string? Notes { get; set; }

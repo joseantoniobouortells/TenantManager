@@ -146,6 +146,11 @@
                 <views:ExpensesView DataContext="{Binding}" />
             </TabItem>
 
+            <!-- ASSISTANT -->
+            <TabItem Header="{DynamicResource AssistantTab}">
+                <views:AssistantView DataContext="{Binding Assistant}" />
+            </TabItem>
+
             <!-- SETTINGS -->
             <TabItem Header="{DynamicResource SettingsTab}">
                 <views:SettingsView />
