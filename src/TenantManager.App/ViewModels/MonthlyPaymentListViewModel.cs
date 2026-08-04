@@ -25,6 +25,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     private MonthlyPayment? _editingPayment;
     private bool _isEditing;
     private bool _isRegisteringPending;
+    private bool _isNewManualPayment;
     private Tenant? _editSelectedTenant;
     private decimal _editYear;
     private decimal _editMonth;
@@ -59,6 +60,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
         ClearPaidDateCommand = new RelayCommand(_ => EditPaidDate = null);
         RegisterPendingCommand = new RelayCommand(param => StartRegisterPending(param as ComputedPendingPayment));
+        NewPaymentCommand = new RelayCommand(_ => StartNewPayment());
 
         DeletePaymentCommand = new RelayCommand(param => DeletePayment(param));
         ConfirmDeletePaymentCommand = new RelayCommand(_ => ConfirmDeletePayment());
@@ -76,6 +78,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     public RelayCommand CancelEditCommand { get; }
     public RelayCommand ClearPaidDateCommand { get; }
     public RelayCommand RegisterPendingCommand { get; }
+    public RelayCommand NewPaymentCommand { get; }
     public RelayCommand DeletePaymentCommand { get; }
     public RelayCommand ConfirmDeletePaymentCommand { get; }
     public RelayCommand CancelDeletePaymentCommand { get; }
@@ -103,6 +106,12 @@ public class MonthlyPaymentListViewModel : ViewModelBase
     {
         get => _isRegisteringPending;
         set => SetProperty(ref _isRegisteringPending, value);
+    }
+
+    public bool IsNewManualPayment
+    {
+        get => _isNewManualPayment;
+        set => SetProperty(ref _isNewManualPayment, value);
     }
 
     public bool HasPendingPayments => PendingPayments.Count > 0;
@@ -416,6 +425,34 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditPaidDate = DateTimeOffset.Now;
         EditNotes = null;
         IsRegisteringPending = true;
+        IsNewManualPayment = false;
+        IsEditing = true;
+    }
+
+    // ─── New manual payment ──────────────────────────────────────────────────
+
+    private void StartNewPayment()
+    {
+        _pendingBeingRegistered = null;
+        _editingPayment = null;
+
+        LoadAvailableTenants(null);
+        EditSelectedTenant = null;
+        EditYear = DateTime.Today.Year;
+        EditMonth = DateTime.Today.Month;
+        EditExpectedRentAmount = 0;
+        EditExpectedExpenseAmount = 0;
+        
+        _editStatus = PaymentStatus.Paid;
+        OnPropertyChanged(nameof(EditStatus));
+        OnPropertyChanged(nameof(IsPaidAmountEnabled));
+        
+        EditPaidAmount = 0;
+        EditPaidDate = DateTimeOffset.Now;
+        EditNotes = null;
+        
+        IsRegisteringPending = false;
+        IsNewManualPayment = true;
         IsEditing = true;
     }
 
@@ -438,6 +475,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditPaidDate = _editingPayment.PaidDate is DateTime pd ? new DateTimeOffset(pd) : null;
         EditNotes = _editingPayment.Notes;
         IsRegisteringPending = false;
+        IsNewManualPayment = false;
         IsEditing = true;
     }
 
@@ -510,6 +548,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         EditNotes = null;
         IsEditing = false;
         IsRegisteringPending = false;
+        IsNewManualPayment = false;
     }
 
     // ─── Delete ──────────────────────────────────────────────────────────────
