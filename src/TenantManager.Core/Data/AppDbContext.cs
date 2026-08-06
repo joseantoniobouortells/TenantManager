@@ -32,6 +32,7 @@ public class AppDbContext : DbContext
     public DbSet<RentalContractExtension> RentalContractExtensions => Set<RentalContractExtension>();
     public DbSet<ExpenseInvoice> ExpenseInvoices => Set<ExpenseInvoice>();
     public DbSet<ExpenseCategory> ExpenseCategories => Set<ExpenseCategory>();
+    public DbSet<ContractExpensePercentageOverride> ContractExpensePercentageOverrides => Set<ContractExpensePercentageOverride>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -47,6 +48,18 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MonthlyPayment>()
             .HasIndex(m => new { m.TenantId, m.Year, m.Month })
             .IsUnique();
+
+        modelBuilder.Entity<ContractExpensePercentageOverride>()
+            .HasOne(o => o.RentalContract)
+            .WithMany(c => c.ExpenseOverrides)
+            .HasForeignKey(o => o.RentalContractId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ContractExpensePercentageOverride>()
+            .HasOne(o => o.Category)
+            .WithMany()
+            .HasForeignKey(o => o.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     public override int SaveChanges()

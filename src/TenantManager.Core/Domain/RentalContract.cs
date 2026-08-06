@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace TenantManager.App.Domain;
 
@@ -22,4 +23,6 @@ public class RentalContract
     public int TenantId { get; set; }
     public int RoomId { get; set; }
     public decimal DepositAmount { get; set; }
+    
+    public ICollection<ContractExpensePercentageOverride> ExpenseOverrides { get; set; } = new List<ContractExpensePercentageOverride>();
 }

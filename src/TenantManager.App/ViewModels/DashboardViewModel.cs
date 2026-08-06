@@ -400,8 +400,10 @@ public class DashboardViewModel : ViewModelBase
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
 
-        // Compute pending payments dynamically from contracts
-        var contracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
+        // --- 2. Recálculo de Pagos Pendientes (Automático) ---
+        var contracts = _db.RentalContracts
+            .Include(c => c.ExpenseOverrides)
+            .Where(c => c.PropertyId == propertyId).ToList();
         var contractIds = contracts.Select(c => c.Id).ToList();
         var allExtensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
         var paidMonths = allPayments.Select(p => (p.TenantId, p.Year, p.Month)).ToHashSet();
@@ -452,7 +454,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = activeExtension.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? activeExtension.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, activeExtension.VariableExpensePercentage, cursor.Year, cursor.Month, activeExtension.StartDate);
+                            : ComputeVariableExpense(propertyId, activeExtension.VariableExpensePercentage, cursor.Year, cursor.Month, activeExtension.StartDate, contract.ExpenseOverrides);
                     }
                     else
                     {
@@ -460,7 +462,7 @@ public class DashboardViewModel : ViewModelBase
                         expenseType = contract.ExpensePaymentType;
                         expense = expenseType == ExpensePaymentType.Fixed
                             ? contract.FixedExpenseAmount
-                            : ComputeVariableExpense(propertyId, contract.VariableExpensePercentage, cursor.Year, cursor.Month, contract.StartDate);
+                            : ComputeVariableExpense(propertyId, contract.VariableExpensePercentage, cursor.Year, cursor.Month, contract.StartDate, contract.ExpenseOverrides);
                     }
 
                     pendingList.Add(new ComputedPendingPayment
@@ -695,7 +697,7 @@ public class DashboardViewModel : ViewModelBase
     /// Computes the variable expense share for a given property month by splitting
     /// chargeable invoices across occupied rooms, matching the logic in MonthlyPaymentListViewModel.
     /// </summary>
-    private decimal ComputeVariableExpense(int propertyId, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate)
+    private decimal ComputeVariableExpense(int propertyId, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate, ICollection<ContractExpensePercentageOverride>? expenseOverrides = null)
     {
         var targetDate = new DateTimeOffset(new DateTime(year, month, 1));
 
@@ -709,12 +711,19 @@ public class DashboardViewModel : ViewModelBase
         }
 
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
-        var invoicesTotal = _db.ExpenseInvoices
+        var invoices = _db.ExpenseInvoices
             .Where(i => i.Year == expenseYear && i.Month == expenseMonth && i.PropertyId == propertyId && chargeableCategories.Contains(i.CategoryId))
-            .ToList()
-            .Sum(i => i.Amount);
+            .ToList();
 
-        return invoicesTotal * (variableExpensePercentage / 100m);
+        decimal variableExpense = 0;
+        foreach (var invoice in invoices)
+        {
+            var overridePct = expenseOverrides?.FirstOrDefault(o => o.CategoryId == invoice.CategoryId)?.Percentage;
+            var pctToApply = overridePct ?? variableExpensePercentage;
+            variableExpense += invoice.Amount * (pctToApply / 100m);
+        }
+
+        return variableExpense;
     }
 }
 

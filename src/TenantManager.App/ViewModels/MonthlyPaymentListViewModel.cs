@@ -615,7 +615,7 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         var targetDateStart = new DateTimeOffset(new DateTime(targetYear, targetMonth, 1));
         var targetDateEnd = targetDateStart.AddMonths(1).AddDays(-1);
 
-        var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == _currentPropertyId).ToList();
+        var propertyContracts = _db.RentalContracts.Include(c => c.ExpenseOverrides).Where(c => c.PropertyId == _currentPropertyId).ToList();
         var contractIds = propertyContracts.Select(c => c.Id).ToList();
         var propertyExtensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
 
@@ -668,7 +668,9 @@ public class MonthlyPaymentListViewModel : ViewModelBase
                 .OrderByDescending(e => e.StartDate)
                 .FirstOrDefault();
             if (standaloneExtension == null) return null;
-            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, standaloneExtension.VariableExpensePercentage, year, month, standaloneExtension.StartDate);
+            
+            var baseContract = allContracts.FirstOrDefault(c => c.Id == standaloneExtension.RentalContractId);
+            return ComputeExpense(standaloneExtension.MonthlyRent, standaloneExtension.ExpensePaymentType, standaloneExtension.FixedExpenseAmount, standaloneExtension.VariableExpensePercentage, year, month, standaloneExtension.StartDate, baseContract?.ExpenseOverrides);
         }
 
         var activeExtension = extensions
@@ -677,22 +679,22 @@ public class MonthlyPaymentListViewModel : ViewModelBase
             .FirstOrDefault();
 
         if (activeExtension != null)
-            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, activeExtension.VariableExpensePercentage, year, month, activeExtension.StartDate);
+            return ComputeExpense(activeExtension.MonthlyRent, activeExtension.ExpensePaymentType, activeExtension.FixedExpenseAmount, activeExtension.VariableExpensePercentage, year, month, activeExtension.StartDate, activeContract.ExpenseOverrides);
 
-        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, activeContract.VariableExpensePercentage, year, month, activeContract.StartDate);
+        return ComputeExpense(activeContract.MonthlyRent, activeContract.ExpensePaymentType, activeContract.FixedExpenseAmount, activeContract.VariableExpensePercentage, year, month, activeContract.StartDate, activeContract.ExpenseOverrides);
     }
 
     // Overload used from SavePayment for validation
     private (decimal rent, decimal expense, ExpensePaymentType expenseType)? GetContractForTenantMonth(int tenantId, int year, int month)
     {
-        var contracts = _db.RentalContracts.Where(c => c.TenantId == tenantId && c.PropertyId == _currentPropertyId).ToList();
+        var contracts = _db.RentalContracts.Include(c => c.ExpenseOverrides).Where(c => c.TenantId == tenantId && c.PropertyId == _currentPropertyId).ToList();
         var contractIds = contracts.Select(c => c.Id).ToList();
         var extensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
         return GetContractForTenantMonth(tenantId, year, month, contracts, extensions);
     }
 
     private (decimal rent, decimal expense, ExpensePaymentType expenseType) ComputeExpense(
-        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate)
+        decimal rent, ExpensePaymentType expenseType, decimal fixedExpenseAmount, decimal variableExpensePercentage, int year, int month, DateTimeOffset startDate, ICollection<ContractExpensePercentageOverride>? expenseOverrides = null)
     {
         if (expenseType == ExpensePaymentType.Fixed)
             return (rent, fixedExpenseAmount, expenseType);
@@ -707,11 +709,18 @@ public class MonthlyPaymentListViewModel : ViewModelBase
         }
 
         var chargeableCategories = _db.ExpenseCategories.Where(c => c.IsChargeable).Select(c => c.Id).ToList();
-        var totalExpense = _db.ExpenseInvoices
+        var invoices = _db.ExpenseInvoices
             .Where(i => i.Year == targetYear && i.Month == targetMonth && i.PropertyId == _currentPropertyId && chargeableCategories.Contains(i.CategoryId))
-            .Sum(i => i.Amount);
+            .ToList();
 
-        var variableExpense = totalExpense * (variableExpensePercentage / 100m);
+        decimal variableExpense = 0;
+        foreach (var invoice in invoices)
+        {
+            var overridePct = expenseOverrides?.FirstOrDefault(o => o.CategoryId == invoice.CategoryId)?.Percentage;
+            var pctToApply = overridePct ?? variableExpensePercentage;
+            variableExpense += invoice.Amount * (pctToApply / 100m);
+        }
+
         return (rent, fixedExpenseAmount + variableExpense, expenseType);
     }
 }
