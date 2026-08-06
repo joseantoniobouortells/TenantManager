@@ -204,7 +204,13 @@ public class ContractListViewModel : ViewModelBase
     public decimal EditVariableExpensePercentage
     {
         get => _editVariableExpensePercentage;
-        set => SetProperty(ref _editVariableExpensePercentage, value);
+        set 
+        {
+            if (SetProperty(ref _editVariableExpensePercentage, value))
+            {
+                NewOverridePercentage = value;
+            }
+        }
     }
     
     private ExpenseCategory? _newOverrideCategory;
@@ -646,7 +652,7 @@ public class ContractListViewModel : ViewModelBase
         EditNotes = null;
         EditExpenseOverrides.Clear();
         NewOverrideCategory = null;
-        NewOverridePercentage = 0;
+        NewOverridePercentage = EditVariableExpensePercentage;
         IsEditing = false;
         SelectedItem = null;
     }
@@ -737,7 +743,7 @@ public class ContractListViewModel : ViewModelBase
                 });
             }
             NewOverrideCategory = null;
-            NewOverridePercentage = 0;
+            NewOverridePercentage = EditVariableExpensePercentage;
         }
     }
 
