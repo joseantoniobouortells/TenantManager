@@ -98,7 +98,7 @@
                                     </ItemsControl>
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseCategories}" SelectedItem="{Binding ContractList.NewOverrideCategory}" DisplayMemberBinding="{Binding Name}" PlaceholderText="Categoría..." Width="150" />
-                                        <NumericUpDown Value="{Binding ContractList.NewOverridePercentage}" Minimum="0" Maximum="100" FormatString="0.00" Width="100" />
+                                        <NumericUpDown Value="{Binding ContractList.NewOverridePercentage}" Minimum="0" Maximum="100" FormatString="0.00" Width="140" />
                                         <Button Content="Añadir" Command="{Binding ContractList.AddExpenseOverrideCommand}" Classes="Action" VerticalAlignment="Stretch" />
                                     </StackPanel>
                                 </StackPanel>
