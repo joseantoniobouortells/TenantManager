@@ -54,6 +54,9 @@ public class ContractListViewModel : ViewModelBase
         AvailableExpenseTypes = new ObservableCollection<ExpensePaymentType>(Enum.GetValues<ExpensePaymentType>());
         Extensions = new ObservableCollection<RentalContractExtension>();
 
+        EditExpenseOverrides = new ObservableCollection<ContractExpensePercentageOverride>();
+        AvailableExpenseCategories = new ObservableCollection<ExpenseCategory>();
+        
         LoadContractsCommand = new RelayCommand(_ => LoadContracts(_currentPropertyId));
         NewContractCommand = new RelayCommand(_ => StartNewContract());
         EditContractCommand = new RelayCommand(_ => EditContract());
@@ -64,6 +67,8 @@ public class ContractListViewModel : ViewModelBase
         SortCommand = new RelayCommand(field => Sort(field as string));
         ConfirmDeleteContractCommand = new RelayCommand(_ => ConfirmDeleteContract());
         CancelDeleteContractCommand = new RelayCommand(_ => CancelDeleteContract());
+        AddExpenseOverrideCommand = new RelayCommand(_ => AddExpenseOverride());
+        RemoveExpenseOverrideCommand = new RelayCommand(param => RemoveExpenseOverride(param));
 
         NewExtensionCommand = new RelayCommand(_ => StartNewExtension());
         EditExtensionCommand = new RelayCommand(_ => EditExtension());
@@ -79,6 +84,8 @@ public class ContractListViewModel : ViewModelBase
     public ObservableCollection<Tenant> AvailableTenants { get; }
     public ObservableCollection<Room> AvailableRooms { get; }
     public ObservableCollection<ExpensePaymentType> AvailableExpenseTypes { get; }
+    public ObservableCollection<ContractExpensePercentageOverride> EditExpenseOverrides { get; }
+    public ObservableCollection<ExpenseCategory> AvailableExpenseCategories { get; }
     public ObservableCollection<RentalContractExtension> Extensions { get; }
 
     public RelayCommand LoadContractsCommand { get; }
@@ -91,6 +98,8 @@ public class ContractListViewModel : ViewModelBase
     public RelayCommand SortCommand { get; }
     public RelayCommand ConfirmDeleteContractCommand { get; }
     public RelayCommand CancelDeleteContractCommand { get; }
+    public RelayCommand AddExpenseOverrideCommand { get; }
+    public RelayCommand RemoveExpenseOverrideCommand { get; }
 
     public RelayCommand NewExtensionCommand { get; }
     public RelayCommand EditExtensionCommand { get; }
@@ -196,6 +205,20 @@ public class ContractListViewModel : ViewModelBase
     {
         get => _editVariableExpensePercentage;
         set => SetProperty(ref _editVariableExpensePercentage, value);
+    }
+    
+    private ExpenseCategory? _newOverrideCategory;
+    public ExpenseCategory? NewOverrideCategory
+    {
+        get => _newOverrideCategory;
+        set => SetProperty(ref _newOverrideCategory, value);
+    }
+    
+    private decimal _newOverridePercentage;
+    public decimal NewOverridePercentage
+    {
+        get => _newOverridePercentage;
+        set => SetProperty(ref _newOverridePercentage, value);
     }
 
     public string? EditNotes
@@ -306,7 +329,7 @@ public class ContractListViewModel : ViewModelBase
         var extensions = _db.RentalContractExtensions.Where(e => contractIds.Contains(e.RentalContractId)).ToList();
 
         var items = new List<ContractDisplayItem>();
-        foreach (var contract in _db.RentalContracts.Where(c => c.PropertyId == propertyId).AsEnumerable())
+        foreach (var contract in _db.RentalContracts.Include(c => c.ExpenseOverrides).ThenInclude(o => o.Category).Where(c => c.PropertyId == propertyId).AsEnumerable())
         {
             var exists = contract.FileContent != null || (!string.IsNullOrWhiteSpace(contract.FilePath) && File.Exists(contract.FilePath));
             
@@ -467,7 +490,14 @@ public class ContractListViewModel : ViewModelBase
         var roomCount = AvailableRooms.Count;
         EditVariableExpensePercentage = roomCount > 0 ? 100m / roomCount : 0m;
         EditNotes = null;
+        EditExpenseOverrides.Clear();
         IsEditing = true;
+        
+        AvailableExpenseCategories.Clear();
+        foreach (var cat in _db.ExpenseCategories.Where(c => c.IsChargeable).ToList())
+        {
+            AvailableExpenseCategories.Add(cat);
+        }
     }
 
     private void EditContract()
@@ -493,6 +523,29 @@ public class ContractListViewModel : ViewModelBase
         EditFixedExpenseAmount = _editingContract.FixedExpenseAmount;
         EditVariableExpensePercentage = _editingContract.VariableExpensePercentage;
         EditNotes = _editingContract.Notes;
+        
+        EditExpenseOverrides.Clear();
+        if (_editingContract.ExpenseOverrides != null)
+        {
+            foreach (var ov in _editingContract.ExpenseOverrides)
+            {
+                EditExpenseOverrides.Add(new ContractExpensePercentageOverride 
+                {
+                    Id = ov.Id,
+                    RentalContractId = ov.RentalContractId,
+                    CategoryId = ov.CategoryId,
+                    Category = ov.Category ?? _db.ExpenseCategories.Find(ov.CategoryId),
+                    Percentage = ov.Percentage
+                });
+            }
+        }
+        
+        AvailableExpenseCategories.Clear();
+        foreach (var cat in _db.ExpenseCategories.Where(c => c.IsChargeable).ToList())
+        {
+            AvailableExpenseCategories.Add(cat);
+        }
+        
         IsEditing = true;
     }
 
@@ -537,6 +590,39 @@ public class ContractListViewModel : ViewModelBase
             _editingContract.FixedExpenseAmount = EditExpensePaymentType == ExpensePaymentType.Fixed ? EditFixedExpenseAmount : 0;
             _editingContract.VariableExpensePercentage = EditExpensePaymentType == ExpensePaymentType.Variable ? EditVariableExpensePercentage : 0;
             _editingContract.Notes = EditNotes?.Trim();
+            
+            if (EditExpensePaymentType == ExpensePaymentType.Variable)
+            {
+                var existingIds = EditExpenseOverrides.Where(o => o.Id != 0).Select(o => o.Id).ToHashSet();
+                var toRemove = _editingContract.ExpenseOverrides.Where(o => !existingIds.Contains(o.Id)).ToList();
+                foreach (var rm in toRemove) _db.ContractExpensePercentageOverrides.Remove(rm);
+
+                foreach (var ov in EditExpenseOverrides)
+                {
+                    if (ov.Id == 0)
+                    {
+                        _editingContract.ExpenseOverrides.Add(new ContractExpensePercentageOverride
+                        {
+                            CategoryId = ov.CategoryId,
+                            Percentage = ov.Percentage
+                        });
+                    }
+                    else
+                    {
+                        var existing = _editingContract.ExpenseOverrides.FirstOrDefault(x => x.Id == ov.Id);
+                        if (existing != null)
+                        {
+                            existing.CategoryId = ov.CategoryId;
+                            existing.Percentage = ov.Percentage;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                foreach(var rm in _editingContract.ExpenseOverrides.ToList()) _db.ContractExpensePercentageOverrides.Remove(rm);
+                _editingContract.ExpenseOverrides.Clear();
+            }
         }
 
         _db.SaveChanges();
@@ -558,6 +644,9 @@ public class ContractListViewModel : ViewModelBase
         EditExpensePaymentType = ExpensePaymentType.Variable;
         EditFixedExpenseAmount = 0;
         EditNotes = null;
+        EditExpenseOverrides.Clear();
+        NewOverrideCategory = null;
+        NewOverridePercentage = 0;
         IsEditing = false;
         SelectedItem = null;
     }
@@ -632,6 +721,32 @@ public class ContractListViewModel : ViewModelBase
     {
         _contractToDelete = null;
         IsConfirmingDeleteContract = false;
+    }
+    
+    private void AddExpenseOverride()
+    {
+        if (NewOverrideCategory != null)
+        {
+            if (!EditExpenseOverrides.Any(o => o.CategoryId == NewOverrideCategory.Id))
+            {
+                EditExpenseOverrides.Add(new ContractExpensePercentageOverride
+                {
+                    CategoryId = NewOverrideCategory.Id,
+                    Category = NewOverrideCategory,
+                    Percentage = NewOverridePercentage
+                });
+            }
+            NewOverrideCategory = null;
+            NewOverridePercentage = 0;
+        }
+    }
+
+    private void RemoveExpenseOverride(object? param)
+    {
+        if (param is ContractExpensePercentageOverride ov)
+        {
+            EditExpenseOverrides.Remove(ov);
+        }
     }
 
     private void LoadExtensions()

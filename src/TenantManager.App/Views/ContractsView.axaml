@@ -72,8 +72,34 @@
                                 <NumericUpDown Value="{Binding ContractList.EditFixedExpenseAmount}" Minimum="0" FormatString="0.00" />
                             </StackPanel>
                             <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
-                                <TextBlock Text="Variable %" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <NumericUpDown Value="{Binding ContractList.EditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00" />
+                                <StackPanel Margin="0 0 0 16">
+                                    <TextBlock Text="Variable % (Por defecto)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.EditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00" />
+                                </StackPanel>
+                                
+                                <StackPanel>
+                                    <TextBlock Text="Excepciones por Categoría" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                                    <ItemsControl ItemsSource="{Binding ContractList.EditExpenseOverrides}" Margin="0 0 0 8">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{DynamicResource CardBackgroundBrush}" Padding="8" Margin="0 0 0 4" CornerRadius="4">
+                                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                                        <TextBlock Grid.Column="0" Text="{Binding Category.Name}" VerticalAlignment="Center" FontWeight="Medium" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding Percentage, StringFormat='{}{0:0.##}%'}" Margin="16 0" VerticalAlignment="Center" />
+                                                        <Button Grid.Column="2" Command="{Binding $parent[UserControl].DataContext.ContractList.RemoveExpenseOverrideCommand}" CommandParameter="{Binding}" Classes="Action" Padding="4" ToolTip.Tip="Eliminar Excepción">
+                                                            <PathIcon Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12z" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}" />
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseCategories}" SelectedItem="{Binding ContractList.NewOverrideCategory}" DisplayMemberBinding="{Binding Name}" PlaceholderText="Categoría..." Width="150" />
+                                        <NumericUpDown Value="{Binding ContractList.NewOverridePercentage}" Minimum="0" Maximum="100" FormatString="0.00" Width="100" />
+                                        <Button Content="Añadir" Command="{Binding ContractList.AddExpenseOverrideCommand}" Classes="Action" VerticalAlignment="Stretch" />
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                         <StackPanel>
