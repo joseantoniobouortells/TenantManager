@@ -159,4 +159,9 @@
     - *Decisión:* Se creó el proyecto de consola `TenantManager.Evaluation` y el proyecto de pruebas `TenantManager.Evaluation.Tests` para validar el comportamiento y precisión de la IA local determinista y en vivo.
     - *Arquitectura:* Se introdujo un seam de diagnósticos `IAssistantExecutionObserver` en `AiQueryService` para trazar el request semántico, periodos, planes generados y el resultado final sin afectar el comportamiento central. Se implementaron los modos `validate` y `live`.
     - *Datos de Prueba:* Se utiliza un `deterministic-fixture.json` que carga en SQLite de memoria un contexto simulado, permitiendo ejecutar y validar escenarios contra LLMs locales a través de LocalAiClient.
-    - *Impacto:* Validación estructural de escenarios JSON y evaluación en vivo contra el modelo de lenguaje de IA habilitada.
+101. **Pagos Manuales y Arrastre de Saldos (Agosto 2026):**
+    - *Decisión:* Se habilitó la edición de la cantidad pagada (`PaidAmount`) en la vista de pagos incluso cuando el estado está marcado como `Paid`. Se introdujo la función `GetTenantBalance` que hace un cálculo histórico de todo lo pagado menos todo lo esperado para el inquilino en la vivienda actual.
+    - *Motivo:* Permitir registrar cobros por encima o por debajo de la cuota y arrastrar saldos a favor o en contra (ej. si el inquilino paga 10€ de más un mes, al mes siguiente se sugiere la cuota restándole esos 10€).
+102. **Creación de Pagos Manuales desde Cero (Agosto 2026):**
+    - *Decisión:* Se introdujo el botón "Nuevo Pago" en `PaymentsView.axaml` con el comando `NewPaymentCommand`. Se creó la propiedad `IsNewManualPayment` para desbloquear dinámicamente los campos `Inquilino`, `Año` y `Mes` exclusivamente al crear un recibo manual desde cero.
+    - *Motivo:* El sistema dependía totalmente de los cálculos automáticos de cuotas pendientes. Esto da total libertad al administrador para introducir cobros manuales (adelantados, atrasados o regulaciones especiales) sin depender del sistema automatizado.
