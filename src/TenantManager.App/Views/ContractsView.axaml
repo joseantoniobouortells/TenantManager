@@ -29,8 +29,13 @@
                                 <ComboBox ItemsSource="{Binding ContractList.AvailableTenants}" SelectedItem="{Binding ContractList.EditSelectedTenant}" DisplayMemberBinding="{Binding FullName}" HorizontalAlignment="Stretch" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="8 0 0 0">
-                                <TextBlock Text="{DynamicResource RoomLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <ComboBox ItemsSource="{Binding ContractList.AvailableRooms}" SelectedItem="{Binding ContractList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
+                                <TextBlock Text="{DynamicResource UnitTypeLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                <StackPanel Orientation="Horizontal" Spacing="16" Margin="0 0 0 8">
+                                    <RadioButton Content="{DynamicResource ContractTypeRoom}" IsChecked="{Binding !ContractList.IsGarageContract}" />
+                                    <RadioButton Content="{DynamicResource ContractTypeGarage}" IsChecked="{Binding ContractList.IsGarageContract}" />
+                                </StackPanel>
+                                <ComboBox IsVisible="{Binding !ContractList.IsGarageContract}" ItemsSource="{Binding ContractList.AvailableRooms}" SelectedItem="{Binding ContractList.EditSelectedRoom}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
+                                <ComboBox IsVisible="{Binding ContractList.IsGarageContract}" ItemsSource="{Binding ContractList.AvailableGarageSpots}" SelectedItem="{Binding ContractList.EditSelectedGarageSpot}" DisplayMemberBinding="{Binding Name}" HorizontalAlignment="Stretch" />
                             </StackPanel>
                         </Grid>
                         <StackPanel>
@@ -63,24 +68,29 @@
                                 <TextBlock Text="{DynamicResource PaymentDayLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
                                 <NumericUpDown Value="{Binding ContractList.EditPaymentDay}" Minimum="1" Maximum="31" FormatString="0" />
                             </StackPanel>
-                            <StackPanel>
-                                <TextBlock Text="{DynamicResource ExpenseTypeLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseTypes}" SelectedItem="{Binding ContractList.EditExpensePaymentType}" HorizontalAlignment="Stretch" />
-                            </StackPanel>
-                            <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Fixed}">
-                                <TextBlock Text="{DynamicResource FixedExpensesLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <NumericUpDown Value="{Binding ContractList.EditFixedExpenseAmount}" Minimum="0" FormatString="0.00" />
-                            </StackPanel>
-                            <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
-                                <TextBlock Text="Variable % (Por defecto)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
-                                <NumericUpDown Value="{Binding ContractList.EditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00' %'" />
+                            
+                            <!-- Expenses Block (Hidden for Garage) -->
+                            <StackPanel Orientation="Horizontal" Spacing="16" IsVisible="{Binding !ContractList.IsGarageContract}">
+                                <StackPanel>
+                                    <TextBlock Text="{DynamicResource ExpenseTypeLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <ComboBox ItemsSource="{Binding ContractList.AvailableExpenseTypes}" SelectedItem="{Binding ContractList.EditExpensePaymentType}" HorizontalAlignment="Stretch" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Fixed}">
+                                    <TextBlock Text="{DynamicResource FixedExpensesLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.EditFixedExpenseAmount}" Minimum="0" FormatString="0.00" />
+                                </StackPanel>
+                                <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
+                                    <TextBlock Text="Variable % (Por defecto)" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                                    <NumericUpDown Value="{Binding ContractList.EditVariableExpensePercentage}" Minimum="0" Maximum="100" FormatString="0.00' %'" />
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
                         
-                        <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
-                            <TextBlock Text="Excepciones por Categoría" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
-                            <Border Background="{DynamicResource PeriodEditBackgroundBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                <StackPanel>
+                        <StackPanel IsVisible="{Binding !ContractList.IsGarageContract}">
+                            <StackPanel IsVisible="{Binding ContractList.EditExpensePaymentType, Converter={StaticResource EqualityConverter}, ConverterParameter=Variable}">
+                                <TextBlock Text="Excepciones por Categoría" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4" />
+                                <Border Background="{DynamicResource PeriodEditBackgroundBrush}" CornerRadius="8" Padding="12" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                                    <StackPanel>
                                     <ItemsControl ItemsSource="{Binding ContractList.EditExpenseOverrides}" Margin="0 0 0 8">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -103,6 +113,7 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Border>
+                        </StackPanel>
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>

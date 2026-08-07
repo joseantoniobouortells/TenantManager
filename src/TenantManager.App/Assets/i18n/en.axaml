@@ -29,6 +29,7 @@
     <!-- Navigation tabs -->
     <system:String x:Key="DashboardTab">Dashboard</system:String>
     <system:String x:Key="RoomsTab">Rooms</system:String>
+    <system:String x:Key="GarageSpotsTab">Garage Spots</system:String>
     <system:String x:Key="TenantsTab">Tenants</system:String>
     <system:String x:Key="ContractsTab">Contracts</system:String>
     <system:String x:Key="PaymentsTab">Payments</system:String>
@@ -36,6 +37,21 @@
     <system:String x:Key="PropertiesTab">Properties</system:String>
     <system:String x:Key="ExpensesTab">Expenses</system:String>
     <system:String x:Key="AssistantTab">Assistant</system:String>
+
+    <!-- Contract Types -->
+    <system:String x:Key="ContractTypeRoom">Room</system:String>
+    <system:String x:Key="ContractTypeGarage">Garage Spot</system:String>
+    <system:String x:Key="UnitTypeLabel">Unit Type</system:String>
+
+    <!-- Garage Spots -->
+    <system:String x:Key="GarageSpotsTitle">Garage Spots</system:String>
+    <system:String x:Key="NewGarageSpotButton">New Spot</system:String>
+    <system:String x:Key="EditGarageSpotTitle">Edit Garage Spot</system:String>
+    <system:String x:Key="GarageSpotNameLabel">Name / Spot Number</system:String>
+    <system:String x:Key="GarageSpotsOccupancyCardTitle">Garage Spots Occupancy</system:String>
+    <system:String x:Key="PropertyOccupancyLabel">Property Occupancy</system:String>
+    <system:String x:Key="TotalAvailableText">Total Available:</system:String>
+    <system:String x:Key="SaveGarageSpotButton">Save Spot</system:String>
 
     <!-- Assistant -->
     <system:String x:Key="AssistantTitle">AI Assistant</system:String>

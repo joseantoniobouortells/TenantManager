@@ -29,6 +29,7 @@
     <!-- Tabs de navegación -->
     <system:String x:Key="DashboardTab">Panel</system:String>
     <system:String x:Key="RoomsTab">Habitaciones</system:String>
+    <system:String x:Key="GarageSpotsTab">Plazas de Garaje</system:String>
     <system:String x:Key="TenantsTab">Inquilinos</system:String>
     <system:String x:Key="ContractsTab">Contratos</system:String>
     <system:String x:Key="PaymentsTab">Pagos</system:String>
@@ -36,6 +37,21 @@
     <system:String x:Key="PropertiesTab">Viviendas</system:String>
     <system:String x:Key="ExpensesTab">Gastos</system:String>
     <system:String x:Key="AssistantTab">Asistente</system:String>
+
+    <!-- Contract Types -->
+    <system:String x:Key="ContractTypeRoom">Habitación</system:String>
+    <system:String x:Key="ContractTypeGarage">Plaza de Garaje</system:String>
+    <system:String x:Key="UnitTypeLabel">Tipo de Unidad</system:String>
+
+    <!-- Plazas de Garaje -->
+    <system:String x:Key="GarageSpotsTitle">Plazas de Garaje</system:String>
+    <system:String x:Key="NewGarageSpotButton">Nueva Plaza</system:String>
+    <system:String x:Key="EditGarageSpotTitle">Editar Plaza de Garaje</system:String>
+    <system:String x:Key="GarageSpotNameLabel">Nombre / Número de plaza</system:String>
+    <system:String x:Key="SaveGarageSpotButton">Guardar Plaza</system:String>
+    <system:String x:Key="GarageSpotsOccupancyCardTitle">Ocupación Plazas Garaje</system:String>
+    <system:String x:Key="PropertyOccupancyLabel">Ocupación de Vivienda</system:String>
+    <system:String x:Key="TotalAvailableText">Disponibles en total:</system:String>
 
     <!-- Assistant -->
     <system:String x:Key="AssistantTitle">Asistente IA</system:String>

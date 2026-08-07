@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
 
     public DbSet<Property> Properties => Set<Property>();
     public DbSet<Room> Rooms => Set<Room>();
+    public DbSet<GarageSpot> GarageSpots => Set<GarageSpot>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<RentalContract> RentalContracts => Set<RentalContract>();
     public DbSet<MonthlyPayment> MonthlyPayments => Set<MonthlyPayment>();

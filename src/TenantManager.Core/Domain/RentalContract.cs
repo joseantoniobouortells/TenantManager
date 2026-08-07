@@ -21,7 +21,8 @@ public class RentalContract
     public string? Notes { get; set; }
 
     public int TenantId { get; set; }
-    public int RoomId { get; set; }
+    public int? RoomId { get; set; }
+    public int? GarageSpotId { get; set; }
     public decimal DepositAmount { get; set; }
     
     public ICollection<ContractExpensePercentageOverride> ExpenseOverrides { get; set; } = new List<ContractExpensePercentageOverride>();
