@@ -7,14 +7,15 @@ Local-first desktop app for property owners to manage rooms, tenants, rental con
 - **Agent Memory:** Always read `docs/memory.md` to get context on recent architectural decisions, known issues, and pending roadmap tasks. You MUST update this document every time a new feature is implemented, a significant refactor is done, or a key decision is made.
 
 ## Architecture & Data Rules
-1. **DB Context:** Use `AppDbContext` directly per ViewModel (no DI container). 
-2. **Schema updates:** Use EF Core Migrations. Generate new migrations when entities change and apply them automatically on startup using `db.Database.Migrate()`.
-3. **UI:** Preserve ViewModel-per-tab pattern in `MainWindow.axaml`. Default to `x:CompileBindings="False"`.
-4. **Testing:** Domain tests use strictly in-memory SQLite (`SqliteConnection("Data Source=:memory:")`). No UI automation.
-5. **Zero-Leak Policy:** NEVER commit PII (names/contacts), local DB files (`.db*`, `.sqlite*`), real contract documents, or `bin`/`obj` folders.
-6. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation and approval first, or unless explicitly requested by the user. All commit messages must be written in English and must be highly detailed, listing key files changed, the purpose of the changes, classes modified, test suites added, and implementation achievements.
-7. **Documentos y Planes:** Cualquier plan de implementación, especificación (`*_plan.md`, `*_spec.md`) o archivo generado para revisión humana DEBE guardarse SIEMPRE dentro de la carpeta `docs/specs/` (no en la raíz ni en los artefactos temporales).
-8. **Core library:** All reusable application/domain logic that is not purely UI-specific must live in `TenantManager.Core`. This includes: business rules, prompt builders, intent parsers, tenant matching, deterministic answer generation, data-query services, AI request/response DTOs, and AI conversation context. The Avalonia app (`TenantManager.App`) must stay focused on UI, ViewModels, Views, XAML styling, app startup, and UI-specific composition. `TenantManager.Core` must NOT reference Avalonia or any UI framework. Future web/mobile frontends must be able to reuse Core logic without changes.
+1. **Mandatory memory context:** The agent MUST ALWAYS read the `docs/memory.md` file at the beginning of any task to get context on recent architectural decisions, known issues, and pending roadmap tasks. Do not assume context without reading it.
+2. **DB Context:** Use `AppDbContext` directly per ViewModel (no DI container). 
+3. **Schema updates:** Use EF Core Migrations. Generate new migrations when entities change and apply them automatically on startup using `db.Database.Migrate()`.
+4. **UI:** Preserve ViewModel-per-tab pattern in `MainWindow.axaml`. Default to `x:CompileBindings="False"`.
+5. **Testing:** Domain tests use strictly in-memory SQLite (`SqliteConnection("Data Source=:memory:")`). No UI automation.
+6. **Zero-Leak Policy:** NEVER commit PII (names/contacts), local DB files (`.db*`, `.sqlite*`), real contract documents, or `bin`/`obj` folders.
+7. **Commits:** Do NOT create commits or push code automatically without asking for explicit user validation and approval first, or unless explicitly requested by the user. All commit messages must be written in English and must be highly detailed, listing key files changed, the purpose of the changes, classes modified, test suites added, and implementation achievements.
+8. **Documentos y Planes:** Cualquier plan de implementación, especificación (`*_plan.md`, `*_spec.md`) o archivo generado para revisión humana DEBE guardarse SIEMPRE dentro de la carpeta `docs/specs/` (no en la raíz ni en los artefactos temporales).
+9. **Core library:** All reusable application/domain logic that is not purely UI-specific must live in `TenantManager.Core`. This includes: business rules, prompt builders, intent parsers, tenant matching, deterministic answer generation, data-query services, AI request/response DTOs, and AI conversation context. The Avalonia app (`TenantManager.App`) must stay focused on UI, ViewModels, Views, XAML styling, app startup, and UI-specific composition. `TenantManager.Core` must NOT reference Avalonia or any UI framework. Future web/mobile frontends must be able to reuse Core logic without changes.
 
 ## Validation Pipeline
 Run after changes:
@@ -31,3 +32,6 @@ git ls-files | grep -E '(/bin/|/obj/|\.(db|db-shm|db-wal|sqlite|sqlite3)$)' || t
 11. **Check for untracked specs before committing:** Agents must run `git status --short` and check for untracked `docs/specs/` files before creating any commit. Untracked spec files must be staged and included.
 12. **Detailed commit messages in English:** All commit messages must be highly detailed (describing modified classes, added test suites, resolved warnings, and implementation phase achievements) and must be written in English.
 13. **AI query planning in Core:** AI query planning logic, QueryPlan models, the semantic query catalog, query validators, query executors, domain semantic resolvers, and answer formatters must all reside in `TenantManager.Core` with no Avalonia dependency.
+
+14. Agent must never create commits without user request
+15. **Mandatory memory update:** The agent is strictly obligated to always update `docs/memory.md` immediately after completing any new feature, significant refactor, or making key architectural decisions. This update is mandatory and must not be skipped under any circumstance.
