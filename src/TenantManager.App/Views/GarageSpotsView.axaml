@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:TenantManager.App.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+             x:Class="TenantManager.App.Views.GarageSpotsView"
+             x:CompileBindings="False">
+    <Grid>
+        <DockPanel IsEnabled="{Binding !GarageSpotList.IsConfirmingDeleteGarageSpot}">
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
+            <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource GarageSpotsTitle}" Margin="0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button Content="{DynamicResource RefreshButton}" Command="{Binding GarageSpotList.LoadGarageSpotsCommand}" Classes="Action" />
+                <Button Content="{DynamicResource NewGarageSpotButton}" Command="{Binding GarageSpotList.NewGarageSpotCommand}" Classes="Primary" />
+            </StackPanel>
+        </Grid>
+
+        <Grid>
+            <!-- GarageSpots List & Editing -->
+            <DockPanel Margin="0">
+                <Border DockPanel.Dock="Top" Classes="Card" IsVisible="{Binding GarageSpotList.IsEditing}">
+                    <StackPanel Spacing="16">
+                        <TextBlock Classes="H2" Text="{DynamicResource EditGarageSpotTitle}" Margin="0" />
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource GarageSpotNameLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBox Text="{Binding GarageSpotList.EditName}" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource BaseRentLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <NumericUpDown Value="{Binding GarageSpotList.EditBaseRent}" Minimum="0" FormatString="0.00" />
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="{DynamicResource NotesOptionalLabel}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0 0 0 4"/>
+                            <TextBox Text="{Binding GarageSpotList.EditNotes}" AcceptsReturn="True" Height="80" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                            <Button Content="{DynamicResource CancelButton}" Command="{Binding GarageSpotList.CancelEditCommand}" Classes="Action" />
+                            <Button Content="{DynamicResource SaveGarageSpotButton}" Command="{Binding GarageSpotList.SaveGarageSpotCommand}" Classes="Primary" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0 0 0 16" IsVisible="{Binding GarageSpotList.HasSelectedGarageSpot}">
+                    <Button Content="{DynamicResource EditButton}" Command="{Binding GarageSpotList.EditGarageSpotCommand}" Classes="Action" />
+                </StackPanel>
+
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="2*,1*,1*,2*,Auto" Margin="16 0 16 8">
+                     <TextBlock Grid.Column="0" Text="{DynamicResource NameHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="1" Text="{DynamicResource BaseRentHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="2" Text="{DynamicResource StatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="3" Text="{DynamicResource NotesHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                     <TextBlock Grid.Column="4" Text="" Width="40" />
+                 </Grid>
+
+                <ListBox Classes="Table" ItemsSource="{Binding GarageSpotList.GarageSpots}" SelectedItem="{Binding GarageSpotList.SelectedGarageSpot}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                             <Grid ColumnDefinitions="2*,1*,1*,2*,Auto">
+                                 <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Medium" VerticalAlignment="Center" />
+                                 <TextBlock Grid.Column="1" Text="{Binding BaseRent, StringFormat='{}{0:C}'}" VerticalAlignment="Center" />
+                                 <ToggleSwitch Grid.Column="2" 
+                                               IsChecked="{Binding IsActive, Mode=OneWay}" 
+                                               Command="{Binding $parent[UserControl].DataContext.GarageSpotList.ToggleGarageSpotActiveCommand}" 
+                                               CommandParameter="{Binding}"
+                                               OnContent="" OffContent="" 
+                                               Margin="0" Padding="0"
+                                               MinWidth="0" MinHeight="0"
+                                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                 <TextBlock Grid.Column="3" Text="{Binding Notes}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                 <Button Grid.Column="4" 
+                                         Command="{Binding $parent[UserControl].DataContext.GarageSpotList.DeleteGarageSpotCommand}" 
+                                         CommandParameter="{Binding}"
+                                         Classes="Action" Padding="4" Margin="4 0 0 0" ToolTip.Tip="{DynamicResource DeleteButton}" Cursor="Hand">
+                                     <PathIcon Data="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" Width="14" Height="14" Foreground="{DynamicResource DangerBrush}" />
+                                 </Button>
+                             </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+
+        </Grid>
+        </DockPanel>
+
+        <!-- Confirmation Overlay -->
+        <Border Background="#A0000000" IsVisible="{Binding GarageSpotList.IsConfirmingDeleteGarageSpot}">
+            <Border Background="{DynamicResource CardBackgroundBrush}" 
+                    BorderBrush="{DynamicResource CardBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="320"
+                    Height="160"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Center"
+                    Padding="20">
+                <StackPanel Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="{DynamicResource ConfirmDeleteTitle}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" />
+                    <TextBlock Text="{DynamicResource CannotUndoMsg}" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+                        <Button Content="{DynamicResource ConfirmButton}" Command="{Binding GarageSpotList.ConfirmDeleteGarageSpotCommand}" Classes="Primary" Background="{DynamicResource DangerBrush}" />
+                        <Button Content="{DynamicResource CancelButton}" Command="{Binding GarageSpotList.CancelDeleteGarageSpotCommand}" Classes="Action" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+    </Grid>
+</UserControl>

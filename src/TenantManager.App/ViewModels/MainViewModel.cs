@@ -32,6 +32,7 @@ public class MainViewModel : ViewModelBase
         Properties = new ObservableCollection<Property>();
 
         RoomList = new RoomListViewModel();
+        GarageSpotList = new GarageSpotListViewModel();
         TenantList = new TenantListViewModel();
         ContractList = new ContractListViewModel();
         PaymentList = new MonthlyPaymentListViewModel();
@@ -59,6 +60,7 @@ public class MainViewModel : ViewModelBase
     }
 
     public RoomListViewModel RoomList { get; }
+    public GarageSpotListViewModel GarageSpotList { get; }
     public TenantListViewModel TenantList { get; }
     public ContractListViewModel ContractList { get; }
     public MonthlyPaymentListViewModel PaymentList { get; }
@@ -73,6 +75,7 @@ public class MainViewModel : ViewModelBase
         if (SelectedProperty == null) return;
 
         RoomList.LoadRooms(SelectedProperty.Id);
+        GarageSpotList.LoadGarageSpots(SelectedProperty.Id);
         TenantList.LoadTenants(SelectedProperty.Id);
         ContractList.LoadContracts(SelectedProperty.Id);
         PaymentList.LoadPayments(SelectedProperty.Id);

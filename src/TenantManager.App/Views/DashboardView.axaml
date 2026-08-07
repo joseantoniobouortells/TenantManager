@@ -14,38 +14,38 @@
         <ScrollViewer>
             <StackPanel Spacing="24">
                 <!-- Visual Charts Grid -->
-                <Grid ColumnDefinitions="1.2*,1.5*,1*" Margin="0">
-                    <!-- Card 1: Room Occupancy -->
+                <Grid ColumnDefinitions="1.5*,1.5*,1.2*" Margin="0">
+                    <!-- Card 1: Property Occupancy -->
                     <Border Classes="Card" Grid.Column="0" Margin="0 0 16 0" Height="220">
                         <DockPanel>
-                            <TextBlock Text="{DynamicResource RoomOccupancyLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
+                            <TextBlock Text="{DynamicResource PropertyOccupancyLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
                             <Grid ColumnDefinitions="Auto,*">
                                 <!-- Progress Ring -->
                                 <Grid Grid.Column="0" Width="110" Height="110" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 16 0">
                                     <Arc Stroke="{DynamicResource TableBorderBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="0" SweepAngle="360" />
-                                    <Arc Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="-90" SweepAngle="{Binding Dashboard.OccupancySweepAngle}" StrokeLineCap="Round" />
-                                    <TextBlock Text="{Binding Dashboard.OccupancyPercentageString}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <Arc Stroke="{DynamicResource PrimaryBrush}" StrokeThickness="10" Width="90" Height="90" StartAngle="-90" SweepAngle="{Binding Dashboard.UnitOccupancySweepAngle}" StrokeLineCap="Round" />
+                                    <TextBlock Text="{Binding Dashboard.UnitOccupancyPercentageString}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
                                 <!-- Stats Details -->
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
-                                        <TextBlock Text="{DynamicResource TotalRoomsLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
-                                        <TextBlock Text="{Binding Dashboard.TotalRooms}" FontWeight="Bold" Margin="8 0 0 0" HorizontalAlignment="Right" />
+                                        <TextBlock Text="{DynamicResource RoomsTitle}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.RoomsOccupancyText}" FontWeight="Bold" Margin="8 0 0 0" HorizontalAlignment="Right" />
                                     </StackPanel>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{DynamicResource OccupiedText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
-                                        <TextBlock Text="{Binding Dashboard.OccupiedRoomsCount}" FontWeight="Bold" Foreground="{DynamicResource PrimaryBrush}" Margin="8 0 0 0" />
+                                        <TextBlock Text="{DynamicResource GarageSpotsTitle}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.GarageSpotsOccupancyText}" FontWeight="Bold" Margin="8 0 0 0" />
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{DynamicResource AvailableText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
-                                        <TextBlock Text="{Binding Dashboard.AvailableRoomsCount}" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="8 0 0 0" />
+                                    <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
+                                        <TextBlock Text="{DynamicResource TotalAvailableText}" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12" />
+                                        <TextBlock Text="{Binding Dashboard.AvailableUnitsCount}" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" Margin="8 0 0 0" />
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </DockPanel>
                     </Border>
 
-                    <!-- Card 2: Payment Distribution (Total Donut) -->
+                    <!-- Card 3: Payment Distribution (Total Donut) -->
                     <Border Classes="Card" Grid.Column="1" Margin="0 0 16 0" Height="220">
                         <DockPanel>
                             <TextBlock Text="{DynamicResource PaymentStatusLabel}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 12" />
@@ -85,8 +85,8 @@
                         </DockPanel>
                     </Border>
 
-                    <!-- Card 3: Estimated Next Month Income -->
-                    <Border Classes="Card" Grid.Column="2" Margin="16 0 0 0" Height="220">
+                    <!-- Card 4: Estimated Next Month Income -->
+                    <Border Classes="Card" Grid.Column="2" Margin="0 0 0 0" Height="220">
                         <DockPanel>
                             <TextBlock Text="{DynamicResource EstimatedIncomeTitle}" Classes="H2" DockPanel.Dock="Top" Margin="0 0 0 16" />
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">

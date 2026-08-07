@@ -65,8 +65,8 @@ public static class SemanticDomainResolver
     public static HashSet<int> GetOccupiedRoomIds(List<RentalContract> contracts, List<RentalContractExtension> extensions, DateTimeOffset now)
     {
         return contracts
-            .Where(c => c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now))
-            .Select(c => c.RoomId)
+            .Where(c => c.StartDate <= now && (GetEffectiveEndDate(c, extensions) == null || GetEffectiveEndDate(c, extensions) >= now) && c.RoomId.HasValue)
+            .Select(c => c.RoomId!.Value)
             .ToHashSet();
     }
 

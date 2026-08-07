@@ -126,6 +126,11 @@
                 <views:RoomsView />
             </TabItem>
 
+            <!-- GARAGE SPOTS -->
+            <TabItem Header="{DynamicResource GarageSpotsTab}">
+                <views:GarageSpotsView />
+            </TabItem>
+
             <!-- TENANTS -->
             <TabItem Header="{DynamicResource TenantsTab}">
                 <views:TenantsView />

@@ -33,6 +33,8 @@ public class ContractListViewModel : ViewModelBase
     private bool _isEditing;
     private Tenant? _editSelectedTenant;
     private Room? _editSelectedRoom;
+    private GarageSpot? _editSelectedGarageSpot;
+    private bool _isGarageContract;
     private string _editFilePath = string.Empty;
     private byte[]? _editFileContent;
     private DateTimeOffset? _editStartDate;
@@ -51,6 +53,7 @@ public class ContractListViewModel : ViewModelBase
         Contracts = new ObservableCollection<ContractDisplayItem>();
         AvailableTenants = new ObservableCollection<Tenant>();
         AvailableRooms = new ObservableCollection<Room>();
+        AvailableGarageSpots = new ObservableCollection<GarageSpot>();
         AvailableExpenseTypes = new ObservableCollection<ExpensePaymentType>(Enum.GetValues<ExpensePaymentType>());
         Extensions = new ObservableCollection<RentalContractExtension>();
 
@@ -83,6 +86,7 @@ public class ContractListViewModel : ViewModelBase
     public ObservableCollection<ContractDisplayItem> Contracts { get; }
     public ObservableCollection<Tenant> AvailableTenants { get; }
     public ObservableCollection<Room> AvailableRooms { get; }
+    public ObservableCollection<GarageSpot> AvailableGarageSpots { get; }
     public ObservableCollection<ExpensePaymentType> AvailableExpenseTypes { get; }
     public ObservableCollection<ContractExpensePercentageOverride> EditExpenseOverrides { get; }
     public ObservableCollection<ExpenseCategory> AvailableExpenseCategories { get; }
@@ -144,6 +148,18 @@ public class ContractListViewModel : ViewModelBase
     {
         get => _editSelectedRoom;
         set => SetProperty(ref _editSelectedRoom, value);
+    }
+
+    public GarageSpot? EditSelectedGarageSpot
+    {
+        get => _editSelectedGarageSpot;
+        set => SetProperty(ref _editSelectedGarageSpot, value);
+    }
+
+    public bool IsGarageContract
+    {
+        get => _isGarageContract;
+        set => SetProperty(ref _isGarageContract, value);
     }
 
     public string EditFilePath
@@ -327,6 +343,7 @@ public class ContractListViewModel : ViewModelBase
         _db.ChangeTracker.Clear();
         LoadAvailableTenants();
         LoadAvailableRooms();
+        LoadAvailableGarageSpots();
 
         var tenantLookup = _db.Tenants.ToDictionary(t => t.Id, t => t.FullName);
         var roomLookup = _db.Rooms.ToDictionary(r => r.Id, r => r.Name);
@@ -351,7 +368,7 @@ public class ContractListViewModel : ViewModelBase
             {
                 Contract = contract,
                 TenantName = tenantLookup.TryGetValue(contract.TenantId, out var name) ? name : $"(id={contract.TenantId})",
-                RoomName = roomLookup.TryGetValue(contract.RoomId, out var rName) ? rName : $"(id={contract.RoomId})",
+                RoomName = contract.RoomId.HasValue && roomLookup.TryGetValue(contract.RoomId.Value, out var rName) ? rName : (contract.GarageSpotId.HasValue ? $"(Garaje {contract.GarageSpotId})" : "(Sin unidad)"),
                 FileExists = exists,
                 FileStatus = exists ? "Yes" : "No",
                 StartDate = contract.StartDate,
@@ -479,12 +496,23 @@ public class ContractListViewModel : ViewModelBase
         }
     }
 
+    private void LoadAvailableGarageSpots()
+    {
+        AvailableGarageSpots.Clear();
+        foreach (var spot in _db.GarageSpots.Where(s => s.IsActive && s.PropertyId == _currentPropertyId).OrderBy(s => s.Name))
+        {
+            AvailableGarageSpots.Add(spot);
+        }
+    }
+
     private void StartNewContract()
     {
         SelectedItem = null;
         _editingContract = null;
+        IsGarageContract = false;
         EditSelectedTenant = AvailableTenants.FirstOrDefault();
         EditSelectedRoom = AvailableRooms.FirstOrDefault();
+        EditSelectedGarageSpot = AvailableGarageSpots.FirstOrDefault();
         EditFilePath = string.Empty;
         EditFileContent = null;
         EditStartDate = null;
@@ -512,8 +540,10 @@ public class ContractListViewModel : ViewModelBase
             return;
 
         _editingContract = SelectedItem.Contract;
+        IsGarageContract = _editingContract.GarageSpotId.HasValue;
         EditSelectedTenant = AvailableTenants.FirstOrDefault(t => t.Id == _editingContract.TenantId);
         EditSelectedRoom = AvailableRooms.FirstOrDefault(r => r.Id == _editingContract.RoomId);
+        EditSelectedGarageSpot = AvailableGarageSpots.FirstOrDefault(g => g.Id == _editingContract.GarageSpotId);
         EditFilePath = _editingContract.FilePath;
         EditFileContent = _editingContract.FileContent;
         EditStartDate = _editingContract.StartDate != default
@@ -557,8 +587,19 @@ public class ContractListViewModel : ViewModelBase
 
     private void SaveContract()
     {
-        if (EditSelectedTenant == null || EditSelectedRoom == null || EditEndDate == null)
+        if (EditSelectedTenant == null || EditEndDate == null)
             return;
+
+        if (IsGarageContract && EditSelectedGarageSpot == null) return;
+        if (!IsGarageContract && EditSelectedRoom == null) return;
+
+        if (IsGarageContract)
+        {
+            EditExpensePaymentType = ExpensePaymentType.Variable; // Doesn't matter much since values will be 0
+            EditFixedExpenseAmount = 0;
+            EditVariableExpensePercentage = 0;
+            EditExpenseOverrides.Clear();
+        }
 
         if (_editingContract == null)
         {
@@ -566,7 +607,8 @@ public class ContractListViewModel : ViewModelBase
             {
                 PropertyId = _currentPropertyId,
                 TenantId = EditSelectedTenant.Id,
-                RoomId = EditSelectedRoom.Id,
+                RoomId = !IsGarageContract ? EditSelectedRoom!.Id : null,
+                GarageSpotId = IsGarageContract ? EditSelectedGarageSpot!.Id : null,
                 FilePath = EditFilePath.Trim(),
                 FileContent = EditFileContent,
                 StartDate = EditStartDate ?? DateTimeOffset.Now,
@@ -584,7 +626,8 @@ public class ContractListViewModel : ViewModelBase
         else
         {
             _editingContract.TenantId = EditSelectedTenant.Id;
-            _editingContract.RoomId = EditSelectedRoom.Id;
+            _editingContract.RoomId = !IsGarageContract ? EditSelectedRoom!.Id : null;
+            _editingContract.GarageSpotId = IsGarageContract ? EditSelectedGarageSpot!.Id : null;
             _editingContract.FilePath = EditFilePath.Trim();
             _editingContract.FileContent = EditFileContent;
             _editingContract.StartDate = EditStartDate ?? DateTimeOffset.Now;
@@ -641,6 +684,8 @@ public class ContractListViewModel : ViewModelBase
         _editingContract = null;
         EditSelectedTenant = null;
         EditSelectedRoom = null;
+        EditSelectedGarageSpot = null;
+        IsGarageContract = false;
         EditFilePath = string.Empty;
         EditFileContent = null;
         EditStartDate = null;

@@ -61,9 +61,12 @@ public class DashboardViewModel : ViewModelBase
     private readonly AppDbContext _db;
     private int _totalRooms;
     private int _occupiedRooms;
+    private int _totalGarageSpots;
+    private int _occupiedGarageSpots;
     private int _activeTenants;
 
     private int _availableRoomsCount;
+    private int _availableGarageSpotsCount;
     private decimal _expectedIncome;
     private decimal _collectedIncome;
 
@@ -77,7 +80,7 @@ public class DashboardViewModel : ViewModelBase
     private double _pendingSweepAngle;
     private double _partialStartAngle;
     private double _partialSweepAngle;
-    private double _occupancySweepAngle;
+    private double _unitOccupancySweepAngle;
     private double _incomeSweepAngle;
 
     private IntervalOption _selectedInterval = null!;
@@ -137,6 +140,18 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _occupiedRooms, value);
     }
 
+    public int TotalGarageSpots
+    {
+        get => _totalGarageSpots;
+        set => SetProperty(ref _totalGarageSpots, value);
+    }
+
+    public int OccupiedGarageSpotsCount
+    {
+        get => _occupiedGarageSpots;
+        set => SetProperty(ref _occupiedGarageSpots, value);
+    }
+
     public int ActiveTenants
     {
         get => _activeTenants;
@@ -154,6 +169,12 @@ public class DashboardViewModel : ViewModelBase
     {
         get => _availableRoomsCount;
         set => SetProperty(ref _availableRoomsCount, value);
+    }
+
+    public int AvailableGarageSpotsCount
+    {
+        get => _availableGarageSpotsCount;
+        set => SetProperty(ref _availableGarageSpotsCount, value);
     }
 
     public decimal ExpectedIncome
@@ -252,10 +273,10 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _partialSweepAngle, value);
     }
 
-    public double OccupancySweepAngle
+    public double UnitOccupancySweepAngle
     {
-        get => _occupancySweepAngle;
-        set => SetProperty(ref _occupancySweepAngle, value);
+        get => _unitOccupancySweepAngle;
+        set => SetProperty(ref _unitOccupancySweepAngle, value);
     }
 
     public double IncomeSweepAngle
@@ -264,7 +285,14 @@ public class DashboardViewModel : ViewModelBase
         set => SetProperty(ref _incomeSweepAngle, value);
     }
 
-    public string OccupancyPercentageString => TotalRooms > 0 ? $"{(int)Math.Round(((double)OccupiedRoomsCount / TotalRooms) * 100)}%" : "0%";
+    public int TotalUnits => TotalRooms + TotalGarageSpots;
+    public int OccupiedUnitsCount => OccupiedRoomsCount + OccupiedGarageSpotsCount;
+    public int AvailableUnitsCount => AvailableRoomsCount + AvailableGarageSpotsCount;
+
+    public string UnitOccupancyPercentageString => TotalUnits > 0 ? $"{(int)Math.Round(((double)OccupiedUnitsCount / TotalUnits) * 100)}%" : "0%";
+    
+    public string RoomsOccupancyText => $"{OccupiedRoomsCount} / {TotalRooms}";
+    public string GarageSpotsOccupancyText => $"{OccupiedGarageSpotsCount} / {TotalGarageSpots}";
 
     public string IncomeCollectedPercentageString => ExpectedIncome > 0 ? $"{(int)Math.Round(((double)CollectedIncome / (double)ExpectedIncome) * 100)}%" : "0%";
 
@@ -281,9 +309,11 @@ public class DashboardViewModel : ViewModelBase
         var currentMonth = now.Month;
 
         var rooms = _db.Rooms.Where(r => r.PropertyId == propertyId).ToList();
+        var garageSpots = _db.GarageSpots.Where(s => s.PropertyId == propertyId).ToList();
         var allTenants = _db.Tenants.Where(t => t.PropertyId == propertyId).ToList();
 
         TotalRooms = rooms.Count;
+        TotalGarageSpots = garageSpots.Count;
 
         var propertyContracts = _db.RentalContracts.Where(c => c.PropertyId == propertyId).ToList();
         var propertyContractIds = propertyContracts.Select(c => c.Id).ToList();
@@ -297,14 +327,23 @@ public class DashboardViewModel : ViewModelBase
             .ToList();
 
         var occupiedRoomIds = activeContracts
-            .Select(c => c.RoomId)
+            .Where(c => c.RoomId.HasValue)
+            .Select(c => c.RoomId!.Value)
+            .Distinct()
+            .ToHashSet();
+            
+        var occupiedGarageSpotIds = activeContracts
+            .Where(c => c.GarageSpotId.HasValue)
+            .Select(c => c.GarageSpotId!.Value)
             .Distinct()
             .ToHashSet();
 
         OccupiedRoomsCount = occupiedRoomIds.Count;
+        OccupiedGarageSpotsCount = occupiedGarageSpotIds.Count;
         ActiveTenants = activeContracts.Select(c => c.TenantId).Distinct().Count();
 
         AvailableRoomsCount = TotalRooms - OccupiedRoomsCount;
+        AvailableGarageSpotsCount = TotalGarageSpots - OccupiedGarageSpotsCount;
 
         var nextMonthDate = now.AddMonths(1);
         int daysInNextMonth = DateTime.DaysInMonth(nextMonthDate.Year, nextMonthDate.Month);
@@ -349,7 +388,7 @@ public class DashboardViewModel : ViewModelBase
         {
             var tenant = allTenants.FirstOrDefault(t => t.Id == contract.TenantId);
             if (tenant == null) continue;
-            var roomName = roomLookup.TryGetValue(contract.RoomId, out var rn) ? rn.Name : $"(id={contract.RoomId})";
+            var roomName = contract.RoomId.HasValue && roomLookup.TryGetValue(contract.RoomId.Value, out var rn) ? rn.Name : (contract.GarageSpotId.HasValue ? $"(Garaje {contract.GarageSpotId})" : "(Sin unidad)");
             OccupiedRooms.Add(new RoomOccupancyItem
             {
                 RoomName = roomName,
@@ -519,7 +558,7 @@ public class DashboardViewModel : ViewModelBase
         // Keep Pending angles at 0 for compatibility with existing XAML bindings
         PendingSweepAngle = 0; PendingStartAngle = -90;
 
-        OccupancySweepAngle = (TotalRooms > 0) ? ((double)OccupiedRoomsCount / TotalRooms) * 360.0 : 0.0;
+        UnitOccupancySweepAngle = (TotalUnits > 0) ? ((double)OccupiedUnitsCount / TotalUnits) * 360.0 : 0.0;
         IncomeSweepAngle = (ExpectedIncome > 0) ? (double)(CollectedIncome / ExpectedIncome) * 360.0 : 0.0;
 
         // Calculate Monthly Bar Chart items (Income vs Expenses) for SelectedInterval
@@ -644,7 +683,12 @@ public class DashboardViewModel : ViewModelBase
             MonthlyBarChartItems.Add(item);
         }
 
-        OnPropertyChanged(nameof(OccupancyPercentageString));
+        OnPropertyChanged(nameof(UnitOccupancyPercentageString));
+        OnPropertyChanged(nameof(RoomsOccupancyText));
+        OnPropertyChanged(nameof(GarageSpotsOccupancyText));
+        OnPropertyChanged(nameof(TotalUnits));
+        OnPropertyChanged(nameof(OccupiedUnitsCount));
+        OnPropertyChanged(nameof(AvailableUnitsCount));
         OnPropertyChanged(nameof(IncomeCollectedPercentageString));
 
         OnPropertyChanged(nameof(HasNoPendingPayments));
