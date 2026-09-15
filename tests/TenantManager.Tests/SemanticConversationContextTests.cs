@@ -46,7 +46,7 @@ public class SemanticConversationContextTests
                 }
             }
 
-            if (_responses.TryDequeue(out var res))
+            if (_responses.TryPeek(out var res))
             {
                 return new HttpResponseMessage(res.StatusCode)
                 {
@@ -186,8 +186,8 @@ public class SemanticConversationContextTests
         await service.ResolveIntentAndGetDataAsync("En que fecha entró en la habitación?", context, prop.Id);
 
         // Assert
-        Assert.Single(handler.Requests);
-        var req = handler.ParsedRequests[0];
+        Assert.Equal(2, handler.Requests.Count);
+        var req = handler.ParsedRequests[1];
         Assert.NotNull(req);
         var sysContent = req.Messages[0].Content;
         

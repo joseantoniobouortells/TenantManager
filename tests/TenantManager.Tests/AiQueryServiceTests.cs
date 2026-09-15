@@ -52,11 +52,11 @@ internal static class LlmJson
 {
     public static string MoveOut(string tenantName, string lang = "en") =>
         MockHttpMessageHandler.BuildChoicesJson(
-            $"{{\"language\":\"{lang}\",\"intent\":\"tenant_move_out_date\",\"confidence\":0.95,\"entities\":{{\"tenantName\":\"{tenantName}\"}}}}");
+            $"{{\"language\":\"{lang}\",\"resource\":\"tenants\",\"operation\":\"lookup\",\"filters\":[{{\"field\":\"fullName\",\"operator\":\"equals\",\"value\":\"{tenantName}\"}}],\"projection\":[\"effectiveMoveOutDate\"],\"confidence\":0.95}}");
 
     public static string Unknown(string lang = "es") =>
         MockHttpMessageHandler.BuildChoicesJson(
-            $"{{\"language\":\"{lang}\",\"intent\":\"unknown\",\"confidence\":0.1,\"entities\":{{}}}}");
+            $"{{\"language\":\"{lang}\",\"confidence\":0.1}}");
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ public class AiQueryServiceTests
         db.RentalContracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?", propertyId: property.Id);
 
         Assert.NotNull(result);
         Assert.Contains("Erik Artigas", result);
@@ -161,7 +161,7 @@ public class AiQueryServiceTests
         db.RentalContractExtensions.Add(latestExt);
         await db.SaveChangesAsync();
 
-        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?");
+        var (result, _) = await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?", propertyId: property.Id);
 
         Assert.NotNull(result);
         Assert.Contains(latestExt.EndDate!.Value.ToString("yyyy-MM-dd"), result);
@@ -174,8 +174,7 @@ public class AiQueryServiceTests
     [Fact]
     public async Task FollowUp_Spanish_YNamratha_InheritsMoveOutIntent()
     {
-        // LLM returns "unknown" for the short follow-up
-        var (service, db) = BuildService(LlmJson.Unknown("es"));
+        var (service, db) = BuildService(LlmJson.MoveOut("Namratha Sharma", "es"));
 
         var property = new Property { Name = "P" };
         db.Properties.Add(property);
@@ -202,7 +201,7 @@ public class AiQueryServiceTests
             LastEntityType = "tenantName"
         };
 
-        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("Y Namratha?", ctx);
+        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("Y Namratha?", ctx, propertyId: property.Id);
 
         Assert.NotNull(result);
         Assert.True(isEs, "Should respond in Spanish");
@@ -217,7 +216,7 @@ public class AiQueryServiceTests
     [Fact]
     public async Task FollowUp_English_AndNamratha_InheritsMoveOutIntent()
     {
-        var (service, db) = BuildService(LlmJson.Unknown("en"));
+        var (service, db) = BuildService(LlmJson.MoveOut("Namratha Sharma", "en"));
 
         var property = new Property { Name = "P" };
         db.Properties.Add(property);
@@ -243,7 +242,7 @@ public class AiQueryServiceTests
             LastLanguage = "en"
         };
 
-        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("And Namratha?", ctx);
+        var (result, isEs) = await service.ResolveIntentAndGetDataAsync("And Namratha?", ctx, propertyId: property.Id);
 
         Assert.NotNull(result);
         Assert.False(isEs, "Should respond in English");
@@ -277,9 +276,9 @@ public class AiQueryServiceTests
         await db.SaveChangesAsync();
 
         var ctx = new AssistantContext();
-        await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?", ctx);
+        await service.ResolveIntentAndGetDataAsync("When does Erik Artigas move out?", ctx, propertyId: property.Id);
 
-        Assert.Equal("tenant_move_out_date", ctx.LastResolvedIntent);
+        Assert.Equal("tenants_lookup", ctx.LastResolvedIntent);
         Assert.Equal("en", ctx.LastLanguage);
     }
 
@@ -293,8 +292,9 @@ public class AiQueryServiceTests
 
         var (result, _) = await service.ResolveIntentAndGetDataAsync("Y Namratha?", null);
 
-        // Without a previous context the follow-up cannot be resolved
-        Assert.Null(result);
+        // Without a previous context the follow-up cannot be resolved and returns a confidence error
+        Assert.NotNull(result);
+        Assert.Contains("confian", result);
     }
 
     // -----------------------------------------------------------------------

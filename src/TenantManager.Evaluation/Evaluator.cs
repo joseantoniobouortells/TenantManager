@@ -44,19 +44,42 @@ public class ExecutionObserver : IAssistantExecutionObserver
 public class Evaluator
 {
     private readonly string _endpoint;
-    private readonly string _model;
+    private readonly List<string> _models;
     
-    public Evaluator(string endpoint, string model)
+    public Evaluator(string endpoint, List<string> models)
     {
         _endpoint = endpoint;
-        _model = model;
+        _models = models;
     }
 
-    public async Task<int> RunLiveAsync()
+    public async Task<int> RunAllModelsAsync()
+    {
+        var results = new Dictionary<string, int>();
+        foreach (var model in _models)
+        {
+            Console.WriteLine($"\n--- Evaluating Model: {model} ---");
+            results[model] = await EvaluateModelAsync(model);
+        }
+        
+        GenerateSummary(results);
+        return results.Values.Any(r => r != 0) ? 1 : 0;
+    }
+
+    private void GenerateSummary(Dictionary<string, int> results)
+    {
+        Console.WriteLine("\n===========================");
+        Console.WriteLine("Evaluation Summary:");
+        foreach (var res in results)
+        {
+            Console.WriteLine($"{res.Key}: {(res.Value == 0 ? "PASSED" : "FAILED")}");
+        }
+        Console.WriteLine("===========================");
+    }
+
+    private async Task<int> EvaluateModelAsync(string model)
     {
         Console.WriteLine($"Running live evaluation against endpoint: {_endpoint}");
         
-        // Setup SQLite memory DB and apply deterministic fixture
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite("Data Source=:memory:")
             .Options;
@@ -67,8 +90,7 @@ public class Evaluator
         
         await LoadFixtureAsync(db, "evaluation/data/deterministic-fixture.json");
         
-        // Configure SettingsPersistence with the endpoint and model
-        SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = _endpoint, AiModelName = _model });
+        SettingsPersistence.SaveSettings(new AppSettings { IsAiEnabled = true, AiEndpoint = _endpoint, AiModelName = model });
 
         var client = new LocalAiClient();
         var observer = new ExecutionObserver();
@@ -98,7 +120,6 @@ public class Evaluator
                 Console.WriteLine($"\nRunning scenario: {scenario.Id} ({scenario.Language})");
                 var context = new AssistantContext();
                 
-                // Process ReferenceDate for clock
                 DateTimeOffset referenceDate = DateTimeOffset.Now;
                 if (!string.IsNullOrEmpty(scenario.ReferenceDate) && DateTimeOffset.TryParse(scenario.ReferenceDate, out var dt))
                 {
@@ -112,7 +133,7 @@ public class Evaluator
                     
                     try
                     {
-                        var (answer, isEs) = await aiService.ResolveIntentAndGetDataAsync(message.Text, context, propertyId: 1);
+                        var (answer, isEs) = await aiService.ResolveIntentAndGetDataAsync(message.Text, context, propertyId: 1, clock: () => referenceDate);
                         
                         var errors = Evaluator.AssertOutcome(message.Expected, observer, answer);
                         if (errors.Any())
@@ -145,14 +166,12 @@ public class Evaluator
             }
         }
         
-        Console.WriteLine($"\nLive evaluation complete. Passed: {passed}, Failed: {failed}");
+        Console.WriteLine($"\nEvaluation complete for {model}. Passed: {passed}, Failed: {failed}");
         return failed > 0 ? 1 : 0;
     }
     
     private async Task LoadFixtureAsync(AppDbContext db, string path)
     {
-        // For simplicity, we create dummy records if needed, but wait! The user rule says we have to load deterministic-fixture.json.
-        // We will parse it and insert entities.
         var json = await File.ReadAllTextAsync(path);
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
@@ -217,7 +236,6 @@ public class Evaluator
                     Amount = e.GetProperty("amount").GetDecimal()
                 });
         }
-        // Save to auto-generate IDs or disable IDENTITY
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = OFF;");
         await db.SaveChangesAsync();
         await db.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys = ON;");

@@ -10,6 +10,13 @@ using TenantManager.App.Domain;
 
 namespace TenantManager.App.ViewModels;
 
+public enum ContractStatusFilter
+{
+    Active,
+    Expired,
+    All
+}
+
 public class ContractDisplayItem
 {
     public RentalContract Contract { get; init; } = null!;
@@ -17,8 +24,13 @@ public class ContractDisplayItem
     public string RoomName { get; set; } = string.Empty;
     public string FileStatus { get; set; } = string.Empty;
     public bool FileExists { get; set; }
+    public bool HasFile => FileExists;
     public DateTimeOffset StartDate { get; set; }
     public DateTimeOffset? EndDate { get; set; }
+    public decimal MonthlyRent { get; set; }
+    public decimal DepositAmount { get; set; }
+    public int PaymentDay { get; set; } = 1;
+    public int ExtensionCount { get; set; }
     
     public bool IsActive => StartDate.Date <= DateTime.Today && (!EndDate.HasValue || EndDate.Value.Date >= DateTime.Today);
 }
@@ -28,6 +40,7 @@ public class ContractListViewModel : ViewModelBase
     private readonly AppDbContext _db;
     private List<ContractDisplayItem> _allContracts = new();
     private string _searchQuery = string.Empty;
+    private ContractStatusFilter _selectedStatusFilter = ContractStatusFilter.Active;
     private ContractDisplayItem? _selectedItem;
     private RentalContract? _editingContract;
     private bool _isEditing;
@@ -47,14 +60,19 @@ public class ContractListViewModel : ViewModelBase
     private string? _editNotes;
     private int _currentPropertyId;
 
-    public ContractListViewModel()
+    public ContractListViewModel() : this(new AppDbContext())
     {
-        _db = new AppDbContext();
+    }
+
+    public ContractListViewModel(AppDbContext db)
+    {
+        _db = db;
         Contracts = new ObservableCollection<ContractDisplayItem>();
         AvailableTenants = new ObservableCollection<Tenant>();
         AvailableRooms = new ObservableCollection<Room>();
         AvailableGarageSpots = new ObservableCollection<GarageSpot>();
         AvailableExpenseTypes = new ObservableCollection<ExpensePaymentType>(Enum.GetValues<ExpensePaymentType>());
+        AvailableStatusFilters = new ObservableCollection<ContractStatusFilter>(Enum.GetValues<ContractStatusFilter>());
         Extensions = new ObservableCollection<RentalContractExtension>();
 
         EditExpenseOverrides = new ObservableCollection<ContractExpensePercentageOverride>();
@@ -65,7 +83,7 @@ public class ContractListViewModel : ViewModelBase
         EditContractCommand = new RelayCommand(_ => EditContract());
         SaveContractCommand = new RelayCommand(_ => SaveContract());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        OpenFileCommand = new RelayCommand(_ => OpenFile());
+        OpenFileCommand = new RelayCommand(param => OpenFile(param));
         DeleteContractCommand = new RelayCommand(param => DeleteContract(param));
         SortCommand = new RelayCommand(field => Sort(field as string));
         ConfirmDeleteContractCommand = new RelayCommand(_ => ConfirmDeleteContract());
@@ -88,9 +106,22 @@ public class ContractListViewModel : ViewModelBase
     public ObservableCollection<Room> AvailableRooms { get; }
     public ObservableCollection<GarageSpot> AvailableGarageSpots { get; }
     public ObservableCollection<ExpensePaymentType> AvailableExpenseTypes { get; }
+    public ObservableCollection<ContractStatusFilter> AvailableStatusFilters { get; }
     public ObservableCollection<ContractExpensePercentageOverride> EditExpenseOverrides { get; }
     public ObservableCollection<ExpenseCategory> AvailableExpenseCategories { get; }
     public ObservableCollection<RentalContractExtension> Extensions { get; }
+
+    public ContractStatusFilter SelectedStatusFilter
+    {
+        get => _selectedStatusFilter;
+        set
+        {
+            if (SetProperty(ref _selectedStatusFilter, value))
+            {
+                ApplyFiltersAndSort();
+            }
+        }
+    }
 
     public RelayCommand LoadContractsCommand { get; }
     public RelayCommand NewContractCommand { get; }
@@ -372,7 +403,11 @@ public class ContractListViewModel : ViewModelBase
                 FileExists = exists,
                 FileStatus = exists ? "Yes" : "No",
                 StartDate = contract.StartDate,
-                EndDate = displayEndDate
+                EndDate = displayEndDate,
+                MonthlyRent = contract.MonthlyRent,
+                DepositAmount = contract.DepositAmount,
+                PaymentDay = contract.PaymentDay,
+                ExtensionCount = contractExtensions.Count
             });
         }
 
@@ -393,12 +428,22 @@ public class ContractListViewModel : ViewModelBase
     {
         var filtered = _allContracts.AsEnumerable();
 
+        if (SelectedStatusFilter == ContractStatusFilter.Active)
+        {
+            filtered = filtered.Where(i => i.IsActive);
+        }
+        else if (SelectedStatusFilter == ContractStatusFilter.Expired)
+        {
+            filtered = filtered.Where(i => !i.IsActive);
+        }
+
         if (!string.IsNullOrWhiteSpace(SearchQuery))
         {
             var q = SearchQuery.ToLowerInvariant();
             filtered = filtered.Where(i => 
                 (i.TenantName?.ToLowerInvariant().Contains(q) ?? false) ||
-                (i.RoomName?.ToLowerInvariant().Contains(q) ?? false));
+                (i.RoomName?.ToLowerInvariant().Contains(q) ?? false) ||
+                (i.Contract.Notes?.ToLowerInvariant().Contains(q) ?? false));
         }
 
         IEnumerable<ContractDisplayItem> sorted;
@@ -413,6 +458,12 @@ public class ContractListViewModel : ViewModelBase
             sorted = _isSortAscending 
                 ? filtered.OrderBy(i => i.EndDate ?? DateTimeOffset.MaxValue) 
                 : filtered.OrderByDescending(i => i.EndDate ?? DateTimeOffset.MinValue);
+        }
+        else if (_currentSortField == "MonthlyRent")
+        {
+            sorted = _isSortAscending 
+                ? filtered.OrderBy(i => i.MonthlyRent) 
+                : filtered.OrderByDescending(i => i.MonthlyRent);
         }
         else
         {
@@ -446,6 +497,7 @@ public class ContractListViewModel : ViewModelBase
     public string TenantSortIndicator => GetSortIndicator("Tenant");
     public string StartDateSortIndicator => GetSortIndicator("StartDate");
     public string EndDateSortIndicator => GetSortIndicator("EndDate");
+    public string MonthlyRentSortIndicator => GetSortIndicator("MonthlyRent");
 
     private string GetSortIndicator(string field)
     {
@@ -458,6 +510,7 @@ public class ContractListViewModel : ViewModelBase
         OnPropertyChanged(nameof(TenantSortIndicator));
         OnPropertyChanged(nameof(StartDateSortIndicator));
         OnPropertyChanged(nameof(EndDateSortIndicator));
+        OnPropertyChanged(nameof(MonthlyRentSortIndicator));
     }
 
     public void Sort(string? field)
@@ -702,24 +755,25 @@ public class ContractListViewModel : ViewModelBase
         SelectedItem = null;
     }
 
-    private void OpenFile()
+    private void OpenFile(object? param = null)
     {
-        if (SelectedItem == null || !SelectedItem.FileExists)
+        var targetItem = (param as ContractDisplayItem) ?? SelectedItem;
+        if (targetItem == null || !targetItem.FileExists)
             return;
 
         try
         {
-            string targetPath = SelectedItem.Contract.FilePath;
+            string targetPath = targetItem.Contract.FilePath;
 
-            if (SelectedItem.Contract.FileContent != null && SelectedItem.Contract.FileContent.Length > 0)
+            if (targetItem.Contract.FileContent != null && targetItem.Contract.FileContent.Length > 0)
             {
                 var tempDir = Path.Combine(Path.GetTempPath(), "TenantManagerContracts");
                 Directory.CreateDirectory(tempDir);
                 
-                var fileName = string.IsNullOrWhiteSpace(targetPath) ? $"contract_{SelectedItem.Contract.Id}.pdf" : Path.GetFileName(targetPath);
+                var fileName = string.IsNullOrWhiteSpace(targetPath) ? $"contract_{targetItem.Contract.Id}.pdf" : Path.GetFileName(targetPath);
                 targetPath = Path.Combine(tempDir, fileName);
                 
-                File.WriteAllBytes(targetPath, SelectedItem.Contract.FileContent);
+                File.WriteAllBytes(targetPath, targetItem.Contract.FileContent);
             }
 
             Process.Start(new ProcessStartInfo

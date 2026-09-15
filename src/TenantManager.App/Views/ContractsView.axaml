@@ -10,7 +10,16 @@
         <DockPanel IsEnabled="{Binding !ContractList.IsConfirmingDeleteContract}">
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="0 0 0 24">
             <TextBlock Grid.Column="0" Classes="H1" Text="{DynamicResource ContractsTitle}" Margin="0" VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <ComboBox ItemsSource="{Binding ContractList.AvailableStatusFilters}" 
+                          SelectedItem="{Binding ContractList.SelectedStatusFilter}"
+                          Width="140" VerticalAlignment="Center" ToolTip.Tip="{DynamicResource FilterContractsTooltip}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource ContractStatusConverter}}" />
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
                 <TextBox Text="{Binding ContractList.SearchQuery}" PlaceholderText="{DynamicResource SearchContractPlaceholder}" Width="200" VerticalAlignment="Center" />
                 <Button Content="{DynamicResource NewContractButton}" Command="{Binding ContractList.NewContractCommand}" Classes="Primary" />
             </StackPanel>
@@ -134,7 +143,7 @@
 
                 <!-- List/Table Container -->
                 <DockPanel IsVisible="{Binding !ContractList.IsEditing}">
-                    <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,Auto" Margin="16 0 16 8">
+                    <Grid DockPanel.Dock="Top" ColumnDefinitions="1.5*,1*,1*,1*,1*,Auto,Auto" Margin="16 0 16 8">
                          <Button Grid.Column="0" Command="{Binding ContractList.SortCommand}" CommandParameter="Tenant" 
                                  Background="Transparent" BorderThickness="0" Padding="0" Margin="0" VerticalAlignment="Center" HorizontalAlignment="Left" Cursor="Hand">
                              <StackPanel Orientation="Horizontal" Spacing="4">
@@ -142,30 +151,36 @@
                                  <TextBlock Text="{Binding ContractList.TenantSortIndicator}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" />
                              </StackPanel>
                          </Button>
-                         <TextBlock Grid.Column="1" Text="{DynamicResource RoomHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                         <TextBlock Grid.Column="2" Text="{DynamicResource FilePathHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                         <TextBlock Grid.Column="3" Text="{DynamicResource FileStatusHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
-                         <Button Grid.Column="4" Command="{Binding ContractList.SortCommand}" CommandParameter="StartDate" 
+                         <TextBlock Grid.Column="1" Text="{DynamicResource RoomHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" VerticalAlignment="Center" />
+                         <Button Grid.Column="2" Command="{Binding ContractList.SortCommand}" CommandParameter="MonthlyRent" 
+                                 Background="Transparent" BorderThickness="0" Padding="0" Margin="0" VerticalAlignment="Center" HorizontalAlignment="Left" Cursor="Hand">
+                             <StackPanel Orientation="Horizontal" Spacing="4">
+                                 <TextBlock Text="{DynamicResource RentHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
+                                 <TextBlock Text="{Binding ContractList.MonthlyRentSortIndicator}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" />
+                             </StackPanel>
+                         </Button>
+                         <Button Grid.Column="3" Command="{Binding ContractList.SortCommand}" CommandParameter="StartDate" 
                                  Background="Transparent" BorderThickness="0" Padding="0" Margin="0" VerticalAlignment="Center" HorizontalAlignment="Left" Cursor="Hand">
                              <StackPanel Orientation="Horizontal" Spacing="4">
                                  <TextBlock Text="{DynamicResource StartDateLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                                  <TextBlock Text="{Binding ContractList.StartDateSortIndicator}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" />
                              </StackPanel>
                          </Button>
-                         <Button Grid.Column="5" Command="{Binding ContractList.SortCommand}" CommandParameter="EndDate" 
+                         <Button Grid.Column="4" Command="{Binding ContractList.SortCommand}" CommandParameter="EndDate" 
                                  Background="Transparent" BorderThickness="0" Padding="0" Margin="0" VerticalAlignment="Center" HorizontalAlignment="Left" Cursor="Hand">
                              <StackPanel Orientation="Horizontal" Spacing="4">
                                  <TextBlock Text="{DynamicResource EndDateLabel}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" />
                                  <TextBlock Text="{Binding ContractList.EndDateSortIndicator}" Foreground="{DynamicResource PrimaryBrush}" FontWeight="Bold" />
                              </StackPanel>
                          </Button>
+                         <TextBlock Grid.Column="5" Text="{DynamicResource ContractDocumentHeader}" Foreground="{DynamicResource TextSecondaryBrush}" FontWeight="Medium" VerticalAlignment="Center" HorizontalAlignment="Center" Width="48" TextAlignment="Center" />
                          <TextBlock Grid.Column="6" Text="" Width="40" />
                     </Grid>
 
                     <ListBox Classes="Table" ItemsSource="{Binding ContractList.Contracts}" SelectedItem="{Binding ContractList.SelectedItem}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,1*,Auto">
+                                <Grid ColumnDefinitions="1.5*,1*,1*,1*,1*,Auto,Auto">
                                     <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                                         <Border Width="10" Height="10" CornerRadius="5" Tag="{Binding IsActive}" VerticalAlignment="Center">
                                             <Border.Styles>
@@ -198,10 +213,19 @@
                                         <TextBlock Text="{Binding TenantName}" FontWeight="Medium" VerticalAlignment="Center" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding RoomName}" FontWeight="Medium" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="2" Text="{Binding Contract.FilePath}" Foreground="{DynamicResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0 0 12 0" />
-                                    <TextBlock Grid.Column="3" Text="{Binding FileExists, Converter={StaticResource YesNoConverter}}" VerticalAlignment="Center" FontWeight="SemiBold" />
-                                    <TextBlock Grid.Column="4" Text="{Binding StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="5" Text="{Binding EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding MonthlyRent, StringFormat='{}{0:C}'}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{Binding StartDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="4" Text="{Binding EndDate, StringFormat='{}{0:d}'}" VerticalAlignment="Center" />
+                                    <Button Grid.Column="5" 
+                                            Command="{Binding $parent[UserControl].DataContext.ContractList.OpenFileCommand}" 
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding HasFile}"
+                                            Classes="Action" Padding="4" Margin="0" 
+                                            Width="32" Height="32"
+                                            HorizontalAlignment="Center"
+                                            ToolTip.Tip="{DynamicResource ViewContractPdfButton}" Cursor="Hand">
+                                        <PathIcon Data="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zM8 16h8v2H8v-2zm0-4h8v2H8v-2z" Width="14" Height="14" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    </Button>
                                     <Button Grid.Column="6" 
                                             Command="{Binding $parent[UserControl].DataContext.ContractList.DeleteContractCommand}" 
                                             CommandParameter="{Binding}"

@@ -183,6 +183,12 @@
     <system:String x:Key="ExtensionsTitle">Extensions</system:String>
     <system:String x:Key="NewExtensionButton">+ New Extension</system:String>
     <system:String x:Key="SearchContractPlaceholder">Search contract...</system:String>
+    <system:String x:Key="FilterActiveContracts">Active</system:String>
+    <system:String x:Key="FilterExpiredContracts">Expired</system:String>
+    <system:String x:Key="FilterAllContracts">All</system:String>
+    <system:String x:Key="ContractDocumentHeader">Document</system:String>
+    <system:String x:Key="ViewContractPdfButton">View Contract PDF</system:String>
+    <system:String x:Key="FilterContractsTooltip">Filter by contract status</system:String>
     <system:String x:Key="RoomLabel">Room</system:String>
     <system:String x:Key="RoomHeader">Room</system:String>
     <system:String x:Key="MonthlyRentAmountLabel">Monthly Rent</system:String>

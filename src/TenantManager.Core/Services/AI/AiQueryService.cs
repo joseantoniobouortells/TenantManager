@@ -42,7 +42,7 @@ public class AiQueryService
     /// plus deterministic DB lookup. Updates conversation context on success.
     /// </summary>
     public async Task<(string? FinalAnswer, bool IsSpanish)> ResolveIntentAndGetDataAsync(
-        string userMessage, AssistantContext? context = null, int propertyId = 0, Action<AiProcessingStage>? onProgress = null)
+        string userMessage, AssistantContext? context = null, int propertyId = 0, Action<AiProcessingStage>? onProgress = null, Func<DateTimeOffset>? clock = null)
     {
         if (context != null)
         {
@@ -87,7 +87,7 @@ public class AiQueryService
                 onProgress?.Invoke(AiProcessingStage.WaitingForModel);
                 
                 SemanticRequest? semanticRequest = null;
-                var requestDto = await _aiClient.BuildSemanticRequestAsync(userMessage, context);
+                var requestDto = await _aiClient.BuildSemanticRequestAsync(userMessage, context, clock);
                 if (requestDto != null)
                 {
                     semanticRequest = SemanticRequestBuilder.Build(requestDto);
@@ -100,7 +100,7 @@ public class AiQueryService
                 }
 
                 // If not resolved by context, we need the full QueryPlan
-                var rawResponse = await _aiClient.BuildQueryPlanAsync(userMessage, context);
+                var rawResponse = await _aiClient.BuildQueryPlanAsync(userMessage, context, clock);
 
                 if (string.IsNullOrWhiteSpace(rawResponse))
                 {
@@ -116,24 +116,23 @@ public class AiQueryService
                 SemanticQueryPlan? rawPlan = null;
                 try
                 {
-                    var firstBackticks = rawResponse.IndexOf("```", StringComparison.Ordinal);
-                    var lastBackticks = rawResponse.LastIndexOf("```", StringComparison.Ordinal);
+                    string cleanedResponse = rawResponse.Trim();
+                    var firstBackticks = cleanedResponse.IndexOf("```", StringComparison.Ordinal);
+                    var lastBackticks = cleanedResponse.LastIndexOf("```", StringComparison.Ordinal);
                     if (firstBackticks != -1 && lastBackticks != -1 && lastBackticks > firstBackticks)
                     {
-                        var firstNewline = rawResponse.IndexOf('\n', firstBackticks);
+                        var firstNewline = cleanedResponse.IndexOf('\n', firstBackticks);
                         if (firstNewline != -1 && firstNewline < lastBackticks)
                         {
-                            rawResponse = rawResponse.Substring(firstNewline + 1, lastBackticks - firstNewline - 1);
+                            cleanedResponse = cleanedResponse.Substring(firstNewline + 1, lastBackticks - firstNewline - 1);
                         }
                     }
-                    rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(rawResponse);
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    rawPlan = JsonSerializer.Deserialize<SemanticQueryPlan>(cleanedResponse, options);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    var plannerErrorMsg = (semanticRequest?.Language ?? "en") == "es"
-                        ? "Lo siento, no he podido interpretar tu pregunta. Inténtalo de nuevo o simplifica la consulta."
-                        : "Sorry, I could not interpret your question. Please try again or simplify your query.";
-                    return (plannerErrorMsg, (semanticRequest?.Language ?? "en") == "es");
+                    return ($"DESERIALIZE ERROR: {ex.Message} \n {rawResponse}", (semanticRequest?.Language ?? "en") == "es");
                 }
 
                 if (rawPlan != null)
@@ -478,9 +477,10 @@ public class AiQueryService
             return null;
         }
 
+        var allNames = string.Join(", ", tenants.Select(t => t.FullName));
         clarification = isSpanish
-            ? $"No encuentro un inquilino llamado {requestedName}."
-            : $"I cannot find a tenant named {requestedName}.";
+            ? $"No encuentro un inquilino llamado {requestedName}. Debug: count={tenants.Count} [{allNames}] targetNorm={targetNorm}"
+            : $"I cannot find a tenant named {requestedName}. Debug: count={tenants.Count} [{allNames}] targetNorm={targetNorm}";
         return null;
     }
 
@@ -546,26 +546,24 @@ public class AiQueryService
         string? tenantName = null;
         foreach (var filter in plan.Filters)
         {
-            bool isTenantNameFilter = false;
-            if (plan.Resource == SemanticQueryResource.Tenants && filter.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
-            else if (plan.Resource == SemanticQueryResource.Contracts && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
-            else if (plan.Resource == SemanticQueryResource.Payments && filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase)) isTenantNameFilter = true;
-
-            if (isTenantNameFilter && filter.Value != null)
+            if (filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase) || 
+                filter.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase))
             {
-                tenantName = filter.Value.ToString();
+                tenantName = filter.Value?.ToString();
                 break;
             }
         }
 
         if (!string.IsNullOrWhiteSpace(tenantName))
         {
-            var tenant = _dbContext.Tenants.AsNoTracking()
-                .FirstOrDefault(t => t.PropertyId == propertyId && t.FullName == tenantName);
-            if (tenant != null)
+            var tenants = _dbContext.Tenants.AsNoTracking().Where(t => t.PropertyId == propertyId).ToList();
+            bool isSpanish = plan.Language.Equals("es", StringComparison.OrdinalIgnoreCase);
+            var bestMatch = FindBestTenantMatch(tenantName, tenants, isSpanish, out _);
+            
+            if (bestMatch != null)
             {
-                context.LastTenantId = tenant.Id;
-                context.LastTenantDisplayName = tenant.FullName;
+                context.LastTenantId = bestMatch.Id;
+                context.LastTenantDisplayName = bestMatch.FullName;
             }
         }
     }

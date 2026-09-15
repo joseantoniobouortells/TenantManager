@@ -13,6 +13,7 @@
             <vm:BooleanToActiveStatusConverter x:Key="ActiveStatusConverter" />
             <vm:BooleanToYesNoConverter x:Key="YesNoConverter" />
             <vm:PaymentStatusLocalizerConverter x:Key="PaymentStatusConverter" />
+            <vm:ContractStatusLocalizerConverter x:Key="ContractStatusConverter" />
             <vm:StatusColorConverter x:Key="StatusColor" />
             <vm:StatusTextColorConverter x:Key="StatusTextColor" />
             <vm:EqualityConverter x:Key="EqualityConverter" />

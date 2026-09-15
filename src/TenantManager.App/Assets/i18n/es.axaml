@@ -183,6 +183,12 @@
     <system:String x:Key="ExtensionsTitle">Prórrogas</system:String>
     <system:String x:Key="NewExtensionButton">Nueva Prórroga</system:String>
     <system:String x:Key="SearchContractPlaceholder">Buscar contrato...</system:String>
+    <system:String x:Key="FilterActiveContracts">Activos</system:String>
+    <system:String x:Key="FilterExpiredContracts">Finalizados</system:String>
+    <system:String x:Key="FilterAllContracts">Todos</system:String>
+    <system:String x:Key="ContractDocumentHeader">Documento</system:String>
+    <system:String x:Key="ViewContractPdfButton">Ver Contrato PDF</system:String>
+    <system:String x:Key="FilterContractsTooltip">Filtrar por estado del contrato</system:String>
     <system:String x:Key="RoomLabel">Habitación</system:String>
     <system:String x:Key="RoomHeader">Habitación</system:String>
     <system:String x:Key="MonthlyRentAmountLabel">Cuota de Alquiler</system:String>

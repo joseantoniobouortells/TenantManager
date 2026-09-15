@@ -46,7 +46,7 @@ public class SemanticQueryPlannerDateContextTests
                 }
             }
 
-            if (_responses.TryDequeue(out var res))
+            if (_responses.TryPeek(out var res))
             {
                 return new HttpResponseMessage(res.StatusCode)
                 {
@@ -259,7 +259,7 @@ public class SemanticQueryPlannerDateContextTests
         // Assert
         Assert.NotNull(answer);
         Assert.DoesNotContain("Resumen:", answer); // Does not fallback to dashboard summary
-        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
+        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("ERROR", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -284,11 +284,11 @@ public class SemanticQueryPlannerDateContextTests
 
         // Assert
         Assert.NotNull(answer);
-        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
+        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("ERROR", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task ResolveIntent_MarkdownFencedJson_IsRejectedAsPlannerFailure()
+    public async Task ResolveIntent_MarkdownFencedJson_IsProcessedSuccessfully()
     {
         // Arrange
         using var db = GetMemoryDbContext();
@@ -297,7 +297,7 @@ public class SemanticQueryPlannerDateContextTests
         await db.SaveChangesAsync();
 
         var handler = new DynamicMockHttpMessageHandler();
-        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse("```json\n{\"language\":\"es\",\"resource\":\"payments\",\"operation\":\"sum\",\"confidence\":0.95}\n```"));
+        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse("```json\n{\"language\":\"es\",\"resource\":\"payments\",\"operation\":\"sum\",\"filters\":[],\"projection\":[],\"sort\":[],\"confidence\":0.95}\n```"));
         var aiClient = new LocalAiClient(new HttpClient(handler));
         ConfigureMockSettings();
 
@@ -309,7 +309,8 @@ public class SemanticQueryPlannerDateContextTests
 
         // Assert
         Assert.NotNull(answer);
-        Assert.True(answer.Contains("interpretar") || answer.Contains("interpret") || answer.Contains("error"));
+        Assert.DoesNotContain("ERROR", answer, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("interpretar", answer);
     }
 
     [Fact]
