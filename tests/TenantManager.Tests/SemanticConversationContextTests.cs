@@ -46,7 +46,17 @@ public class SemanticConversationContextTests
                 }
             }
 
-            if (_responses.TryPeek(out var res))
+            if (_responses.Count > 1)
+            {
+                if (_responses.TryDequeue(out var dequeued))
+                {
+                    return new HttpResponseMessage(dequeued.StatusCode)
+                    {
+                        Content = new StringContent(dequeued.Content)
+                    };
+                }
+            }
+            else if (_responses.TryPeek(out var res))
             {
                 return new HttpResponseMessage(res.StatusCode)
                 {
@@ -441,5 +451,87 @@ public class SemanticConversationContextTests
         Assert.Equal("dashboard", context.LastResource);
         Assert.Equal("summary", context.LastOperation); // Was canonicalized from sum
         Assert.Equal(2026, context.LastYear);
+    }
+
+    [Fact]
+    public async Task Context_AnnualTenantPaymentsFollowUp_DoesNotInheritPreviousMonth()
+    {
+        // Arrange
+        using var db = GetMemoryDbContext();
+        var prop = new Property { Name = "Active Property" };
+        db.Properties.Add(prop);
+        await db.SaveChangesAsync();
+
+        var tenant = new Tenant { FullName = "Erik Artigas Reverter", PropertyId = prop.Id };
+        db.Tenants.Add(tenant);
+        await db.SaveChangesAsync();
+
+        // Register payments for January (340) and September (340)
+        db.MonthlyPayments.Add(new MonthlyPayment { PropertyId = prop.Id, TenantId = tenant.Id, Year = 2026, Month = 1, ExpectedRentAmount = 340, PaidAmount = 340, Status = PaymentStatus.Paid });
+        db.MonthlyPayments.Add(new MonthlyPayment { PropertyId = prop.Id, TenantId = tenant.Id, Year = 2026, Month = 9, ExpectedRentAmount = 340, PaidAmount = 340, Status = PaymentStatus.Paid });
+        await db.SaveChangesAsync();
+
+        // Context has month=9, year=2026 from an earlier question about September
+        var context = new AssistantContext
+        {
+            LastResolvedIntent = "payments_list",
+            LastLanguage = "es",
+            LastResource = "payments",
+            LastOperation = "list",
+            LastYear = 2026,
+            LastMonth = 9,
+            LastPropertyId = prop.Id
+        };
+
+        // Turn: User asks for total this year: "¿Cuánto me ha ingresado Erik Artigas en total este año?"
+        // Request DTO (Call 1)
+        var requestDtoJson = JsonSerializer.Serialize(new
+        {
+            language = "es",
+            intent = "data_query",
+            resource = "payments",
+            operation = "sum",
+            requestedOutputs = new[] { new { field = "paidAmount", label = "Importe pagado" } },
+            confidence = 0.98
+        });
+
+        // Query Plan (Call 2): Model produces plan with year=2026 and tenantName, but NO month
+        var planJson = JsonSerializer.Serialize(new
+        {
+            language = "es",
+            resource = "payments",
+            operation = "sum",
+            filters = new[]
+            {
+                new { field = "tenantName", @operator = "equals", value = (object)"Erik Artigas" },
+                new { field = "year", @operator = "equals", value = (object)2026 }
+            },
+            projection = new[] { "paidAmount" },
+            sort = Array.Empty<object>(),
+            limit = 20,
+            confidence = 0.95
+        });
+
+        var handler = new DynamicMockHttpMessageHandler();
+        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse(requestDtoJson));
+        handler.QueueResponse(HttpStatusCode.OK, BuildChatResponse(planJson));
+
+        var aiClient = new LocalAiClient(new HttpClient(handler));
+        ConfigureMockSettings();
+
+        var service = new AiQueryService(db, aiClient);
+
+        // Act
+        var (answer, _) = await service.ResolveIntentAndGetDataAsync(
+            "¿Cuánto me ha ingresado Erik Artigas en total este año?", context, prop.Id);
+
+        // Assert:
+        // Must sum all payments of 2026 (340 + 340 = 680), NOT just September (340)
+        Assert.NotNull(answer);
+        Assert.Contains("680,00", answer);
+        Assert.Contains("Erik Artigas", answer);
+        Assert.Contains("2026", answer);
+        Assert.Equal(2026, context.LastYear);
+        Assert.Null(context.LastMonth); // LastMonth must be reset to null when moving to annual context
     }
 }

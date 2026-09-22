@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace TenantManager.Core.Services.AI;
@@ -110,6 +111,10 @@ public static class SemanticAnswerFormatter
         bool isPending = plan.Filters.Any(f => f.Field.Equals("pending", StringComparison.OrdinalIgnoreCase) && GetBoolValue(f.Value));
         bool isCurrent = plan.Filters.Any(f => (f.Field.Equals("month", StringComparison.OrdinalIgnoreCase) || f.Field.Equals("year", StringComparison.OrdinalIgnoreCase)) && GetRawValue(f.Value)?.ToString()?.Equals("current", StringComparison.OrdinalIgnoreCase) == true);
 
+        var tenantFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase) || f.Field.Equals("fullName", StringComparison.OrdinalIgnoreCase));
+        var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+        var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+
         if (isEs)
         {
             if (resource == SemanticQueryResource.Payments && isPending)
@@ -118,6 +123,24 @@ public static class SemanticAnswerFormatter
                     ? $"Queda por cobrar un total de {sum:N2} € de pagos pendientes este mes." 
                     : $"Queda por cobrar un total de {sum:N2} € de pagos pendientes.";
             }
+
+            if (tenantFilter != null && resource == SemanticQueryResource.Payments)
+            {
+                var tenantName = GetRawValue(tenantFilter.Value)?.ToString() ?? "";
+                var yearVal = GetRawValue(yearFilter?.Value)?.ToString();
+                var monthVal = GetRawValue(monthFilter?.Value)?.ToString();
+
+                if (yearVal != null && monthVal == null)
+                {
+                    return $"El total ingresado por {tenantName} en {yearVal} es {sum:N2} €.";
+                }
+                if (yearVal != null && monthVal != null)
+                {
+                    return $"El total ingresado por {tenantName} en {monthVal}/{yearVal} es {sum:N2} €.";
+                }
+                return $"El total ingresado por {tenantName} es {sum:N2} €.";
+            }
+
             return $"El total sumado es {sum:N2} €.";
         }
         else
@@ -128,6 +151,24 @@ public static class SemanticAnswerFormatter
                     ? $"There is a total of {sum:N2} € pending to collect this month."
                     : $"There is a total of {sum:N2} € pending to collect.";
             }
+
+            if (tenantFilter != null && resource == SemanticQueryResource.Payments)
+            {
+                var tenantName = GetRawValue(tenantFilter.Value)?.ToString() ?? "";
+                var yearVal = GetRawValue(yearFilter?.Value)?.ToString();
+                var monthVal = GetRawValue(monthFilter?.Value)?.ToString();
+
+                if (yearVal != null && monthVal == null)
+                {
+                    return $"The total collected from {tenantName} in {yearVal} is {sum:N2} €.";
+                }
+                if (yearVal != null && monthVal != null)
+                {
+                    return $"The total collected from {tenantName} for {monthVal}/{yearVal} is {sum:N2} €.";
+                }
+                return $"The total collected from {tenantName} is {sum:N2} €.";
+            }
+
             return $"The total sum is {sum:N2} €.";
         }
     }
@@ -136,32 +177,116 @@ public static class SemanticAnswerFormatter
     {
         if (result is SemanticDashboardResult dashboard)
         {
-            if (dashboard.Profit.HasValue)
+            var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+            var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+
+            string periodTextEs = "";
+            string periodTextEn = "";
+            if (yearFilter != null)
             {
-                var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
-                var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+                var y = yearFilter.Value?.ToString();
+                var m = monthFilter?.Value?.ToString();
+                if (y == "current" || y == "hoy" || y == "ahora") y = DateTime.Now.Year.ToString();
+                if (m == "current" || m == "hoy" || m == "ahora") m = DateTime.Now.Month.ToString();
 
-                string periodTextEs = "";
-                string periodTextEn = "";
-                if (yearFilter != null)
+                if (m != null)
                 {
-                    var y = yearFilter.Value?.ToString();
-                    var m = monthFilter?.Value?.ToString();
-                    if (y == "current" || y == "hoy" || y == "ahora") y = DateTime.Now.Year.ToString();
-                    if (m == "current" || m == "hoy" || m == "ahora") m = DateTime.Now.Month.ToString();
+                    periodTextEs = $" de {m}/{y}";
+                    periodTextEn = $" for {m}/{y}";
+                }
+                else
+                {
+                    periodTextEs = $" de {y}";
+                    periodTextEn = $" for {y}";
+                }
+            }
 
-                    if (m != null)
+            if (dashboard.IsExecutiveReport)
+            {
+                if (dashboard.ReportType == ExecutiveReportType.DashboardHistory)
+                {
+                    if (isEs)
                     {
-                        periodTextEs = $" de {m}/{y}";
-                        periodTextEn = $" for {m}/{y}";
+                        var sbH = new StringBuilder();
+                        sbH.AppendLine($"### 📈 Evolución Histórica del Panel{periodTextEs}");
+                        sbH.AppendLine($"- **Ingresos Totales:** {(dashboard.TotalIncome ?? 0m):N2} €");
+                        sbH.AppendLine($"- **Gastos Totales:** {(dashboard.TotalExpenses ?? 0m):N2} €");
+                        sbH.AppendLine($"- **Beneficio Acumulado:** {(dashboard.Profit ?? 0m):N2} €");
+                        sbH.AppendLine($"- **Meses evaluados:** {dashboard.MonthlyBreakdown.Count} meses registrados");
+                        return sbH.ToString().TrimEnd();
                     }
                     else
                     {
-                        periodTextEs = $" de {y}";
-                        periodTextEn = $" for {y}";
+                        return $"### 📈 Dashboard Historical Breakdown{periodTextEn}\n" +
+                               $"- **Total Income:** €{(dashboard.TotalIncome ?? 0m):N2}\n" +
+                               $"- **Total Expenses:** €{(dashboard.TotalExpenses ?? 0m):N2}\n" +
+                               $"- **Cumulative Profit:** €{(dashboard.Profit ?? 0m):N2}\n" +
+                               $"- **Evaluated Months:** {dashboard.MonthlyBreakdown.Count} months";
                     }
                 }
 
+                if (dashboard.ReportType == ExecutiveReportType.ExpensesDetail)
+                {
+                    if (isEs)
+                    {
+                        var sbE = new StringBuilder();
+                        sbE.AppendLine($"### 💸 Informe Detallado de Gastos{periodTextEs}");
+                        sbE.AppendLine($"- **Gastos Totales:** {(dashboard.TotalExpenses ?? 0m):N2} €");
+                        var topCats = string.Join(", ", dashboard.ExpenseCategories.Take(3).Select(c => $"{c.CategoryName}: {c.TotalAmount:N2} € ({c.Percentage:N0}%)"));
+                        if (!string.IsNullOrEmpty(topCats))
+                            sbE.AppendLine($"- **Principales Categorías:** {topCats}");
+                        return sbE.ToString().TrimEnd();
+                    }
+                    else
+                    {
+                        return $"### 💸 Detailed Expenses Report{periodTextEn}\n" +
+                               $"- **Total Expenses:** €{(dashboard.TotalExpenses ?? 0m):N2}";
+                    }
+                }
+
+                if (dashboard.ReportType == ExecutiveReportType.OccupancyLeases)
+                {
+                    if (isEs)
+                    {
+                        return $"### 👥 Informe de Ocupación y Contratos{periodTextEs}\n" +
+                               $"- **Tasa de Ocupación:** {(dashboard.OccupancyRate ?? 0.0):N1}% ({dashboard.OccupiedRooms} de {dashboard.RoomCount} habitaciones ocupadas)\n" +
+                               $"- **Inquilinos Vigentes:** {dashboard.ActiveTenantsCount}";
+                    }
+                    else
+                    {
+                        return $"### 👥 Occupancy and Leases Report{periodTextEn}\n" +
+                               $"- **Occupancy Rate:** {(dashboard.OccupancyRate ?? 0.0):N1}% ({dashboard.OccupiedRooms} of {dashboard.RoomCount} rooms occupied)\n" +
+                               $"- **Active Tenants:** {dashboard.ActiveTenantsCount}";
+                    }
+                }
+
+                // FullFinancial
+                if (isEs)
+                {
+                    decimal margin = (dashboard.TotalIncome.HasValue && dashboard.TotalIncome.Value > 0)
+                        ? ((dashboard.Profit ?? 0m) / dashboard.TotalIncome.Value) * 100m
+                        : 0m;
+
+                    return $"### 📊 Informe Ejecutivo Financiero{periodTextEs}\n" +
+                           $"- **Ingresos Cobrados:** {(dashboard.TotalIncome ?? 0m):N2} €\n" +
+                           $"- **Gastos Registrados:** {(dashboard.TotalExpenses ?? 0m):N2} €\n" +
+                           $"- **Beneficio Neto:** {(dashboard.Profit ?? 0m):N2} € (Margen: {margin:N1}%)\n" +
+                           $"- **Pendiente de Cobro:** {(dashboard.PendingAmount ?? 0m):N2} €\n" +
+                           $"- **Ocupación:** {(dashboard.OccupancyRate ?? 0.0):N1}% ({dashboard.OccupiedRooms} de {dashboard.RoomCount} habitaciones ocupadas)";
+                }
+                else
+                {
+                    return $"### 📊 Financial Executive Report{periodTextEn}\n" +
+                           $"- **Total Income Collected:** €{(dashboard.TotalIncome ?? 0m):N2}\n" +
+                           $"- **Total Expenses:** €{(dashboard.TotalExpenses ?? 0m):N2}\n" +
+                           $"- **Net Profit:** €{(dashboard.Profit ?? 0m):N2}\n" +
+                           $"- **Pending Payments:** €{(dashboard.PendingAmount ?? 0m):N2}\n" +
+                           $"- **Occupancy:** {(dashboard.OccupancyRate ?? 0.0):N1}% ({dashboard.OccupiedRooms} of {dashboard.RoomCount} rooms occupied)";
+                }
+            }
+
+            if (dashboard.Profit.HasValue)
+            {
                 return isEs
                     ? $"El beneficio{periodTextEs} es {dashboard.Profit.Value:N2} €."
                     : $"The profit{periodTextEn} is €{dashboard.Profit.Value:N2}.";
@@ -186,14 +311,12 @@ public static class SemanticAnswerFormatter
 
         if (result is SemanticTenantResult tenant)
         {
-            var proj = plan.Projection.FirstOrDefault();
-            return FormatSingleTenantProjection(tenant, proj, isEs);
+            return FormatSingleTenantProjection(tenant, plan.Projection, isEs);
         }
 
         if (result is List<SemanticTenantResult> singleList && singleList.Count == 1)
         {
-            var proj = plan.Projection.FirstOrDefault();
-            return FormatSingleTenantProjection(singleList[0], proj, isEs);
+            return FormatSingleTenantProjection(singleList[0], plan.Projection, isEs);
         }
 
         return result.ToString() ?? "";
@@ -207,6 +330,16 @@ public static class SemanticAnswerFormatter
             var items = list.Cast<object>().ToList();
             if (!items.Any())
             {
+                if (resource == SemanticQueryResource.Tenants)
+                {
+                    bool hasActiveFalse = plan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value?.ToString()?.Equals("false", StringComparison.OrdinalIgnoreCase) == true);
+                    bool hasActiveTrue = plan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value?.ToString()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true);
+                    if (hasActiveFalse)
+                        return isEs ? "No hay ningún inquilino sin contrato activo." : "There are no tenants without an active contract.";
+                    if (hasActiveTrue)
+                        return isEs ? "No hay inquilinos actuales con contrato activo." : "There are no current tenants with an active contract.";
+                }
+
                 return isEs 
                     ? $"No se encontraron registros de {GetResourcePluralEs(resource)} que coincidan con los criterios." 
                     : $"No {GetResourcePluralEn(resource)} found matching those criteria.";
@@ -235,13 +368,11 @@ public static class SemanticAnswerFormatter
                 var tenantsList = items.Cast<SemanticTenantResult>().ToList();
                 if (tenantsList.Count == 1)
                 {
-                    var proj = plan.Projection.FirstOrDefault();
-                    return FormatSingleTenantProjection(tenantsList[0], proj, isEs);
+                    return FormatSingleTenantProjection(tenantsList[0], plan.Projection, isEs);
                 }
                 else
                 {
-                    var proj = plan.Projection.FirstOrDefault();
-                    return FormatMultipleTenantsProjection(tenantsList, proj, isEs);
+                    return FormatMultipleTenantsProjection(tenantsList, plan.Projection, isEs, plan.Filters);
                 }
             }
 
@@ -375,9 +506,9 @@ public static class SemanticAnswerFormatter
         }
     }
 
-    private static string FormatSingleTenantProjection(SemanticTenantResult tenant, string? projection, bool isEs)
+    private static string FormatSingleTenantProjection(SemanticTenantResult tenant, List<string>? projection, bool isEs)
     {
-        if (string.IsNullOrWhiteSpace(projection))
+        if (projection == null || projection.Count == 0)
         {
             if (isEs)
             {
@@ -405,8 +536,7 @@ public static class SemanticAnswerFormatter
             }
         }
 
-        var proj = projection.ToLowerInvariant();
-        if (proj == "effectivemoveoutdate")
+        if (projection.Contains("effectiveMoveOutDate", StringComparer.OrdinalIgnoreCase))
         {
             if (tenant.EffectiveMoveOutDate.HasValue)
             {
@@ -418,7 +548,8 @@ public static class SemanticAnswerFormatter
                 ? $"No hay fecha de salida registrada para {tenant.FullName}."
                 : $"There is no move-out date registered for {tenant.FullName}.";
         }
-        if (proj == "currentroom")
+
+        if (projection.Contains("currentRoom", StringComparer.OrdinalIgnoreCase))
         {
             if (!string.IsNullOrWhiteSpace(tenant.CurrentRoom))
             {
@@ -430,7 +561,8 @@ public static class SemanticAnswerFormatter
                 ? $"{tenant.FullName} no tiene ninguna habitación asignada."
                 : $"{tenant.FullName} is not assigned to any room.";
         }
-        if (proj == "moveindate")
+
+        if (projection.Contains("moveInDate", StringComparer.OrdinalIgnoreCase))
         {
             if (tenant.MoveInDate.HasValue)
             {
@@ -449,24 +581,64 @@ public static class SemanticAnswerFormatter
             : $"The tenant is {tenant.FullName}.";
     }
 
-    private static string FormatMultipleTenantsProjection(List<SemanticTenantResult> tenants, string? projection, bool isEs)
+    private static string FormatMultipleTenantsProjection(
+        List<SemanticTenantResult> tenants, 
+        List<string>? projection, 
+        bool isEs, 
+        List<SemanticQueryFilter>? filters = null)
     {
-        var proj = projection?.ToLowerInvariant();
-        if (proj == "effectivemoveoutdate")
+        bool hasActiveFalse = filters != null && filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value?.ToString()?.Equals("false", StringComparison.OrdinalIgnoreCase) == true);
+        bool hasActiveTrue = filters != null && filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase) && f.Value?.ToString()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true);
+
+        if (tenants.Count == 0)
+        {
+            if (hasActiveFalse)
+                return isEs ? "No hay ningún inquilino sin contrato activo." : "There are no tenants without an active contract.";
+            if (hasActiveTrue)
+                return isEs ? "No hay inquilinos actuales con contrato activo." : "There are no current tenants with an active contract.";
+            return isEs ? "No se encontraron inquilinos." : "No tenants found.";
+        }
+
+        bool hasCurrentRoom = projection != null && projection.Contains("currentRoom", StringComparer.OrdinalIgnoreCase);
+        bool hasMoveOut = projection != null && projection.Contains("effectiveMoveOutDate", StringComparer.OrdinalIgnoreCase);
+        bool hasMoveIn = projection != null && projection.Contains("moveInDate", StringComparer.OrdinalIgnoreCase);
+
+        if (hasCurrentRoom)
+        {
+            var lines = tenants.Select(t =>
+            {
+                var roomStr = !string.IsNullOrWhiteSpace(t.CurrentRoom) 
+                    ? t.CurrentRoom 
+                    : (isEs ? "Sin habitación" : "No room");
+                return $"{t.FullName} ({roomStr})";
+            });
+
+            if (hasActiveFalse)
+            {
+                return isEs
+                    ? $"Inquilinos sin contrato activo:\n- {string.Join("\n- ", lines)}"
+                    : $"Tenants without active contract:\n- {string.Join("\n- ", lines)}";
+            }
+            if (hasActiveTrue)
+            {
+                return isEs
+                    ? $"Inquilinos actuales:\n- {string.Join("\n- ", lines)}"
+                    : $"Current tenants:\n- {string.Join("\n- ", lines)}";
+            }
+            return isEs
+                ? $"Inquilinos y habitaciones:\n- {string.Join("\n- ", lines)}"
+                : $"Tenants and rooms:\n- {string.Join("\n- ", lines)}";
+        }
+
+        if (hasMoveOut)
         {
             var lines = tenants.Select(t => $"{t.FullName}: {(t.EffectiveMoveOutDate.HasValue ? t.EffectiveMoveOutDate.Value.ToString("yyyy-MM-dd") : "N/A")}");
             return isEs
                 ? $"Fechas de salida:\n- {string.Join("\n- ", lines)}"
                 : $"Move-out dates:\n- {string.Join("\n- ", lines)}";
         }
-        if (proj == "currentroom")
-        {
-            var lines = tenants.Select(t => $"{t.FullName}: {(!string.IsNullOrWhiteSpace(t.CurrentRoom) ? t.CurrentRoom : "N/A")}");
-            return isEs
-                ? $"Habitaciones:\n- {string.Join("\n- ", lines)}"
-                : $"Rooms:\n- {string.Join("\n- ", lines)}";
-        }
-        if (proj == "moveindate")
+
+        if (hasMoveIn)
         {
             var lines = tenants.Select(t => $"{t.FullName}: {(t.MoveInDate.HasValue ? t.MoveInDate.Value.ToString("yyyy-MM-dd") : "N/A")}");
             return isEs
@@ -474,8 +646,20 @@ public static class SemanticAnswerFormatter
                 : $"Move-in dates:\n- {string.Join("\n- ", lines)}";
         }
 
-        // Default or fullName: generic list response
+        // Default or fullName: list response
         var names = tenants.Select(t => t.FullName).ToList();
+        if (hasActiveFalse)
+        {
+            return isEs
+                ? $"Los inquilinos sin contrato activo son: {string.Join(", ", names)}."
+                : $"The tenants without active contract are: {string.Join(", ", names)}.";
+        }
+        if (hasActiveTrue)
+        {
+            return isEs
+                ? $"Los inquilinos actuales son: {string.Join(", ", names)}."
+                : $"The current tenants are: {string.Join(", ", names)}.";
+        }
         return isEs
             ? $"Los inquilinos son: {string.Join(", ", names)}."
             : $"The tenants are: {string.Join(", ", names)}.";

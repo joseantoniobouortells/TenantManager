@@ -21,6 +21,7 @@ class Program
         string command = args[0];
         string endpoint = "http://localhost:1234/v1";
         string? modelsDir = null;
+        string? singleModel = null;
         DateTime? referenceDate = null;
 
         // Parse options
@@ -30,6 +31,8 @@ class Program
                 endpoint = args[++i];
             else if (args[i] == "--models-dir" && i + 1 < args.Length)
                 modelsDir = args[++i];
+            else if (args[i] == "--model" && i + 1 < args.Length)
+                singleModel = args[++i];
             else if (args[i] == "--reference-date" && i + 1 < args.Length)
                 referenceDate = DateTime.Parse(args[++i]);
         }
@@ -49,20 +52,31 @@ class Program
         }
         else if (command == "live")
         {
-            if (string.IsNullOrEmpty(modelsDir) || !Directory.Exists(modelsDir))
+            List<string> models;
+
+            if (!string.IsNullOrWhiteSpace(singleModel))
             {
-                Console.WriteLine($"Error: Models directory not found: {modelsDir}");
-                return 1;
+                models = new List<string> { singleModel.Trim() };
+                Console.WriteLine($"Running targeted evaluation for single model: {models[0]}");
             }
-
-            // Discover models: accept either subfolders (legacy) or JSON files in the directory
-            var modelFiles = Directory.GetFiles(modelsDir, "*.json");
-            var models = modelFiles.Select(Path.GetFileNameWithoutExtension).ToList();
-
-            if (!models.Any())
+            else
             {
-                Console.WriteLine($"Error: No model JSON files found in directory: {modelsDir}");
-                return 1;
+                if (!Directory.Exists(modelsDir))
+                {
+                    Console.WriteLine($"Error: Models directory not found: {modelsDir}");
+                    return 1;
+                }
+
+                models = DiscoverModels(modelsDir);
+
+                if (!models.Any())
+                {
+                    Console.WriteLine($"Error: No model JSON files found in directory: {modelsDir}");
+                    Console.WriteLine("Tip: You can also specify a single model using --model <name>");
+                    return 1;
+                }
+
+                Console.WriteLine($"Discovered {models.Count} model(s) to evaluate: {string.Join(", ", models)}");
             }
 
             var evaluator = new Evaluator(endpoint, models);
@@ -106,5 +120,37 @@ class Program
             }
         }
         Console.WriteLine($"Validation complete. Valid: {valid}, Invalid: {invalid}");
+    }
+
+    static List<string> DiscoverModels(string modelsDir)
+    {
+        var result = new List<string>();
+        var files = Directory.GetFiles(modelsDir, "*.json");
+        foreach (var file in files)
+        {
+            try
+            {
+                var text = File.ReadAllText(file);
+                using var doc = JsonDocument.Parse(text);
+                if (doc.RootElement.TryGetProperty("modelId", out var prop) && !string.IsNullOrWhiteSpace(prop.GetString()))
+                {
+                    result.Add(prop.GetString()!.Trim());
+                    continue;
+                }
+                if (doc.RootElement.TryGetProperty("key", out var keyProp) && !string.IsNullOrWhiteSpace(keyProp.GetString()))
+                {
+                    result.Add(keyProp.GetString()!.Trim());
+                    continue;
+                }
+            }
+            catch { }
+
+            var filename = Path.GetFileNameWithoutExtension(file);
+            if (!string.IsNullOrWhiteSpace(filename))
+            {
+                result.Add(filename.Trim());
+            }
+        }
+        return result.Distinct().ToList();
     }
 }

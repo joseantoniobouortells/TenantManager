@@ -5,6 +5,8 @@ using System.Windows.Input;
 using TenantManager.App.Data;
 using TenantManager.Core.Services.AI;
 
+using TenantManager.Core.Services.Reports;
+
 namespace TenantManager.App.ViewModels;
 
 public class ChatMessageViewModel : ViewModelBase
@@ -19,6 +21,18 @@ public class ChatMessageViewModel : ViewModelBase
         get => _showCopiedMessage;
         set => SetProperty(ref _showCopiedMessage, value);
     }
+
+    public bool IsReport { get; set; }
+    public string? ReportMarkdown { get; set; }
+    public byte[]? ReportPdf { get; set; }
+    public string ReportFileNameBase { get; set; } = "Informe_Financiero";
+
+    private bool _showDownloadedMessage;
+    public bool ShowDownloadedMessage
+    {
+        get => _showDownloadedMessage;
+        set => SetProperty(ref _showDownloadedMessage, value);
+    }
 }
 
 public class AssistantViewModel : ViewModelBase
@@ -30,6 +44,7 @@ public class AssistantViewModel : ViewModelBase
     // AI services
     private readonly AiQueryService _queryService;
     private readonly Func<int> _propertyIdProvider;
+    private readonly Func<string> _propertyNameProvider;
 
     // Conversation state — lives in the session, not persisted to DB
     private readonly AssistantContext _conversationContext = new();
@@ -90,9 +105,10 @@ public class AssistantViewModel : ViewModelBase
 
     public event EventHandler? ScrollRequested;
 
-    public AssistantViewModel(Func<int>? propertyIdProvider = null)
+    public AssistantViewModel(Func<int>? propertyIdProvider = null, Func<string>? propertyNameProvider = null)
     {
         _propertyIdProvider = propertyIdProvider ?? (() => 0);
+        _propertyNameProvider = propertyNameProvider ?? (() => "Vivienda");
         var aiClient = new LocalAiClient();
         _queryService = new AiQueryService(new AppDbContext(), aiClient);
 
@@ -176,7 +192,27 @@ public class AssistantViewModel : ViewModelBase
                     : "I can answer specific questions about the data, such as a tenant's move-out date, current room, pending payments, or available rooms.";
             }
 
-            Messages.Add(new ChatMessageViewModel { Role = "assistant", Content = finalResponse });
+            var assistantMsg = new ChatMessageViewModel { Role = "assistant", Content = finalResponse };
+
+            if (_conversationContext.LastExecutionResult is SemanticDashboardResult dashboard && dashboard.IsExecutiveReport)
+            {
+                var propName = _propertyNameProvider();
+                assistantMsg.IsReport = true;
+                assistantMsg.ReportMarkdown = ExecutiveReportGenerator.GenerateMarkdown(dashboard, propName, isSpanish);
+                assistantMsg.ReportPdf = ExecutiveReportGenerator.GeneratePdf(dashboard, propName, isSpanish);
+                var yearStr = dashboard.Year?.ToString() ?? DateTime.Today.Year.ToString();
+
+                string typePrefix = dashboard.ReportType switch
+                {
+                    ExecutiveReportType.DashboardHistory => "Historico_Panel",
+                    ExecutiveReportType.ExpensesDetail => "Detalle_Gastos",
+                    ExecutiveReportType.OccupancyLeases => "Ocupacion_Inquilinos",
+                    _ => "Informe_Financiero"
+                };
+                assistantMsg.ReportFileNameBase = $"{typePrefix}_{yearStr}";
+            }
+
+            Messages.Add(assistantMsg);
             ScrollRequested?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex) when (ex is InvalidOperationException && ex.Message == "AI_OFFLINE" || ex.InnerException is System.Net.Http.HttpRequestException)

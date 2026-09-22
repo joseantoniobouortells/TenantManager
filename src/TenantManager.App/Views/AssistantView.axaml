@@ -95,6 +95,25 @@
                                                 </Grid>
                                                 
                                                 <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimaryBrush}" />
+
+                                                <!-- Report Export Actions -->
+                                                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,2" IsVisible="{Binding IsReport}">
+                                                    <Button Classes="Action" Padding="8,4" CornerRadius="6"
+                                                            Click="DownloadMarkdown_OnClick" ToolTip.Tip="{DynamicResource DownloadMarkdownLabel}" Cursor="Hand">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <TextBlock Text="📥" FontSize="12" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{DynamicResource DownloadMarkdownLabel}" FontSize="11" FontWeight="Medium" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <Button Classes="Action" Padding="8,4" CornerRadius="6"
+                                                            Click="DownloadPdf_OnClick" ToolTip.Tip="{DynamicResource DownloadPdfLabel}" Cursor="Hand">
+                                                        <StackPanel Orientation="Horizontal" Spacing="4">
+                                                            <TextBlock Text="📄" FontSize="12" VerticalAlignment="Center" />
+                                                            <TextBlock Text="{DynamicResource DownloadPdfLabel}" FontSize="11" FontWeight="Medium" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <TextBlock Text="{DynamicResource ReportDownloadedLabel}" FontSize="11" Foreground="Green" VerticalAlignment="Center" IsVisible="{Binding ShowDownloadedMessage}" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
                                     </DockPanel>

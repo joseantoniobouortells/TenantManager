@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -8,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using TenantManager.App.Data;
 using TenantManager.Core.Services.AI;
 using TenantManager.App.Domain;
+using TenantManager.Evaluation.Models;
 
 namespace TenantManager.Evaluation;
 
@@ -54,31 +56,64 @@ public class Evaluator
 
     public async Task<int> RunAllModelsAsync()
     {
-        var results = new Dictionary<string, int>();
-        foreach (var model in _models)
+        var results = new List<EvaluationResult>();
+
+        for (int i = 0; i < _models.Count; i++)
         {
-            Console.WriteLine($"\n--- Evaluating Model: {model} ---");
-            results[model] = await EvaluateModelAsync(model);
+            var model = _models[i];
+
+            if (i > 0)
+            {
+                Console.WriteLine("\n[Safety Cooldown] Waiting 3 seconds to let LM Studio release memory...");
+                GC.Collect();
+                await Task.Delay(3000);
+            }
+
+            Console.WriteLine($"\n=======================================================");
+            Console.WriteLine($"Evaluating Model [{i + 1}/{_models.Count}]: {model}");
+            Console.WriteLine($"=======================================================");
+
+            var result = await EvaluateModelAsync(model);
+            results.Add(result);
         }
         
         GenerateSummary(results);
-        return results.Values.Any(r => r != 0) ? 1 : 0;
+        return results.Any(r => r.Failed > 0) ? 1 : 0;
     }
 
-    private void GenerateSummary(Dictionary<string, int> results)
+    private void GenerateSummary(List<EvaluationResult> results)
     {
-        Console.WriteLine("\n===========================");
-        Console.WriteLine("Evaluation Summary:");
-        foreach (var res in results)
+        Console.WriteLine("\n=========================================================================================");
+        Console.WriteLine("                             AI EVALUATION SUMMARY & RANKING                             ");
+        Console.WriteLine("=========================================================================================");
+        Console.WriteLine($"{"Model",-35} | {"Passed",-7} | {"Failed",-7} | {"Total",-6} | {"Success",-8} | {"Time",-8}");
+        Console.WriteLine(new string('-', 89));
+
+        var sorted = results
+            .OrderByDescending(r => r.SuccessRate)
+            .ThenBy(r => r.ExecutionTimeMs)
+            .ToList();
+
+        foreach (var r in sorted)
         {
-            Console.WriteLine($"{res.Key}: {(res.Value == 0 ? "PASSED" : "FAILED")}");
+            double seconds = r.ExecutionTimeMs / 1000.0;
+            Console.WriteLine($"{r.ModelId,-35} | {r.Passed,-7} | {r.Failed,-7} | {r.Total,-6} | {r.SuccessRate,6:F1}% | {seconds,6:F1}s");
         }
-        Console.WriteLine("===========================");
+
+        Console.WriteLine(new string('-', 89));
+
+        var best = sorted.FirstOrDefault();
+        if (best != null)
+        {
+            Console.WriteLine($"🏆 Best Performer: {best.ModelId} ({best.SuccessRate:F1}% passed in {best.ExecutionTimeMs / 1000.0:F1}s)");
+        }
+        Console.WriteLine("=========================================================================================\n");
     }
 
-    private async Task<int> EvaluateModelAsync(string model)
+    private async Task<EvaluationResult> EvaluateModelAsync(string model)
     {
         Console.WriteLine($"Running live evaluation against endpoint: {_endpoint}");
+        var sw = Stopwatch.StartNew();
         
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite("Data Source=:memory:")
@@ -154,8 +189,15 @@ public class Evaluator
                     }
                     catch (InvalidOperationException ex) when (ex.Message == "AI_OFFLINE")
                     {
-                        Console.WriteLine($"    [FATAL] LM Studio is offline or unreachable.");
-                        return 2;
+                        Console.WriteLine($"    [FATAL] LM Studio is offline or unreachable for model '{model}'.");
+                        sw.Stop();
+                        return new EvaluationResult
+                        {
+                            ModelId = model,
+                            Passed = passed,
+                            Failed = failed + 1,
+                            ExecutionTimeMs = sw.ElapsedMilliseconds
+                        };
                     }
                     catch (Exception ex)
                     {
@@ -166,8 +208,15 @@ public class Evaluator
             }
         }
         
-        Console.WriteLine($"\nEvaluation complete for {model}. Passed: {passed}, Failed: {failed}");
-        return failed > 0 ? 1 : 0;
+        sw.Stop();
+        Console.WriteLine($"\nEvaluation complete for {model}. Passed: {passed}, Failed: {failed} ({sw.ElapsedMilliseconds / 1000.0:F1}s)");
+        return new EvaluationResult
+        {
+            ModelId = model,
+            Passed = passed,
+            Failed = failed,
+            ExecutionTimeMs = sw.ElapsedMilliseconds
+        };
     }
     
     private async Task LoadFixtureAsync(AppDbContext db, string path)

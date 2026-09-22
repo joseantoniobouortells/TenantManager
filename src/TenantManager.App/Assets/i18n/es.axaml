@@ -62,6 +62,9 @@
     <system:String x:Key="AssistantRoleLabel">Asistente</system:String>
     <system:String x:Key="CopyResponseTooltip">Copiar respuesta</system:String>
     <system:String x:Key="CopiedLabel">Copiado</system:String>
+    <system:String x:Key="DownloadMarkdownLabel">Descargar Markdown</system:String>
+    <system:String x:Key="DownloadPdfLabel">Descargar PDF</system:String>
+    <system:String x:Key="ReportDownloadedLabel">Descargado</system:String>
 
     <!-- AI Processing Stages -->
     <system:String x:Key="Stage_PreparingRequest">Preparando consulta…</system:String>

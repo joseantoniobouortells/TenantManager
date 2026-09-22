@@ -164,7 +164,7 @@ public class SemanticQueryPlannerDateContextTests
 
         var req = handler.ParsedRequests[0];
         Assert.NotNull(req);
-        Assert.Equal(512, req.MaxTokens);
+        Assert.Equal(1024, req.MaxTokens);
         Assert.False(req.Stream);
         Assert.Equal(0.0, req.Temperature);
         Assert.NotNull(req.ResponseFormat);

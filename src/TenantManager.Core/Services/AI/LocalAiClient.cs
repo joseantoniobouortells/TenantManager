@@ -103,7 +103,7 @@ public class LocalAiClient
 
     public LocalAiClient(HttpClient? httpClient = null)
     {
-        _httpClient = httpClient ?? new HttpClient();
+        _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
     }
 
     public async Task<string> SendChatCompletionAsync(string systemPrompt, string userMessage, bool isSpanish = false, CancellationToken cancellationToken = default)
@@ -481,7 +481,12 @@ Concise Planning Rules:
 - Expense totals use: resource `expenses`, operation `sum`, projection `amount`, and only valid date filters from the contract.
 - `tenants` tenant-name field: `fullName`. `contracts` and `payments` tenant-name field: `tenantName`.
 - Tenant follow-ups on the `tenants` resource MUST use `fullName`, NEVER `tenantName`.
+- 'inquilinos actuales' / 'vigentes' / 'current tenants' -> resource: tenants, operation: list, filters: [{{""field"": ""active"", ""operator"": ""equals"", ""value"": true}}].
+- 'inquilinos sin contrato' / 'inactivos' / 'no actuales' / 'former tenants' / 'inactive tenants' -> resource: tenants, operation: list, filters: [{{""field"": ""active"", ""operator"": ""equals"", ""value"": false}}].
+- In `tenants`, NEVER use `contracts` as a field. Always use `active` (boolean true or false).
+- When querying tenants and their rooms (e.g., 'inquilinos actuales de las habitaciones'), include both `fullName` and `currentRoom` in projection.
 - `beneficio`, `profit`, `ingresos menos gastos`, and `income minus expenses` map to: resource `dashboard`, operation `summary`, projection `profit`.
+- 'informe ejecutivo', 'situación financiera', 'reporte financiero', 'balance general', and 'executive report' map to: resource `dashboard`, operation `summary`, projection [""totalIncome"", ""totalExpenses"", ""profit"", ""pendingAmount"", ""occupancyRate""].
 - Never use `dashboard` + `sum` for profit.
 - When the user requests multiple pieces of information in one question (e.g. 'cuánto y de qué mes'), include all requested fields in the projection list.
 - Preserve the previous year and month for elliptical follow-ups unless the current question explicitly replaces them.
@@ -500,7 +505,7 @@ JSON schema:
                 new ChatMessage { Role = "user", Content = userMessage }
             },
             Temperature = 0.0,
-            MaxTokens = 512,
+            MaxTokens = 1024,
             Stream = false,
             ResponseFormat = GetSemanticQueryPlanJsonSchema()
         };
@@ -517,11 +522,17 @@ JSON schema:
             var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
             var chatResponse = JsonSerializer.Deserialize<ChatResponse>(responseJson);
             var content = chatResponse?.Choices?[0]?.Message?.Content;
-            return string.IsNullOrWhiteSpace(content) ? null : content;
+            if (string.IsNullOrWhiteSpace(content)) return null;
+            return StripThinkingBlocks(content);
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
             throw new InvalidOperationException("AI_OFFLINE", ex);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Console.WriteLine("[LocalAiClient] Request timed out after 60 seconds.");
+            return null;
         }
         catch
         {
@@ -562,28 +573,32 @@ JSON schema:
                 contextHint = $"\nPrevious successful query context:\n{string.Join("\n", hints)}\n";
         }
 
-        string prompt = $@"You are a Semantic Request Classifier. Classify the user's question into a JSON SemanticRequest.
+        string prompt = $@"You are a Semantic Request Classifier for a property and tenant management system. Classify the user's question into a JSON SemanticRequest.
 Return JSON ONLY. No markdown. No explanation. No reasoning tokens.
 
 Today: year={currentYear}, month={currentMonth}.
 Last month: year={lastMonthYear}, month={lastMonth}.
 {contextHint}
 intent values:
-- data_query: user wants to calculate or query data from the database. Use this even for follow-up questions that change the filter (e.g., ""What about April?"", ""What were the expenses?""). If the user asks ""how much"", ""when"", or ""who"", it is ALWAYS a data_query.
+- data_query: user wants to calculate or query data from the database. Use this for ANY question about tenants, rooms, contracts, payments, or expenses. If the user asks ""how much"", ""when"", ""who"", ""which"", or asks for a list, it is ALWAYS a data_query.
 - previous_result_query: user is asking strictly about the metadata (period, month, year, label) of the PREVIOUSly answered query. They are NOT asking for a new calculation. Example: ""A qué mes corresponde?"" or ""Which month was that?"".
 - unknown: cannot determine
 
+Allowed resources: tenants, contracts, payments, expenses, rooms, dashboard.
+
 Requested outputs: list every piece of information the user explicitly requests.
 Examples:
-- 'Cuánto se ha ingresado?' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}}]
-- 'Cuánto se ha ingresado el último mes? Indica a qué mes corresponde' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}},{{""field"":""period"",""label"":""Mes""}}]
-- 'How much was collected last month? Indicate which month it was.' → intent=data_query, outputs: [{{""field"":""paidAmount"",""label"":""Total collected""}},{{""field"":""period"",""label"":""Month""}}]
-- '¿Y cuáles han sido los gastos?' (after income query) → intent=data_query, outputs: [{{""field"":""amount"",""label"":""Gastos""}}]
+- 'Cuánto se ha ingresado?' → intent=data_query, resource=payments, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}}]
+- 'Cuánto se ha ingresado el último mes? Indica a qué mes corresponde' → intent=data_query, resource=payments, outputs: [{{""field"":""paidAmount"",""label"":""Importe ingresado""}},{{""field"":""period"",""label"":""Mes""}}]
+- 'Quiénes son los inquilinos actuales de las habitaciones?' → intent=data_query, resource=tenants, outputs: [{{""field"":""fullName"",""label"":""Inquilino""}},{{""field"":""currentRoom"",""label"":""Habitación""}}]
+- 'Cuándo deja la habitación Pepe?' → intent=data_query, resource=tenants, outputs: [{{""field"":""effectiveMoveOutDate"",""label"":""Fecha de salida""}}]
+- 'Qué habitaciones están disponibles?' → intent=data_query, resource=rooms, outputs: [{{""field"":""name"",""label"":""Habitación""}}]
+- '¿Y cuáles han sido los gastos?' (after income query) → intent=data_query, resource=expenses, outputs: [{{""field"":""amount"",""label"":""Gastos""}}]
 - 'What about April?' (after March query) → intent=data_query, outputs: [{{""field"":""amount"",""label"":""Total""}}]
 - 'A qué mes corresponde?' (after a previous query) → intent=previous_result_query, outputs: [{{""field"":""period"",""label"":""Mes""}}]
 
 JSON schema:
-{{""language"":""detect 'es' or 'en'"",""intent"":""data_query"",""resource"":""payments"",""operation"":""sum"",""requested_outputs"":[{{""field"":""paidAmount"",""label"":""Importe""}}],""confidence"":0.95}}";
+{{""language"":""detect 'es' or 'en'"",""intent"":""data_query"",""resource"":""tenants|contracts|payments|expenses|rooms|dashboard"",""operation"":""list|sum|count|summary|lookup"",""requested_outputs"":[{{""field"":""<field_name>"",""label"":""<label>""}}],""confidence"":0.95}}";
 
         var completionsEndpoint = NormalizeCompletionsEndpoint(settings.AiEndpoint);
         var requestBody = new ChatRequest
@@ -595,7 +610,7 @@ JSON schema:
                 new ChatMessage { Role = "user", Content = userMessage }
             },
             Temperature = 0.0,
-            MaxTokens = 256,
+            MaxTokens = 512,
             Stream = false
         };
 
@@ -614,6 +629,8 @@ JSON schema:
             if (string.IsNullOrWhiteSpace(rawResponse))
                 return null;
 
+            rawResponse = StripThinkingBlocks(rawResponse);
+
             var firstBackticks = rawResponse.IndexOf("```", StringComparison.Ordinal);
             var lastBackticks = rawResponse.LastIndexOf("```", StringComparison.Ordinal);
             if (firstBackticks != -1 && lastBackticks != -1 && lastBackticks > firstBackticks)
@@ -626,6 +643,15 @@ JSON schema:
             }
 
             return JsonSerializer.Deserialize<SemanticRequestDto>(rawResponse);
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            throw new InvalidOperationException("AI_OFFLINE", ex);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Console.WriteLine("[LocalAiClient] SemanticRequest request timed out after 60 seconds.");
+            return null;
         }
         catch (Exception ex)
         {
@@ -687,5 +713,33 @@ JSON schema:
         {
             return new List<string>();
         }
+    }
+
+    /// <summary>
+    /// Removes reasoning blocks like &lt;think&gt;...&lt;/think&gt; produced by models such as Qwen 3.5 / DeepSeek R1
+    /// so the remaining JSON can be parsed cleanly.
+    /// </summary>
+    public static string StripThinkingBlocks(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input)) return input;
+
+        int thinkStart = input.IndexOf("<think>", StringComparison.OrdinalIgnoreCase);
+        while (thinkStart != -1)
+        {
+            int thinkEnd = input.IndexOf("</think>", thinkStart, StringComparison.OrdinalIgnoreCase);
+            if (thinkEnd != -1)
+            {
+                input = input.Remove(thinkStart, (thinkEnd + "</think>".Length) - thinkStart);
+            }
+            else
+            {
+                // Unclosed think tag: truncate everything from <think> onwards
+                input = input.Substring(0, thinkStart);
+                break;
+            }
+            thinkStart = input.IndexOf("<think>", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return input.Trim();
     }
 }

@@ -64,16 +64,35 @@ public static class SemanticRequestResolver
     /// Enriches a SemanticQueryPlan's filter list with the period from a SemanticRequest
     /// when the plan is missing year/month filters that can be inferred from the request.
     /// </summary>
-    public static SemanticQueryPlan EnrichPlanWithPeriod(SemanticQueryPlan plan, SemanticRequest request, AssistantContext context)
+    public static SemanticQueryPlan EnrichPlanWithPeriod(
+        SemanticQueryPlan plan, 
+        SemanticRequest request, 
+        AssistantContext? context,
+        string? userMessage = null)
     {
         if (plan == null || request == null)
-            return plan;
+            return plan!;
 
         bool hasYear = plan.Filters.Exists(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
         bool hasMonth = plan.Filters.Exists(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
 
-        int? yearToApply = request.Period.Year ?? context?.LastYear;
-        int? monthToApply = request.Period.Month ?? context?.LastMonth;
+        bool isAnnual = IsAnnualQuery(userMessage);
+        if (isAnnual)
+        {
+            // An annual query (e.g. "este año", "en total este año") must never filter by month
+            plan.Filters.RemoveAll(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+            hasMonth = false;
+        }
+
+        int? yearToApply = request.Period.Year ?? (!hasYear ? context?.LastYear : null);
+        int? monthToApply = request.Period.Month;
+
+        // Only inherit month from context if this is NOT an annual query
+        // and neither the plan nor request explicitly scoped to a year without a month
+        if (!monthToApply.HasValue && !hasMonth && !isAnnual && !hasYear && !request.Period.Year.HasValue)
+        {
+            monthToApply = context?.LastMonth;
+        }
 
         if (yearToApply.HasValue && !hasYear)
         {
@@ -96,6 +115,29 @@ public static class SemanticRequestResolver
         }
 
         return plan;
+    }
+
+    public static bool IsAnnualQuery(string? userMessage)
+    {
+        if (string.IsNullOrWhiteSpace(userMessage)) return false;
+        var msg = userMessage.ToLowerInvariant();
+        return msg.Contains("este año") ||
+               msg.Contains("este ano") ||
+               msg.Contains("el año") ||
+               msg.Contains("el ano") ||
+               msg.Contains("del año") ||
+               msg.Contains("del ano") ||
+               msg.Contains("todo el año") ||
+               msg.Contains("todo el ano") ||
+               msg.Contains("en el año") ||
+               msg.Contains("en el ano") ||
+               msg.Contains("anual") ||
+               msg.Contains("this year") ||
+               msg.Contains("the year") ||
+               msg.Contains("whole year") ||
+               msg.Contains("all year") ||
+               msg.Contains("annually") ||
+               msg.Contains("annual");
     }
 
     /// <summary>

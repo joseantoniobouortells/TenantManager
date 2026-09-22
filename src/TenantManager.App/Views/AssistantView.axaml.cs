@@ -129,4 +129,71 @@ public partial class AssistantView : UserControl
             }
         }
     }
+
+    private async void DownloadMarkdown_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: ChatMessageViewModel msg } && !string.IsNullOrWhiteSpace(msg.ReportMarkdown))
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.StorageProvider == null) return;
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Guardar Informe Markdown",
+                SuggestedFileName = $"{msg.ReportFileNameBase}.md",
+                DefaultExtension = "md",
+                FileTypeChoices = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("Markdown Documents") { Patterns = new[] { "*.md" } }
+                }
+            });
+
+            if (file != null)
+            {
+                try
+                {
+                    await using var stream = await file.OpenWriteAsync();
+                    await using var writer = new System.IO.StreamWriter(stream, System.Text.Encoding.UTF8);
+                    await writer.WriteAsync(msg.ReportMarkdown);
+                    msg.ShowDownloadedMessage = true;
+                    await System.Threading.Tasks.Task.Delay(2500);
+                    msg.ShowDownloadedMessage = false;
+                }
+                catch { }
+            }
+        }
+    }
+
+    private async void DownloadPdf_OnClick(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: ChatMessageViewModel msg } && msg.ReportPdf != null && msg.ReportPdf.Length > 0)
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel?.StorageProvider == null) return;
+
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Guardar Informe PDF",
+                SuggestedFileName = $"{msg.ReportFileNameBase}.pdf",
+                DefaultExtension = "pdf",
+                FileTypeChoices = new[]
+                {
+                    new Avalonia.Platform.Storage.FilePickerFileType("PDF Documents") { Patterns = new[] { "*.pdf" } }
+                }
+            });
+
+            if (file != null)
+            {
+                try
+                {
+                    await using var stream = await file.OpenWriteAsync();
+                    await stream.WriteAsync(msg.ReportPdf);
+                    msg.ShowDownloadedMessage = true;
+                    await System.Threading.Tasks.Task.Delay(2500);
+                    msg.ShowDownloadedMessage = false;
+                }
+                catch { }
+            }
+        }
+    }
 }

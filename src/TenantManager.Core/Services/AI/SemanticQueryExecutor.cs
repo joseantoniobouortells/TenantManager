@@ -310,14 +310,21 @@ public class SemanticQueryExecutor
         var filtered = results.Where(item => plan.Filters.Where(f => !f.Field.Equals("propertyId", StringComparison.OrdinalIgnoreCase)).All(f => EvaluateFilter(GetPaymentFieldValue(item, f.Field), f.Operator, f.Value, f.Field)));
         var sorted = ApplySort(filtered, plan.Sort, GetPaymentFieldValue);
 
-        // If the plan specifies a projection, use the first projected field as the sum field.
-        // This allows "ingresos" (income) queries to sum only paidAmount instead of expectedAmount.
+        // If the plan specifies a projection, pick the numeric sum field (paidAmount or expectedAmount),
+        // ignoring non-numeric fields like tenantName to prevent FormatException.
         string primarySumField = "expectedAmount";
         string? secondarySumField = null;
         if (plan.Operation == SemanticQueryOperation.Sum && plan.Projection.Count > 0)
         {
-            primarySumField = plan.Projection[0];
-            secondarySumField = plan.Projection.Count > 1 ? plan.Projection[1] : null;
+            var numericProjection = plan.Projection.Where(p => 
+                p.Equals("paidAmount", StringComparison.OrdinalIgnoreCase) || 
+                p.Equals("expectedAmount", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (numericProjection.Count > 0)
+            {
+                primarySumField = numericProjection[0];
+                secondarySumField = numericProjection.Count > 1 ? numericProjection[1] : null;
+            }
         }
 
         return FormatResults(plan.Operation!.Value, sorted, plan.Limit, primarySumField, secondarySumField);
@@ -349,7 +356,49 @@ public class SemanticQueryExecutor
         List<ExpenseCategory> categories, 
         DateTimeOffset now)
     {
-        if (plan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+        var yearFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+        var monthFilter = plan.Filters.FirstOrDefault(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+
+        int? targetYear = null;
+        if (yearFilter?.Value != null && int.TryParse(yearFilter.Value.ToString(), out var yVal))
+            targetYear = yVal;
+
+        int? targetMonth = null;
+        if (monthFilter?.Value != null && int.TryParse(monthFilter.Value.ToString(), out var mVal))
+            targetMonth = mVal;
+
+        ExecutiveReportType reportType = ExecutiveReportType.FullFinancial;
+        if (plan.Projection.Contains("monthlyHistory", StringComparer.OrdinalIgnoreCase))
+            reportType = ExecutiveReportType.DashboardHistory;
+        else if (plan.Projection.Contains("expenseCategories", StringComparer.OrdinalIgnoreCase))
+            reportType = ExecutiveReportType.ExpensesDetail;
+        else if (plan.Projection.Contains("leases", StringComparer.OrdinalIgnoreCase))
+            reportType = ExecutiveReportType.OccupancyLeases;
+
+        bool hasFinancialProjection = plan.Projection.Any(p => 
+            p.Equals("profit", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("totalIncome", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("totalExpenses", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("pendingAmount", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("financialSummary", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("monthlyHistory", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("expenseCategories", StringComparison.OrdinalIgnoreCase) ||
+            p.Equals("leases", StringComparison.OrdinalIgnoreCase));
+
+        bool isExecutiveReport = hasFinancialProjection && (
+            plan.Projection.Count > 1 || 
+            plan.Projection.Contains("totalIncome", StringComparer.OrdinalIgnoreCase) ||
+            plan.Projection.Contains("financialSummary", StringComparer.OrdinalIgnoreCase) ||
+            plan.Projection.Contains("monthlyHistory", StringComparer.OrdinalIgnoreCase) ||
+            plan.Projection.Contains("expenseCategories", StringComparer.OrdinalIgnoreCase) ||
+            plan.Projection.Contains("leases", StringComparer.OrdinalIgnoreCase));
+
+        decimal? totalIncome = null;
+        decimal? totalExpenses = null;
+        decimal? profit = null;
+        decimal? pendingAmount = null;
+
+        if (hasFinancialProjection)
         {
             var paymentsPlan = new SemanticQueryPlan
             {
@@ -373,16 +422,31 @@ public class SemanticQueryExecutor
             var paymentsSum = Convert.ToDecimal(ProcessPayments(paymentsPlan, payments, contracts, tenants, rooms, extensions, expenses, categories, now) ?? 0m);
             var expensesSum = Convert.ToDecimal(ProcessExpenses(expensesPlan, expenses, categories) ?? 0m);
 
-            return new SemanticDashboardResult
+            totalIncome = paymentsSum;
+            totalExpenses = expensesSum;
+            profit = paymentsSum - expensesSum;
+
+            // Pending amount
+            var pendingPlan = new SemanticQueryPlan
             {
-                Profit = paymentsSum - expensesSum
+                Resource = SemanticQueryResource.Payments,
+                Operation = SemanticQueryOperation.Sum,
+                Filters = plan.Filters.Where(f => !f.Field.Equals("status", StringComparison.OrdinalIgnoreCase)).Concat(new[]
+                {
+                    new SemanticQueryFilter { Field = "pending", Operator = SemanticQueryOperator.Equals, Value = true }
+                }).ToList(),
+                Projection = new List<string> { "expectedAmount" },
+                Limit = plan.Limit,
+                Language = plan.Language
             };
+            pendingAmount = Convert.ToDecimal(ProcessPayments(pendingPlan, payments, contracts, tenants, rooms, extensions, expenses, categories, now) ?? 0m);
         }
 
         var occupiedRoomIds = SemanticDomainResolver.GetOccupiedRoomIds(contracts, extensions, now);
-
         int roomCount = rooms.Count(r => r.IsActive);
+        int occupiedRooms = occupiedRoomIds.Count;
         int activeTenantsCount = tenants.Count(tenant => contracts.Any(c => c.TenantId == tenant.Id && c.StartDate <= now && (SemanticDomainResolver.GetEffectiveEndDate(c, extensions) == null || SemanticDomainResolver.GetEffectiveEndDate(c, extensions) >= now)));
+        double occupancyRate = roomCount > 0 ? ((double)occupiedRooms / roomCount) * 100.0 : 0.0;
 
         // Compute pending and late payments
         var pendingResults = new List<SemanticPaymentResult>();
@@ -434,12 +498,92 @@ public class SemanticQueryExecutor
             });
         }
 
+        // 1. Detailed Expense Categories Breakdown
+        var categoryMap = categories.ToDictionary(c => c.Id, c => c);
+        var filteredExpenses = targetYear.HasValue
+            ? expenses.Where(e => e.Year == targetYear.Value).ToList()
+            : expenses;
+
+        var expenseCategories = filteredExpenses
+            .GroupBy(e => e.CategoryId)
+            .Select(g =>
+            {
+                categoryMap.TryGetValue(g.Key, out var cat);
+                var catName = cat?.Name ?? (g.Key == 0 ? "Sin categoría" : $"Categoría {g.Key}");
+                var sum = g.Sum(x => x.Amount);
+                var isChargeable = cat?.IsChargeable ?? false;
+                return new CategoryExpenseReportItem
+                {
+                    CategoryName = catName,
+                    TotalAmount = sum,
+                    Percentage = (totalExpenses.HasValue && totalExpenses.Value > 0) ? (double)(sum / totalExpenses.Value) * 100.0 : 0.0,
+                    ChargeableAmount = isChargeable ? sum : 0m
+                };
+            })
+            .OrderByDescending(c => c.TotalAmount)
+            .ToList();
+
+        // 2. Monthly History Breakdown (for target year or last 12 months)
+        int evalYear = targetYear ?? now.Year;
+        string[] monthNamesEs = { "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre" };
+        var monthlyBreakdown = new List<MonthlyReportItem>();
+
+        for (int m = 1; m <= 12; m++)
+        {
+            var mIncome = payments.Where(p => p.Year == evalYear && p.Month == m).Sum(p => p.PaidAmount);
+            var mExpense = expenses.Where(e => e.Year == evalYear && e.Month == m).Sum(e => e.Amount);
+            if (mIncome > 0 || mExpense > 0 || m <= now.Month)
+            {
+                monthlyBreakdown.Add(new MonthlyReportItem
+                {
+                    Year = evalYear,
+                    Month = m,
+                    MonthName = monthNamesEs[m - 1],
+                    Income = mIncome,
+                    Expenses = mExpense
+                });
+            }
+        }
+
+        // 3. Leases / Occupancy Breakdown
+        var tenantMap = tenants.ToDictionary(t => t.Id, t => t.FullName);
+        var roomMap = rooms.ToDictionary(r => r.Id, r => r.Name);
+        var leases = contracts.Select(c =>
+        {
+            tenantMap.TryGetValue(c.TenantId, out var tName);
+            var rName = c.RoomId.HasValue && roomMap.TryGetValue(c.RoomId.Value, out var rn) ? rn : "Vivienda completa";
+            var effEnd = SemanticDomainResolver.GetEffectiveEndDate(c, extensions);
+            bool isActive = c.StartDate <= now && (effEnd == null || effEnd >= now);
+            return new TenantLeaseReportItem
+            {
+                RoomName = rName,
+                TenantName = tName ?? "Inquilino",
+                MonthlyRent = c.MonthlyRent,
+                StartDate = c.StartDate,
+                EffectiveEndDate = effEnd,
+                IsActive = isActive
+            };
+        }).OrderByDescending(l => l.IsActive).ThenBy(l => l.RoomName).ToList();
+
         return new SemanticDashboardResult
         {
             RoomCount = roomCount,
+            OccupiedRooms = occupiedRooms,
             ActiveTenantsCount = activeTenantsCount,
             PendingPaymentsCount = pendingResults.Count,
-            LatePaymentsCount = pendingResults.Count(p => p.Late)
+            LatePaymentsCount = pendingResults.Count(p => p.Late),
+            TotalIncome = totalIncome,
+            TotalExpenses = totalExpenses,
+            Profit = profit,
+            PendingAmount = pendingAmount,
+            OccupancyRate = occupancyRate,
+            Year = targetYear,
+            Month = targetMonth,
+            IsExecutiveReport = isExecutiveReport,
+            ReportType = reportType,
+            ExpenseCategories = expenseCategories,
+            MonthlyBreakdown = monthlyBreakdown,
+            Leases = leases
         };
     }
 
@@ -458,12 +602,18 @@ public class SemanticQueryExecutor
             foreach (var item in items)
             {
                 var val = GetPropertyValue(item!, sumField);
-                if (val != null) sum += Convert.ToDecimal(val);
+                if (val is decimal d)
+                    sum += d;
+                else if (val != null && decimal.TryParse(val.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var decVal))
+                    sum += decVal;
 
                 if (sumField2 != null)
                 {
                     var val2 = GetPropertyValue(item!, sumField2);
-                    if (val2 != null) sum += Convert.ToDecimal(val2);
+                    if (val2 is decimal d2)
+                        sum += d2;
+                    else if (val2 != null && decimal.TryParse(val2.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var decVal2))
+                        sum += decVal2;
                 }
             }
             return sum;
@@ -779,11 +929,60 @@ public class SemanticExpenseResult
     public DateTimeOffset Date { get; set; }
 }
 
+public enum ExecutiveReportType
+{
+    FullFinancial,
+    DashboardHistory,
+    ExpensesDetail,
+    OccupancyLeases
+}
+
+public class CategoryExpenseReportItem
+{
+    public string CategoryName { get; set; } = string.Empty;
+    public decimal TotalAmount { get; set; }
+    public double Percentage { get; set; }
+    public decimal ChargeableAmount { get; set; }
+}
+
+public class MonthlyReportItem
+{
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string MonthName { get; set; } = string.Empty;
+    public decimal Income { get; set; }
+    public decimal Expenses { get; set; }
+    public decimal NetProfit => Income - Expenses;
+}
+
+public class TenantLeaseReportItem
+{
+    public string RoomName { get; set; } = string.Empty;
+    public string TenantName { get; set; } = string.Empty;
+    public decimal MonthlyRent { get; set; }
+    public DateTimeOffset? StartDate { get; set; }
+    public DateTimeOffset? EffectiveEndDate { get; set; }
+    public bool IsActive { get; set; }
+}
+
 public class SemanticDashboardResult
 {
     public int RoomCount { get; set; }
+    public int OccupiedRooms { get; set; }
     public int ActiveTenantsCount { get; set; }
     public int PendingPaymentsCount { get; set; }
     public int LatePaymentsCount { get; set; }
+    public decimal? TotalIncome { get; set; }
+    public decimal? TotalExpenses { get; set; }
     public decimal? Profit { get; set; }
+    public decimal? PendingAmount { get; set; }
+    public double? OccupancyRate { get; set; }
+    public int? Year { get; set; }
+    public int? Month { get; set; }
+    public bool IsExecutiveReport { get; set; }
+    public ExecutiveReportType ReportType { get; set; } = ExecutiveReportType.FullFinancial;
+
+    public List<CategoryExpenseReportItem> ExpenseCategories { get; set; } = new();
+    public List<MonthlyReportItem> MonthlyBreakdown { get; set; } = new();
+    public List<TenantLeaseReportItem> Leases { get; set; } = new();
 }

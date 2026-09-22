@@ -53,7 +53,7 @@ public class AiQueryService
             context.LastPropertyId = propertyId;
         }
 
-        bool isSpanish = context?.LastLanguage == "es";
+        bool isSpanish = IsSpanishQuery(userMessage, context?.LastLanguage);
         _observer?.OnRequestReceived(userMessage);
 
         // ---- Fast path: PreviousResultQuery resolution (no LLM query plan needed) ----
@@ -139,27 +139,216 @@ public class AiQueryService
                 {
                     if (semanticRequest != null)
                     {
-                        rawPlan = SemanticRequestResolver.EnrichPlanWithPeriod(rawPlan, semanticRequest, context);
+                        rawPlan = SemanticRequestResolver.EnrichPlanWithPeriod(rawPlan, semanticRequest, context, userMessage);
                         rawPlan.Language = semanticRequest.Language;
                     }
 
-                    // Canonicalize planner mistakes: follow-ups sometimes use "tenantName" instead of "fullName" for the tenants resource
-                        if (rawPlan.Resource == SemanticQueryResource.Tenants)
+                    // Deterministic year resolution: if plan has no year filter, inspect userMessage or inherit from context
+                    bool hasYear = rawPlan.Filters.Exists(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase));
+                    if (!hasYear)
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(userMessage, @"\b(20\d{2})\b");
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out var explicitYear))
                         {
-                            foreach (var filter in rawPlan.Filters)
+                            rawPlan.Filters.Add(new SemanticQueryFilter
                             {
-                                if (filter.Field == "tenantName")
+                                Field = "year",
+                                Operator = SemanticQueryOperator.Equals,
+                                Value = explicitYear
+                            });
+                        }
+                        else if (SemanticRequestResolver.IsAnnualQuery(userMessage))
+                        {
+                            int defaultYear = clock != null ? clock().Year : DateTime.Today.Year;
+                            rawPlan.Filters.Add(new SemanticQueryFilter
+                            {
+                                Field = "year",
+                                Operator = SemanticQueryOperator.Equals,
+                                Value = defaultYear
+                            });
+                        }
+                        else if (context?.LastYear.HasValue == true)
+                        {
+                            rawPlan.Filters.Add(new SemanticQueryFilter
+                            {
+                                Field = "year",
+                                Operator = SemanticQueryOperator.Equals,
+                                Value = context.LastYear.Value
+                            });
+                        }
+                    }
+
+                    if (SemanticRequestResolver.IsAnnualQuery(userMessage))
+                    {
+                        rawPlan.Filters.RemoveAll(f => f.Field.Equals("month", StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    // Canonicalize planner mistakes: follow-ups sometimes use "tenantName" instead of "fullName" for the tenants resource
+                    if (rawPlan.Resource == SemanticQueryResource.Tenants)
+                    {
+                        foreach (var filter in rawPlan.Filters)
+                        {
+                            if (filter.Field.Equals("tenantName", StringComparison.OrdinalIgnoreCase))
+                            {
+                                filter.Field = "fullName";
+                            }
+                            else if (filter.Field.Equals("contracts", StringComparison.OrdinalIgnoreCase))
+                            {
+                                filter.Field = "active";
+                                if (filter.Operator == SemanticQueryOperator.NotEquals && (filter.Value?.ToString()?.Equals("true", StringComparison.OrdinalIgnoreCase) == true))
                                 {
-                                    filter.Field = "fullName";
+                                    filter.Operator = SemanticQueryOperator.Equals;
+                                    filter.Value = false;
+                                }
+                                else if (filter.Value?.ToString()?.Equals("false", StringComparison.OrdinalIgnoreCase) == true)
+                                {
+                                    filter.Operator = SemanticQueryOperator.Equals;
+                                    filter.Value = false;
                                 }
                             }
                         }
 
-                        // Canonicalize planner mistakes: profit queries might use dashboard + sum instead of dashboard + summary
-                        if (rawPlan.Resource == SemanticQueryResource.Dashboard && rawPlan.Operation == SemanticQueryOperation.Sum && rawPlan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+                        // Deterministic active vs inactive resolution from user message
+                        var normMsg = NormalizeString(userMessage);
+                        bool wantsInactive = normMsg.Contains("sin contrato") || 
+                                            normMsg.Contains("no tienen contrato") || 
+                                            normMsg.Contains("no tiene contrato") || 
+                                            normMsg.Contains("no son actuales") || 
+                                            normMsg.Contains("no activos") || 
+                                            normMsg.Contains("inactivos") || 
+                                            normMsg.Contains("antiguos") || 
+                                            normMsg.Contains("pasados") || 
+                                            normMsg.Contains("no estan activos") || 
+                                            normMsg.Contains("without contract") || 
+                                            normMsg.Contains("no active contract") || 
+                                            normMsg.Contains("inactive") || 
+                                            normMsg.Contains("former");
+
+                        bool wantsActive = !wantsInactive && (
+                                            normMsg.Contains("actual") || 
+                                            normMsg.Contains("actuales") || 
+                                            normMsg.Contains("vigente") || 
+                                            normMsg.Contains("vigentes") || 
+                                            normMsg.Contains("en este momento") || 
+                                            normMsg.Contains("current") || 
+                                            normMsg.Contains("active") || 
+                                            normMsg.Contains("now"));
+
+                        if (wantsInactive)
                         {
-                            rawPlan.Operation = SemanticQueryOperation.Summary;
+                            rawPlan.Filters.RemoveAll(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase));
+                            rawPlan.Filters.Add(new SemanticQueryFilter
+                            {
+                                Field = "active",
+                                Operator = SemanticQueryOperator.Equals,
+                                Value = false
+                            });
                         }
+                        else if (wantsActive)
+                        {
+                            if (!rawPlan.Filters.Any(f => f.Field.Equals("active", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                rawPlan.Filters.Add(new SemanticQueryFilter
+                                {
+                                    Field = "active",
+                                    Operator = SemanticQueryOperator.Equals,
+                                    Value = true
+                                });
+                            }
+                        }
+
+                        // If query asks about rooms for tenants, ensure currentRoom is projected
+                        bool mentionsRooms = normMsg.Contains("habitacion") || 
+                                             normMsg.Contains("habitaciones") || 
+                                             normMsg.Contains("cuarto") || 
+                                             normMsg.Contains("cuartos") || 
+                                             normMsg.Contains("room") || 
+                                             normMsg.Contains("rooms");
+                        if (mentionsRooms && !rawPlan.Projection.Contains("currentRoom", StringComparer.OrdinalIgnoreCase))
+                        {
+                            rawPlan.Projection.Add("currentRoom");
+                        }
+                        if (mentionsRooms && !rawPlan.Projection.Contains("fullName", StringComparer.OrdinalIgnoreCase))
+                        {
+                            rawPlan.Projection.Insert(0, "fullName");
+                        }
+                    }
+
+                    // Canonicalize planner mistakes: profit queries might use dashboard + sum instead of dashboard + summary
+                    if (rawPlan.Resource == SemanticQueryResource.Dashboard && rawPlan.Operation == SemanticQueryOperation.Sum && rawPlan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+                    {
+                        rawPlan.Operation = SemanticQueryOperation.Summary;
+                    }
+
+                    // Canonicalize executive report requests
+                    var normUserMsg = NormalizeString(userMessage);
+                    bool isReportRequest = normUserMsg.Contains("informe") ||
+                                          normUserMsg.Contains("reporte") ||
+                                          normUserMsg.Contains("situacion financiera") ||
+                                          normUserMsg.Contains("balance") ||
+                                          normUserMsg.Contains("grafico") ||
+                                          normUserMsg.Contains("graficos") ||
+                                          normUserMsg.Contains("executive report") ||
+                                          normUserMsg.Contains("financial report");
+
+                    if (isReportRequest)
+                    {
+                        rawPlan.Resource = SemanticQueryResource.Dashboard;
+                        rawPlan.Operation = SemanticQueryOperation.Summary;
+
+                        bool asksForHistoryOnly = normUserMsg.Contains("grafico") || normUserMsg.Contains("graficos") || normUserMsg.Contains("evolucion") || normUserMsg.Contains("historico") || normUserMsg.Contains("history");
+                        bool asksForExpensesOnly = normUserMsg.Contains("gasto") || normUserMsg.Contains("gastos") || normUserMsg.Contains("expense") || normUserMsg.Contains("expenses");
+                        bool asksForOccupancyOnly = normUserMsg.Contains("ocupacion") || normUserMsg.Contains("inquilino") || normUserMsg.Contains("inquilinos") || normUserMsg.Contains("habitacion") || normUserMsg.Contains("habitaciones");
+
+                        if (asksForHistoryOnly && !asksForExpensesOnly && !asksForOccupancyOnly)
+                        {
+                            rawPlan.Projection.Clear();
+                            rawPlan.Projection.Add("monthlyHistory");
+                            rawPlan.Projection.Add("profit");
+                        }
+                        else if (asksForExpensesOnly && !normUserMsg.Contains("financier") && !normUserMsg.Contains("global"))
+                        {
+                            rawPlan.Projection.Clear();
+                            rawPlan.Projection.Add("totalExpenses");
+                            rawPlan.Projection.Add("expenseCategories");
+                        }
+                        else if (asksForOccupancyOnly && !normUserMsg.Contains("financier") && !normUserMsg.Contains("global"))
+                        {
+                            rawPlan.Projection.Clear();
+                            rawPlan.Projection.Add("occupancyRate");
+                            rawPlan.Projection.Add("leases");
+                        }
+                        else
+                        {
+                            if (!rawPlan.Projection.Contains("totalIncome", StringComparer.OrdinalIgnoreCase))
+                                rawPlan.Projection.Add("totalIncome");
+                            if (!rawPlan.Projection.Contains("totalExpenses", StringComparer.OrdinalIgnoreCase))
+                                rawPlan.Projection.Add("totalExpenses");
+                            if (!rawPlan.Projection.Contains("profit", StringComparer.OrdinalIgnoreCase))
+                                rawPlan.Projection.Add("profit");
+                            if (!rawPlan.Projection.Contains("pendingAmount", StringComparer.OrdinalIgnoreCase))
+                                rawPlan.Projection.Add("pendingAmount");
+                            if (!rawPlan.Projection.Contains("occupancyRate", StringComparer.OrdinalIgnoreCase))
+                                rawPlan.Projection.Add("occupancyRate");
+                        }
+
+                        if (!rawPlan.Filters.Any(f => f.Field.Equals("year", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            int defaultYear = clock != null ? clock().Year : DateTime.Today.Year;
+                            rawPlan.Filters.Add(new SemanticQueryFilter
+                            {
+                                Field = "year",
+                                Operator = SemanticQueryOperator.Equals,
+                                Value = defaultYear
+                            });
+                        }
+                    }
+
+                    // Canonicalize planner mistakes: if query asks for payments per tenant ("cada uno") and planner used sum + tenantName projection, switch to list to show breakdown
+                    if (rawPlan.Resource == SemanticQueryResource.Payments && rawPlan.Operation == SemanticQueryOperation.Sum && rawPlan.Projection.Contains("tenantName", StringComparer.OrdinalIgnoreCase))
+                    {
+                        rawPlan.Operation = SemanticQueryOperation.List;
+                    }
 
                         _observer?.OnPlanGenerated(rawPlan);
 
@@ -265,7 +454,7 @@ public class AiQueryService
 
         if (extraction != null)
         {
-            isSpanish = extraction.Language.StartsWith("es", StringComparison.InvariantCultureIgnoreCase);
+            isSpanish = IsSpanishQuery(userMessage, extraction.Language);
             confidence = extraction.Confidence;
             intent = extraction.Intent;
 
@@ -445,8 +634,46 @@ public class AiQueryService
         return null;
     }
 
+    private static readonly Dictionary<string, string[]> SpanishHypocoristics = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "pepe", new[] { "jose", "jose antonio", "jose maria", "jose manuel", "jose luis" } },
+        { "jose", new[] { "pepe" } },
+        { "paco", new[] { "francisco", "francisco javier" } },
+        { "curro", new[] { "francisco" } },
+        { "fran", new[] { "francisco" } },
+        { "francisco", new[] { "paco", "curro", "fran" } },
+        { "nacho", new[] { "ignacio" } },
+        { "ignacio", new[] { "nacho" } },
+        { "lola", new[] { "dolores" } },
+        { "lolita", new[] { "dolores" } },
+        { "dolores", new[] { "lola", "lolita" } },
+        { "javi", new[] { "javier" } },
+        { "javier", new[] { "javi" } },
+        { "dani", new[] { "daniel" } },
+        { "daniel", new[] { "dani" } },
+        { "alex", new[] { "alejandro" } },
+        { "alejandro", new[] { "alex" } },
+        { "manu", new[] { "manuel" } },
+        { "manolo", new[] { "manuel" } },
+        { "manuel", new[] { "manu", "manolo" } },
+        { "quique", new[] { "enrique" } },
+        { "enrique", new[] { "quique" } },
+        { "rafa", new[] { "rafael" } },
+        { "rafael", new[] { "rafa" } },
+        { "toni", new[] { "antonio", "jose antonio" } },
+        { "toño", new[] { "antonio" } },
+        { "antonio", new[] { "toni", "toño" } },
+        { "concha", new[] { "concepcion" } },
+        { "conchita", new[] { "concepcion" } },
+        { "concepcion", new[] { "concha", "conchita" } },
+        { "merche", new[] { "mercedes" } },
+        { "mercedes", new[] { "merche" } },
+        { "maite", new[] { "maria teresa" } },
+        { "chema", new[] { "jose maria" } }
+    };
+
     /// <summary>
-    /// Safe token-based tenant name matching with clarification on ambiguity.
+    /// Safe token-based tenant name matching with clarification on ambiguity and Spanish hypocoristic fallback.
     /// </summary>
     public static Tenant? FindBestTenantMatch(
         string requestedName, System.Collections.Generic.List<Tenant> tenants,
@@ -456,9 +683,11 @@ public class AiQueryService
         var targetNorm = NormalizeString(requestedName);
         var targetTokens = targetNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
+        // 1. Exact match on normalized full name
         var exactMatch = tenants.FirstOrDefault(t => NormalizeString(t.FullName) == targetNorm);
         if (exactMatch != null) return exactMatch;
 
+        // 2. Token containment match
         var partialMatches = tenants.Where(t =>
         {
             var tNorm = NormalizeString(t.FullName);
@@ -477,11 +706,94 @@ public class AiQueryService
             return null;
         }
 
-        var allNames = string.Join(", ", tenants.Select(t => t.FullName));
-        clarification = isSpanish
-            ? $"No encuentro un inquilino llamado {requestedName}. Debug: count={tenants.Count} [{allNames}] targetNorm={targetNorm}"
-            : $"I cannot find a tenant named {requestedName}. Debug: count={tenants.Count} [{allNames}] targetNorm={targetNorm}";
+        // 3. Fallback: Spanish hypocoristics / nicknames match
+        var hypocoristicMatches = tenants.Where(t =>
+        {
+            var tNorm = NormalizeString(t.FullName);
+            var tTokens = tNorm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return MatchesWithHypocoristics(targetTokens, tTokens);
+        }).Distinct().ToList();
+
+        if (hypocoristicMatches.Count == 1) return hypocoristicMatches[0];
+
+        if (hypocoristicMatches.Count > 1)
+        {
+            var names = string.Join(", ", hypocoristicMatches.Select(p => p.FullName));
+            clarification = isSpanish
+                ? $"He encontrado varios inquilinos parecidos: {names}. ¿A cuál te refieres?"
+                : $"I found multiple similar tenants: {names}. Which one do you mean?";
+            return null;
+        }
+
+        // 4. No matches found: clean, human-friendly clarification without debug strings
+        if (tenants.Count == 0)
+        {
+            clarification = isSpanish
+                ? "No hay inquilinos registrados en esta propiedad."
+                : "There are no tenants registered in this property.";
+        }
+        else
+        {
+            var allNames = string.Join(", ", tenants.Select(t => t.FullName));
+            clarification = isSpanish
+                ? $"No encuentro ningún inquilino llamado {requestedName}. Los inquilinos registrados son: {allNames}."
+                : $"I cannot find a tenant named {requestedName}. Registered tenants are: {allNames}.";
+        }
         return null;
+    }
+
+    private static bool MatchesWithHypocoristics(string[] requestedTokens, string[] candidateTokens)
+    {
+        if (requestedTokens.Length == 0 || candidateTokens.Length == 0) return false;
+        foreach (var req in requestedTokens)
+        {
+            bool tokenMatched = false;
+            foreach (var cand in candidateTokens)
+            {
+                if (req.Equals(cand, StringComparison.OrdinalIgnoreCase))
+                {
+                    tokenMatched = true;
+                    break;
+                }
+            }
+            if (tokenMatched) continue;
+
+            // Check if req is an alias for a name or phrase, and all tokens of that alias are present in candidateTokens
+            if (SpanishHypocoristics.TryGetValue(req, out var reqAliases))
+            {
+                foreach (var alias in reqAliases)
+                {
+                    var aliasTokens = alias.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (aliasTokens.All(at => candidateTokens.Contains(at, StringComparer.OrdinalIgnoreCase)))
+                    {
+                        tokenMatched = true;
+                        break;
+                    }
+                }
+            }
+            if (tokenMatched) continue;
+
+            // Check reverse: if a candidate token is an alias, and all tokens of that alias are present in requestedTokens
+            foreach (var cand in candidateTokens)
+            {
+                if (SpanishHypocoristics.TryGetValue(cand, out var candAliases))
+                {
+                    foreach (var alias in candAliases)
+                    {
+                        var aliasTokens = alias.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (aliasTokens.All(at => requestedTokens.Contains(at, StringComparer.OrdinalIgnoreCase)))
+                        {
+                            tokenMatched = true;
+                            break;
+                        }
+                    }
+                }
+                if (tokenMatched) break;
+            }
+
+            if (!tokenMatched) return false;
+        }
+        return true;
     }
 
     public static string NormalizeString(string input)
@@ -581,5 +893,25 @@ public class AiQueryService
             }
         }
         return cleaned.Trim();
+    }
+
+    public static bool IsSpanishQuery(string userMessage, string? defaultLanguage = null)
+    {
+        if (string.IsNullOrWhiteSpace(userMessage))
+            return defaultLanguage?.StartsWith("es", StringComparison.OrdinalIgnoreCase) ?? false;
+
+        var lower = userMessage.ToLowerInvariant();
+        if (lower.Contains('¿') || lower.Contains('á') || lower.Contains('é') || lower.Contains('í') || lower.Contains('ó') || lower.Contains('ú') || lower.Contains('ñ'))
+            return true;
+
+        var englishMarkers = new[] { "when", "does", "how much", "how many", "what is", "what was", "what were", "what about", "is there", "who", "which", "move out", "collected", "profit", "expenses", "income", "tenant", "room" };
+        if (englishMarkers.Any(m => lower.Contains(m)))
+            return false;
+
+        var spanishMarkers = new[] { "cuándo", "cuando", "cuánto", "cuanto", "ingresó", "ingreso", "gastos", "beneficio", "mes", "año", "quién", "quien", "dónde", "donde", "inquilino", "habitacion", "habitación" };
+        if (spanishMarkers.Any(m => lower.Contains(m)))
+            return true;
+
+        return defaultLanguage?.StartsWith("es", StringComparison.OrdinalIgnoreCase) ?? false;
     }
 }
